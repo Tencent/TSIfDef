@@ -4,14 +4,24 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CORE-002 - Directive scanner`
+`CORE-003 - Expression parser`
 
-The next session should implement only this task. It must recognize C/C++-style
-directive lines without treating lookalikes in strings, template strings, or
-comments as directives, and return UTF-16 ranges plus structural diagnostics.
+Implement identifiers, `defined(NAME)`, `!`, `&&`, `||`, and parentheses with
+the specified precedence. Report syntax and unknown-macro diagnostics using
+UTF-16 source ranges. Do not evaluate conditional branch groups in this task.
 
 ## Completed This Session
 
+- Completed `CORE-002`.
+- Added C/C++-style directive scanning with exact line, keyword, and argument
+  UTF-16 ranges.
+- Added structural diagnostics for unmatched, duplicate, out-of-order, unknown,
+  and unterminated directives.
+- Prevented false directives in strings, continued strings, template text,
+  comments, and regular-expression literals while supporting template
+  expressions.
+- Persisted automatic next-task continuation when estimated free context is
+  above 50% in `AGENTS.md`.
 - Changed the macro syntax from TypeScript comment directives to C/C++-style
   directive lines such as `#if HOK`.
 - Updated the specification to require projection to mask every directive line.
@@ -23,11 +33,11 @@ comments as directives, and return UTF-16 ranges plus structural diagnostics.
 
 ## Verification
 
-- `npm install`: passed; 0 vulnerabilities.
+- `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 1 test.
-- `npm pack --dry-run`: passed; package contains only `dist` and package
+- `npm test`: passed; 9 tests.
+- `npm pack --dry-run`: passed (`CORE-001`); package contains only `dist` and package
   metadata.
 
 ## Known Issues
@@ -44,6 +54,7 @@ comments as directives, and return UTF-16 ranges plus structural diagnostics.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CORE-002`. Do not implement expression parsing or branch evaluation;
-those belong to `CORE-003` and `CORE-004`. Update this file to point to
-`CORE-003` only after scanner tests, build, and typecheck pass.
+complete `CORE-003`. Reuse scanner argument offsets when mapping expression
+diagnostics. Do not implement conditional branch evaluation; that belongs to
+`CORE-004`. After verification and push, continue automatically only if the
+context rule in `AGENTS.md` permits it.

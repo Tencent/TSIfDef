@@ -19,8 +19,9 @@ working-tree changes.
 
 - Work on only the task named under `Current Task` in `docs/STATUS.md`.
 - Keep a task small enough to implement and verify in one session.
-- Do not start the next task in the same session unless the user explicitly
-  asks for it.
+- After completing, verifying, committing, and pushing a task, continue with
+  the next roadmap task when estimated free context remains above 50%. Stop and
+  leave a complete handoff when free context is at or below 50%.
 - A task is complete only when its acceptance criteria pass.
 - Put reusable behavior in `core`; VSCode, tsserver, and CLI must not implement
   their own macro semantics.
