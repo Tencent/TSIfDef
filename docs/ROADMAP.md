@@ -288,7 +288,27 @@ Acceptance criteria:
   mark-dirty, and log hooks, and a TypeScript 5.5.4 integration confirms that
   switching the Profile flips semantic diagnostics on the same language service.
 - `npm run build`, `npm run typecheck`, and `npm test` pass.
-### TSS-003 - TypeScript 5.5.4 language-service integration tests (`TODO`)
+### TSS-003 - TypeScript 5.5.4 language-service integration tests (`DONE`)
+
+Cover completion, definition, references, rename, and quick fix over the wrapped
+host, confirming offsets map to the original document and inactive code never
+participates.
+
+Acceptance criteria:
+
+- Integration tests run against the pinned TypeScript 5.5.4 language service over
+  the projection-wrapping host.
+- Completion at an active-branch position excludes identifiers declared only in
+  an inactive branch, and the queried offset is the original-document offset.
+- Definition resolves to the active-branch declaration, and both the query and
+  result positions are original-document offsets.
+- Find-all-references and rename report and edit only active-branch occurrences,
+  including across two files, never an inactive duplicate.
+- A quick fix is offered for active-branch code, and its edit ranges are
+  original-document offsets.
+- The in-memory host helper is shared across the tsserver tests rather than
+  duplicated.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
 
 ## M5 - Product Integration and Release
 

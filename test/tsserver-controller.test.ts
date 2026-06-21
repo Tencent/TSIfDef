@@ -7,6 +7,7 @@ import {
   wrapHostWithProjection,
   type ActiveProfile,
 } from "../src/tsserver/index.js";
+import { createMemoryHost } from "./tsserver-fixtures.js";
 
 test("reload marks the project dirty only when the profile version changes", () => {
   const profiles: Array<ActiveProfile | undefined> = [
@@ -61,27 +62,7 @@ test("reload invalidates across none<->selected transitions", () => {
 function memoryHost(
   files: Map<string, { text: string; version: string }>,
 ): ts.LanguageServiceHost {
-  return {
-    getScriptFileNames: () => [...files.keys()],
-    getScriptVersion: (fileName) => files.get(fileName)?.version ?? "0",
-    getScriptSnapshot: (fileName) => {
-      const file = files.get(fileName);
-      return file === undefined ? undefined : ts.ScriptSnapshot.fromString(file.text);
-    },
-    getCurrentDirectory: () => "/",
-    getCompilationSettings: () => ({
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
-      noEmit: true,
-      strict: true,
-    }),
-    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
-    fileExists: ts.sys.fileExists,
-    readFile: ts.sys.readFile,
-    readDirectory: ts.sys.readDirectory,
-    directoryExists: ts.sys.directoryExists,
-    getDirectories: ts.sys.getDirectories,
-  };
+  return createMemoryHost(files);
 }
 
 test("switching the profile flips diagnostics on the same TypeScript 5.5.4 service", () => {

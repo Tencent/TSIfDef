@@ -3,36 +3,7 @@ import test from "node:test";
 import ts from "typescript";
 
 import { wrapHostWithProjection } from "../src/tsserver/index.js";
-
-/** Minimal in-memory snapshot. */
-function snapshotOf(text: string): ts.IScriptSnapshot {
-  return ts.ScriptSnapshot.fromString(text);
-}
-
-/** A spy host whose script contents and versions are controlled in memory. */
-function createMemoryHost(files: Map<string, { text: string; version: string }>): ts.LanguageServiceHost {
-  return {
-    getScriptFileNames: () => [...files.keys()],
-    getScriptVersion: (fileName) => files.get(fileName)?.version ?? "0",
-    getScriptSnapshot: (fileName) => {
-      const file = files.get(fileName);
-      return file === undefined ? undefined : snapshotOf(file.text);
-    },
-    getCurrentDirectory: () => "/",
-    getCompilationSettings: () => ({
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
-      noEmit: true,
-      strict: true,
-    }),
-    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
-    fileExists: ts.sys.fileExists,
-    readFile: ts.sys.readFile,
-    readDirectory: ts.sys.readDirectory,
-    directoryExists: ts.sys.directoryExists,
-    getDirectories: ts.sys.getDirectories,
-  };
-}
+import { createMemoryHost } from "./tsserver-fixtures.js";
 
 test("wrapped snapshot returns an equal-length whole-file projection", () => {
   const source = "#if HOK\nconst hok = 1;\n#else\nconst other = 2;\n#endif\n";

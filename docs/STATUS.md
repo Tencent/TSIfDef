@@ -4,14 +4,27 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`TSS-003 - TypeScript 5.5.4 language-service integration tests`
+`INT-001 - HOK and Domestic profile/typecheck pipeline`
 
-Add language-service integration coverage over the wrapped host for completion,
-definition, references, rename, and quick fix, confirming offsets map back to the
-original document and inactive code never participates.
+Establish the two-profile emit-and-typecheck pipeline so HOK and Domestic views
+each project and compile against their own declarations, reusing the CLI and core
+rather than adding new macro semantics.
 
 ## Completed This Session
 
+- Completed `TSS-003`, finishing milestone M4.
+- Added a TypeScript 5.5.4 language-service integration suite over the
+  projection-wrapping host covering completion, definition, find-all-references,
+  rename, and quick fix.
+- Confirmed completion at an active position excludes inactive-branch
+  identifiers, definition resolves to the active declaration, references and
+  rename touch only active occurrences (including across two files), and quick-fix
+  and diagnostic spans stay within the equal-length original document.
+- Asserted query and result positions are original-document offsets throughout.
+- Extracted the in-memory host into a shared `test/tsserver-fixtures.ts`
+  (`createMemoryHost`, `createWrappedService`, `offsetOf`) and refactored the
+  existing tsserver tests to use it; the helper resolves in-memory modules so
+  cross-file references work.
 - Completed `TSS-002`.
 - Converted the host wrapper to read the active Profile through a live
   `getProfile()` callback on every snapshot/version request, so a Profile change
@@ -218,7 +231,7 @@ original document and inactive code never participates.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 84 tests.
+- `npm test`: passed; 89 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
   tsserver plugin, executable bin, source maps, declarations, and package
   metadata.
@@ -260,8 +273,9 @@ original document and inactive code never participates.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-begin `TSS-003`. Extend the TypeScript 5.5.4 integration coverage over the
-wrapped host to completion, definition, references, rename, and quick fix,
-asserting that positions map back to the original document offsets and that
-inactive-branch code never appears in results. Reuse the existing in-memory host
-helper from the tsserver tests.
+begin `INT-001`. Drive the existing `emitProject` and a `tsc` step per Profile so
+HOK and Domestic each project into `Build/.macrobuild/<PROFILE>` and typecheck
+against their own declarations. The TsScripts pilot found the Domestic
+declarations are absent in this workspace, so design the pipeline to report a
+missing-declaration profile as a clear, skippable configuration state rather than
+a hard failure, and keep all macro semantics in the shared core.
