@@ -30,12 +30,12 @@ Recognize C/C++-style directives whose `#` is the first non-whitespace
 character on a line, without matching text inside strings, template strings,
 or comments. Return UTF-16 source ranges and structural diagnostics.
 
-### CORE-003 - Expression parser (`ACTIVE`)
+### CORE-003 - Expression parser (`DONE`)
 
 Implement identifiers, `defined(NAME)`, `!`, `&&`, `||`, and parentheses with
 precedence and unknown-macro diagnostics.
 
-### CORE-004 - Conditional evaluator (`TODO`)
+### CORE-004 - Conditional evaluator (`ACTIVE`)
 
 Evaluate nested `#if/#elif/#else/#endif` groups and active `#error` directives.
 

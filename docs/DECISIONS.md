@@ -71,3 +71,17 @@ branch is active.
 
 Reason: The requested source syntax should match C/C++ preprocessing syntax.
 Raw macro source is therefore not passed directly to TypeScript or ESLint.
+
+## D007 - Macro expression diagnostics and defined semantics
+
+Date: 2026-06-21
+
+Bare identifiers must exist in the active Profile or produce an
+`unknown-macro` diagnostic. Expression evaluation visits both operands of
+`&&` and `||` so diagnostics do not depend on boolean short-circuiting.
+
+`defined(NAME)` returns whether the Profile owns the key and does not report an
+unknown macro when the key is absent.
+
+Reason: `defined` must support intentional feature-presence checks, while bare
+macro typos must remain visible and deterministic in editor and CI diagnostics.

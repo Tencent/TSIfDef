@@ -4,14 +4,19 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CORE-003 - Expression parser`
+`CORE-004 - Conditional evaluator`
 
-Implement identifiers, `defined(NAME)`, `!`, `&&`, `||`, and parentheses with
-the specified precedence. Report syntax and unknown-macro diagnostics using
-UTF-16 source ranges. Do not evaluate conditional branch groups in this task.
+Evaluate nested `#if/#elif/#else/#endif` groups with a macro Profile, compute
+active/inactive source ranges, and report active `#error` directives. Reuse the
+scanner and expression evaluator without duplicating their rules.
 
 ## Completed This Session
 
+- Completed `CORE-003`.
+- Added expression tokenization, AST generation, parsing, and Profile-based
+  evaluation for identifiers, `defined(NAME)`, `!`, `&&`, `||`, and grouping.
+- Added UTF-16 `baseOffset` mapping for syntax and unknown-macro diagnostics.
+- Evaluated both sides for diagnostics while preserving boolean precedence.
 - Completed `CORE-002`.
 - Added C/C++-style directive scanning with exact line, keyword, and argument
   UTF-16 ranges.
@@ -36,7 +41,7 @@ UTF-16 source ranges. Do not evaluate conditional branch groups in this task.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 9 tests.
+- `npm test`: passed; 15 tests.
 - `npm pack --dry-run`: passed (`CORE-001`); package contains only `dist` and package
   metadata.
 
@@ -54,7 +59,7 @@ UTF-16 source ranges. Do not evaluate conditional branch groups in this task.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CORE-003`. Reuse scanner argument offsets when mapping expression
-diagnostics. Do not implement conditional branch evaluation; that belongs to
-`CORE-004`. After verification and push, continue automatically only if the
-context rule in `AGENTS.md` permits it.
+complete `CORE-004`. Compose scanner and expression diagnostics, calculate
+branch activity, and keep projection/masking out of scope until `CORE-005`.
+After verification and push, continue automatically only if the context rule
+in `AGENTS.md` permits it.
