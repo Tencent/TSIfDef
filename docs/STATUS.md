@@ -12,13 +12,26 @@ stages, reusing the CLI rather than adding macro semantics.
 
 ## Completed This Session
 
-- Added a manual VS Code try-it setup (outside the numbered roadmap): root
-  `package.json` extension manifest (`engines.vscode`, `main`,
-  `activationEvents`, `contributes` commands and `tsifdef.profile`), `.vscode`
-  launch/build tasks, `.vscodeignore`, and an `examples/demo` workspace with HOK
-  and Domestic profiles, single and nested directives, per-profile tsconfigs, and
-  a README plus manual checklist. Editor-host packaging of the tsserver plugin is
-  deferred to REL-001 and noted in the demo README.
+- Made the manual VS Code demo actually run end to end (outside the numbered
+  roadmap):
+  - Fixed the extension entry: `package.json` `main` now points at
+    `dist/vscode/extension.js` so VS Code activates the extension (the status bar
+    and commands previously never appeared because `main` was the core entry);
+    the core npm entry is preserved via `exports["."]`/`["./core"]` and the CLI
+    via `bin`.
+  - Fixed a tsserver plugin bug: a relative plugin `macrosDir` resolved against
+    the process cwd instead of the project root, so the profile failed to load
+    and `#if` lines still produced errors. It now resolves against the project;
+    added plugin tests.
+  - Wired the demo's `tsconfig.json` to load the plugin by name through a
+    committed `examples/demo/node_modules/tsifdef` shim (un-ignored in
+    `.gitignore`) that re-exports `dist/tsserver/plugin.js`. Verified against a
+    real `tsserver` that `src/region.ts` reports 0 diagnostics under HOK.
+  - Added the root `package.json` extension manifest (`engines.vscode`,
+    `activationEvents`, `contributes` commands and `tsifdef.profile`), `.vscode`
+    launch/build tasks, `.vscodeignore`, and the `examples/demo` workspace with
+    HOK/Domestic profiles, single and nested directives, per-profile tsconfigs,
+    and a README. Self-contained VSIX packaging remains REL-001.
 - Fixed `discoverProfileNames` to exclude the reserved `pipeline.json` so
   `check --all` and the VS Code profile switcher no longer treat the pipeline
   config as a macro profile; added a regression test.
@@ -233,7 +246,7 @@ stages, reusing the CLI rather than adding macro semantics.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 96 tests.
+- `npm test`: passed; 98 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
   tsserver plugin, executable bin, source maps, declarations, and package
   metadata.

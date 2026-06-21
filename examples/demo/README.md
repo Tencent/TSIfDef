@@ -62,10 +62,24 @@ branches replaced by spaces while line numbers and offsets are preserved.
 
 ## tsserver plugin (editor type-checking ignores inactive code)
 
-The extension layer above only grays and folds; the native TypeScript language
-service still parses the raw `#` lines. Making tsserver itself project the
-source (so inactive branches never produce type errors or completions) uses the
-plugin in `dist/tsserver/plugin.js`. Wiring that plugin into the packaged VSIX so
-the workspace TypeScript loads it is handled by REL-001; until then, use the
-`pipeline` command above to verify that each profile type-checks against its own
-projected tree and declarations.
+The demo's `tsconfig.json` registers the TSIfDef tsserver plugin so the native
+TypeScript language service projects the source before parsing it: inactive
+branches and `#` directive lines never produce type errors, completions, or
+duplicate-declaration diagnostics.
+
+The plugin is resolved by name `tsifdef` through a tiny shim committed at
+`examples/demo/node_modules/tsifdef/` that re-exports the built
+`dist/tsserver/plugin.js`. After `npm run build` at the repository root, open
+`src/region.ts` in the demo: with the `HOK` profile the file type-checks cleanly
+even though the raw text contains `#if` / `#elif` / `#else`. Edit
+`tsconfig.json`'s plugin `profile` (or set `HOK_TS_PROFILE`) and restart the TS
+server to switch which branch the checker sees.
+
+> The plugin loads under the **workspace** TypeScript version. In the Extension
+> Development Host, the demo is wired through `.vscode/settings.json`; in a plain
+> editor session, run **TypeScript: Select TypeScript Version -> Use Workspace
+> Version** and **TypeScript: Restart TS Server** if a profile change does not
+> take effect. Producing a self-contained VSIX that ships the plugin is REL-001.
+
+The CLI `pipeline` command verifies the same property in CI without an editor:
+each profile type-checks against its own projected tree.

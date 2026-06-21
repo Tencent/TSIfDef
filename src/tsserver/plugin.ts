@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import type * as ts from "typescript";
 
 import { parseProfileDefinitions, selectProfile } from "../cli/profile.js";
@@ -53,11 +53,12 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
 }
 
 function resolveMacrosDir(config: PluginConfig, info: ts.server.PluginCreateInfo): string {
-  if (config.macrosDir !== undefined) {
-    return config.macrosDir;
-  }
   const projectName = info.project.getProjectName();
   const projectRoot = projectName ? dirname(projectName) : info.project.getCurrentDirectory();
+  if (config.macrosDir !== undefined) {
+    // A relative macrosDir is resolved against the project, not the process cwd.
+    return isAbsolute(config.macrosDir) ? config.macrosDir : join(projectRoot, config.macrosDir);
+  }
   return join(projectRoot, "Build", "macros");
 }
 

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Source-level conditional compilation for TypeScript",
   "license": "UNLICENSED",
-  "main": "dist/core/index.js",
+  "main": "dist/vscode/extension.js",
   "types": "dist/core/index.d.ts",
   "publisher": "hok",
   "displayName": "TSIfDef",
@@ -11,6 +11,11 @@
     "tsifdef": "dist/cli/main.js"
   },
   "exports": {
+    ".": {
+      "types": "./dist/core/index.d.ts",
+      "require": "./dist/core/index.js",
+      "default": "./dist/core/index.js"
+    },
     "./core": {
       "types": "./dist/core/index.d.ts",
       "require": "./dist/core/index.js",
