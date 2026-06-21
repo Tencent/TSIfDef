@@ -146,3 +146,16 @@ failure. Diagnostics use one-based line and column positions.
 
 Reason: CI must distinguish source failures from tool/configuration failures,
 and check must be safe to run without changing a developer's generated tree.
+
+## D013 - Incremental cache is an optimization, not an output mode
+
+Date: 2026-06-21
+
+Per-profile cache manifests store successful projected text under
+`Build/.macrobuild/.cache`. Keys hash source content, sorted profile
+definitions, the core API version, and macro-config version. Cache hits still
+participate in a complete staged output-directory replacement. Watch reloads
+the profile each time and serializes/coalesces rebuilds.
+
+Reason: cache corruption or invalidation must never change macro semantics, and
+watch must preserve the same no-partial-tree guarantee as a one-shot emit.

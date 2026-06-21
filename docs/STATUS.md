@@ -4,14 +4,25 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CLI-004 - Watch and incremental cache`
+`CLI-005 - TsScripts pilot integration`
 
-Define concrete acceptance criteria, then add watch mode and an incremental
-cache keyed by source content, profile definitions, preprocessor version, and
-macro-config version. Preserve emit's whole-directory consistency guarantees.
+Inspect `E:\HOK_Trunk\Program\TsScripts` non-destructively, identify its source,
+profile, tsconfig, and build constraints, run safe check/emit pilot commands
+with generated output only under `Build/.macrobuild`, and document results.
 
 ## Completed This Session
 
+- Completed `CLI-004`.
+- Added SHA-256 incremental cache keys covering source content, sorted profile
+  definitions, core preprocessor version, and macro-config version.
+- Added validated, corruption-tolerant per-profile cache manifests containing
+  successful projected text.
+- Preserved complete staged output replacement on cache hits, including source
+  deletion and stale cache cleanup.
+- Added `watch --profile` with Profile reloads, generated-output filtering, and
+  serialized/coalesced rebuild scheduling.
+- Added deterministic cache invalidation and injected-subscription watch tests
+  without timing-sensitive sleeps.
 - Completed `CLI-003`.
 - Added read-only one-profile and `--all` check flows using shared source
   discovery and conditional analysis.
@@ -95,7 +106,7 @@ macro-config version. Preserve emit's whole-directory consistency guarantees.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 41 tests.
+- `npm test`: passed; 45 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, executable bin,
   source maps, declarations, and package metadata.
 
@@ -113,6 +124,6 @@ macro-config version. Preserve emit's whole-directory consistency guarantees.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CLI-004`. Define cache storage and invalidation semantics before
-implementation, including atomic watch updates, source deletion, profile/config
-changes, and deterministic test control without timing-sensitive sleeps.
+complete `CLI-005`. Inspect the external project before choosing command roots;
+do not modify tracked source or existing build configuration. Record exact
+commands, output locations, diagnostics, and any blockers for later integration.

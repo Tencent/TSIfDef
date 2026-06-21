@@ -121,12 +121,27 @@ Acceptance criteria:
   skipped, and no discovered profiles is an error.
 - Programmatic one/all-profile behavior and packaged CLI output are tested.
 
-### CLI-004 - Watch and incremental cache (`ACTIVE`)
+### CLI-004 - Watch and incremental cache (`DONE`)
 
 Add watch mode and a cache key containing source content, profile definition,
 preprocessor version, and macro-config version.
 
-### CLI-005 - TsScripts pilot integration (`TODO`)
+Acceptance criteria:
+
+- Emit/watch cache keys include source content, deterministically serialized
+  profile definitions, core preprocessor version, and macro-config version.
+- Valid cache hits reuse projected text while every successful run still
+  stages and replaces a complete output directory; deleted sources and stale
+  cache entries disappear.
+- Corrupt caches degrade to misses, and cache manifests are replaced only
+  after a successful diagnostic-free emit.
+- `watch --profile <PROFILE>` watches source and profile changes, reloads the
+  profile for every rebuild, serializes rebuilds, and coalesces changes that
+  arrive while a rebuild is running.
+- Cache invalidation and watch scheduling tests use explicit hooks rather than
+  timing-sensitive sleeps.
+
+### CLI-005 - TsScripts pilot integration (`ACTIVE`)
 
 Test against `E:\HOK_Trunk\Program\TsScripts`, then document the non-destructive
 commands and observed build constraints.

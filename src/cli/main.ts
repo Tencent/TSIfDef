@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { checkProject, loadAllProfiles, type CheckProfile } from "./check.js";
 import { assertEmitProfileName, emitProject, EmitDiagnosticsError } from "./emit.js";
 import { loadProfileFile, selectProfile } from "./profile.js";
+import { watchProfile } from "./watch.js";
 
 export const CliExitCode = {
   success: 0,
@@ -14,10 +15,10 @@ export const CliExitCode = {
 export async function runCli(args: readonly string[], cwd = process.cwd()): Promise<number> {
   try {
     const command = args[0];
-    if (command !== "emit" && command !== "check") {
-      throw new Error("Usage: tsifdef <emit|check> [options]");
+    if (command !== "emit" && command !== "check" && command !== "watch") {
+      throw new Error("Usage: tsifdef <emit|check|watch> [options]");
     }
-    const values = parseOptions(args.slice(1), command === "check");
+    const values = parseOptions(args.slice(1), command);
     const projectRoot = resolve(cwd, values.root ?? ".");
     if (command === "check") {
       const profiles = await resolveCheckProfiles(values, projectRoot);
@@ -39,7 +40,7 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
     }
 
     if (values.all === "true") {
-      throw new Error("The emit command does not support --all.");
+      throw new Error(`The ${command} command does not support --all.`);
     }
     const selected = selectProfile({
       ...(values.profile === undefined ? {} : { cliProfile: values.profile }),
@@ -47,12 +48,32 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
     });
     assertEmitProfileName(selected.profile);
     const profilePath = profilePathFor(projectRoot, selected.profile);
+    const macroConfigVersion = values["config-version"] ?? "1";
+    if (command === "watch") {
+      await watchProfile({
+        projectRoot,
+        ...(values.source === undefined ? {} : { sourceRoot: values.source }),
+        profileName: selected.profile,
+        profilePath,
+        macroConfigVersion,
+        onResult: (error, result) => {
+          if (error !== undefined) {
+            process.stderr.write(`Watch rebuild failed: ${error instanceof Error ? error.message : String(error)}\n`);
+          } else if (result !== undefined) {
+            process.stdout.write(`Emitted ${result.files.length} file(s), ${result.cacheHits} cache hit(s).\n`);
+          }
+        },
+      });
+      process.stdout.write(`Watching ${selected.profile}.\n`);
+      return CliExitCode.success;
+    }
     const definitions = await loadProfileFile(profilePath);
     const result = await emitProject({
       projectRoot,
       ...(values.source === undefined ? {} : { sourceRoot: values.source }),
       profileName: selected.profile,
       definitions,
+      cache: { macroConfigVersion },
     });
     process.stdout.write(`Emitted ${result.files.length} file(s) to ${result.outputRoot}\n`);
     return CliExitCode.success;
@@ -100,17 +121,20 @@ function profilePathFor(projectRoot: string, profile: string): string {
 
 function parseOptions(
   args: readonly string[],
-  allowAll: boolean,
+  command: "emit" | "check" | "watch",
 ): Record<string, string | undefined> {
   const values: Record<string, string | undefined> = {};
+  const valueOptions = command === "check"
+    ? ["--profile", "--root", "--source"]
+    : ["--profile", "--root", "--source", "--config-version"];
   for (let offset = 0; offset < args.length; offset += 1) {
     const option = args[offset];
-    if (option === "--all" && allowAll) {
+    if (option === "--all" && command === "check") {
       values.all = "true";
       continue;
     }
     const value = args[offset + 1];
-    if (option === undefined || !["--profile", "--root", "--source"].includes(option) || value === undefined || value.startsWith("--")) {
+    if (option === undefined || !valueOptions.includes(option) || value === undefined || value.startsWith("--")) {
       throw new Error(`Invalid option '${option ?? ""}'.`);
     }
     values[option.slice(2)] = value;
