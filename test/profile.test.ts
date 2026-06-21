@@ -1,64 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import test from "node:test";
 
 import {
-  loadProfileFile,
-  ProfileLoadError,
   ProfileSelectionError,
   selectProfile,
 } from "../src/cli/index.js";
-
-async function withTempProfile(
-  content: string,
-  callback: (path: string) => Promise<void>,
-): Promise<void> {
-  const directory = await mkdtemp(join(tmpdir(), "tsifdef-profile-"));
-  const path = join(directory, "profile.json");
-  try {
-    await writeFile(path, content, "utf8");
-    await callback(path);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-}
-
-test("loads an immutable UTF-8 JSON profile", async () => {
-  await withTempProfile("\uFEFF{\"HOK\":true,\"DOMESTIC\":false}", async (path) => {
-    const profile = await loadProfileFile(path);
-    assert.deepEqual({ ...profile }, { HOK: true, DOMESTIC: false });
-    assert.equal(Object.isFrozen(profile), true);
-    assert.throws(() => {
-      (profile as Record<string, boolean>).HOK = false;
-    }, TypeError);
-  });
-});
-
-test("reports stable profile loading failures", async () => {
-  const cases = [
-    ["not json", "profile-invalid-json"],
-    ["[]", "profile-invalid-shape"],
-    ["{\"NOT-VALID\":true}", "profile-invalid-macro-name"],
-    ["{\"HOK\":1}", "profile-invalid-macro-value"],
-  ] as const;
-
-  for (const [content, code] of cases) {
-    await withTempProfile(content, async (path) => {
-      await assert.rejects(
-        loadProfileFile(path),
-        (error: unknown) => error instanceof ProfileLoadError && error.code === code,
-      );
-    });
-  }
-
-  await assert.rejects(
-    loadProfileFile(join(tmpdir(), "tsifdef-profile-does-not-exist.json")),
-    (error: unknown) =>
-      error instanceof ProfileLoadError && error.code === "profile-read-failed",
-  );
-});
 
 test("selects profiles in fixed precedence order", () => {
   const all = {

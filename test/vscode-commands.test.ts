@@ -107,7 +107,7 @@ class FakeRunner implements CliRunner {
 const fullContext = (): CommandContext => ({
   projectRoot: "/project",
   profileName: "HOK",
-  profilePath: "/project/Build/macros/hok.json",
+  configPath: "/project/tsifdef",
   definitions: hok,
 });
 
@@ -148,8 +148,8 @@ test("check command distinguishes pass from diagnostics", async () => {
 
   runner.checkResult = [
     {
-      code: "unknown-macro",
-      message: "Unknown macro X.",
+      code: "active-error",
+      message: "Blocked by test.",
       range: { start: 0, end: 1 },
       profile: "HOK",
       file: "a.ts",
@@ -167,7 +167,7 @@ test("commands require a profile and a workspace", async () => {
   const a = new MacroCommandController(noWorkspace, () => ({
     projectRoot: undefined,
     profileName: "HOK",
-    profilePath: undefined,
+    configPath: undefined,
     definitions: hok,
   }));
   a.activate();
@@ -179,7 +179,7 @@ test("commands require a profile and a workspace", async () => {
   const b = new MacroCommandController(noProfile, () => ({
     projectRoot: "/project",
     profileName: undefined,
-    profilePath: undefined,
+    configPath: undefined,
     definitions: undefined,
   }));
   b.activate();
@@ -218,13 +218,13 @@ test("watch reports a missing profile path", async () => {
   const runner = new FakeRunner();
   const controller = new MacroCommandController(
     host,
-    () => ({ projectRoot: "/p", profileName: "HOK", profilePath: undefined, definitions: hok }),
+    () => ({ projectRoot: "/p", profileName: "HOK", configPath: undefined, definitions: hok }),
     runner,
   );
   controller.activate();
   await controller.watch();
   assert.equal(runner.watchCalls, 0);
-  assert.match(host.errorMessages.at(-1) ?? "", /profile file path/i);
+  assert.match(host.errorMessages.at(-1) ?? "", /configuration path/i);
   controller.dispose();
 });
 

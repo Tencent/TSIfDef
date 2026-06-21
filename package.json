@@ -68,7 +68,7 @@
         "tsifdef.profile": {
           "type": "string",
           "default": null,
-          "markdownDescription": "The active TSIfDef profile name. Macros load from `Build/macros/<profile>.json`. The `HOK_TS_PROFILE` environment variable takes precedence over this setting."
+          "markdownDescription": "The active Profile from the fixed `tsifdef` file beside `package.json`. The `HOK_TS_PROFILE` environment variable takes precedence over this setting."
         }
       }
     }

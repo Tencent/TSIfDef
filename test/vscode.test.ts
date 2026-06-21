@@ -18,10 +18,9 @@ async function withProfiles(
   const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-"));
   try {
     if (names.length > 0) {
-      await mkdir(join(root, "Build", "macros"), { recursive: true });
-      for (const name of names) {
-        await writeFile(join(root, "Build", "macros", `${name}.json`), "{}", "utf8");
-      }
+      await writeFile(join(root, "tsifdef"), JSON.stringify(Object.fromEntries(
+        names.map((name) => [name, []]),
+      )), "utf8");
     }
     await callback(root);
   } finally {
@@ -130,7 +129,7 @@ test("switching reports when no profiles are discovered", async () => {
 
     await controller.switchProfile();
 
-    assert.deepEqual(host.informationMessages, ["No TSIfDef profiles found under Build/macros."]);
+    assert.deepEqual(host.informationMessages, ["No TSIfDef profiles found in the project tsifdef file."]);
     controller.dispose();
   });
 });

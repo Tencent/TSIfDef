@@ -47,13 +47,13 @@ test("emits projected files, preserves source, and removes stale output", async 
 
 test("keeps existing output when source diagnostics prevent emission", async () => {
   await withProject(async (root) => {
-    await writeFile(join(root, "broken.ts"), "#if MISSING\nvalue();\n#endif\n", "utf8");
+    await writeFile(join(root, "broken.ts"), "#if BLOCKED\n#error blocked build\n#endif\n", "utf8");
     const existing = join(root, "Build", ".macrobuild", "HOK", "existing.ts");
     await mkdir(dirname(existing), { recursive: true });
     await writeFile(existing, "existing", "utf8");
 
     await assert.rejects(
-      emitProject({ projectRoot: root, profileName: "HOK", definitions: {} }),
+      emitProject({ projectRoot: root, profileName: "HOK", definitions: { BLOCKED: true } }),
       (error: unknown) =>
         error instanceof EmitDiagnosticsError && error.files[0]?.file === "broken.ts",
     );
@@ -70,8 +70,7 @@ test("rejects profile path traversal", async () => {
 
 test("runs the packaged emit command", async () => {
   await withProject(async (root) => {
-    await mkdir(join(root, "Build", "macros"), { recursive: true });
-    await writeFile(join(root, "Build", "macros", "hok.json"), "{\"HOK\":true}", "utf8");
+    await writeFile(join(root, "tsifdef"), "{\"HOK\":[\"HOK\"]}", "utf8");
     await mkdir(join(root, "source"), { recursive: true });
     await writeFile(join(root, "source", "main.ts"), "#if HOK\nconst ok = true;\n#endif\n", "utf8");
 

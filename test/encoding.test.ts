@@ -82,8 +82,7 @@ test("emit fails on malformed UTF-8 without replacing existing output", async ()
 
 test("packaged emit and check report encoding failures with exit code 2", async () => {
   await withProject(async (root) => {
-    await mkdir(join(root, "Build", "macros"), { recursive: true });
-    await writeFile(join(root, "Build", "macros", "hok.json"), "{\"HOK\":true}", "utf8");
+    await writeFile(join(root, "tsifdef"), "{\"HOK\":[\"HOK\"]}", "utf8");
     await mkdir(join(root, "source"), { recursive: true });
     await writeFile(join(root, "source", "bad.ts"), invalidUtf8);
     const cli = join(process.cwd(), "dist", "cli", "main.js");

@@ -2,13 +2,13 @@ import { watch as watchFs } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 import { emitProject, type EmitResult } from "./emit.js";
-import { loadProfileFile } from "./profile.js";
+import { loadTsIfDefConfig, profileFromConfig } from "./config.js";
 
 export interface WatchOptions {
   readonly projectRoot: string;
   readonly sourceRoot?: string;
   readonly profileName: string;
-  readonly profilePath: string;
+  readonly configPath: string;
   readonly macroConfigVersion: string;
   readonly onResult?: (error: unknown, result?: EmitResult) => void;
   readonly subscribe?: WatchSubscribe;
@@ -76,7 +76,10 @@ export async function watchProfile(options: WatchOptions): Promise<WatchHandle> 
   const projectRoot = resolve(options.projectRoot);
   const sourceRoot = resolve(projectRoot, options.sourceRoot ?? ".");
   const rebuild = async (): Promise<void> => {
-    const definitions = await loadProfileFile(options.profilePath);
+    const definitions = profileFromConfig(
+      await loadTsIfDefConfig(projectRoot),
+      options.profileName,
+    ).definitions;
     const result = await emitProject({
       projectRoot,
       ...(options.sourceRoot === undefined ? {} : { sourceRoot: options.sourceRoot }),
@@ -100,11 +103,11 @@ export async function watchProfile(options: WatchOptions): Promise<WatchHandle> 
     }
     rebuilder.trigger();
   }));
-  const profileRelative = relative(sourceRoot, resolve(options.profilePath));
+  const profileRelative = relative(sourceRoot, resolve(options.configPath));
   const profileIsInsideSource =
     profileRelative === "" || (!profileRelative.startsWith("..") && !isAbsolute(profileRelative));
   if (!profileIsInsideSource) {
-    watchers.push(subscribe(dirname(options.profilePath), false, () => rebuilder.trigger()));
+    watchers.push(subscribe(dirname(options.configPath), false, () => rebuilder.trigger()));
   }
 
   return {

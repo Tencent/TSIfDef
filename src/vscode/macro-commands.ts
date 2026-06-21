@@ -35,7 +35,7 @@ export interface CliRunner {
   watch(options: {
     projectRoot: string;
     profileName: string;
-    profilePath: string;
+    configPath: string;
     onResult: (error: unknown, result?: EmitResult) => void;
   }): Promise<WatchHandle>;
 }
@@ -44,7 +44,7 @@ export interface CliRunner {
 export interface CommandContext {
   readonly projectRoot: string | undefined;
   readonly profileName: string | undefined;
-  readonly profilePath: string | undefined;
+  readonly configPath: string | undefined;
   readonly definitions: MacroDefinitions | undefined;
 }
 
@@ -66,7 +66,7 @@ const defaultRunner: CliRunner = {
     watchProfile({
       projectRoot: options.projectRoot,
       profileName: options.profileName,
-      profilePath: options.profilePath,
+      configPath: options.configPath,
       macroConfigVersion: "1",
       onResult: options.onResult,
     }),
@@ -147,9 +147,9 @@ export class MacroCommandController {
 
   public async watch(): Promise<void> {
     const ready = this.requireContext();
-    if (ready === undefined || ready.profilePath === undefined) {
+    if (ready === undefined || ready.configPath === undefined) {
       if (ready !== undefined) {
-        this.host.showErrorMessage("TSIfDef watch needs a profile file path.");
+        this.host.showErrorMessage("TSIfDef watch needs the project tsifdef configuration path.");
       }
       return;
     }
@@ -158,7 +158,7 @@ export class MacroCommandController {
       this.watchHandle = await this.runner.watch({
         projectRoot: ready.projectRoot,
         profileName: ready.profileName,
-        profilePath: ready.profilePath,
+        configPath: ready.configPath,
         onResult: (error, result) => {
           if (error !== undefined) {
             this.reportFailure("watch", error);
@@ -185,9 +185,9 @@ export class MacroCommandController {
 
   /** Resolve a fully-specified context or report what is missing. */
   private requireContext():
-    | { projectRoot: string; profileName: string; profilePath: string | undefined; definitions: MacroDefinitions }
+    | { projectRoot: string; profileName: string; configPath: string | undefined; definitions: MacroDefinitions }
     | undefined {
-    const { projectRoot, profileName, profilePath, definitions } = this.context();
+    const { projectRoot, profileName, configPath, definitions } = this.context();
     if (projectRoot === undefined) {
       this.host.showErrorMessage("TSIfDef needs an open workspace folder.");
       return undefined;
@@ -196,7 +196,7 @@ export class MacroCommandController {
       this.host.showErrorMessage("TSIfDef has no profile selected. Switch a profile first.");
       return undefined;
     }
-    return { projectRoot, profileName, profilePath, definitions };
+    return { projectRoot, profileName, configPath, definitions };
   }
 
   private reportFailure(action: string, error: unknown): void {

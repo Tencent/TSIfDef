@@ -37,44 +37,34 @@ test("checks profiles with stable file and one-based locations without writing",
       diagnostics.map(({ profile, file, line, column, code }) => ({ profile, file, line, column, code })),
       [
         { profile: "HOK", file: "main.ts", line: 3, column: 8, code: "active-error" },
-        { profile: "HOK", file: "main.ts", line: 5, column: 5, code: "unknown-macro" },
-        { profile: "domestic", file: "main.ts", line: 5, column: 5, code: "unknown-macro" },
       ],
     );
     await assert.rejects(stat(join(root, "Build", ".macrobuild")));
   });
 });
 
-test("discovers all JSON profiles deterministically and rejects an empty set", async () => {
+test("discovers configured profiles deterministically and rejects a missing config", async () => {
   await withProject(async (root) => {
-    const profiles = join(root, "Build", "macros");
-    await mkdir(profiles, { recursive: true });
-    await writeFile(join(profiles, "zeta.json"), "{\"ZETA\":true}", "utf8");
-    await writeFile(join(profiles, "Alpha.JSON"), "{\"ALPHA\":true}", "utf8");
-    await writeFile(join(profiles, "notes.txt"), "ignored", "utf8");
-    // pipeline.json is reserved configuration, not a macro profile.
-    await writeFile(join(profiles, "pipeline.json"), "{\"profiles\":[]}", "utf8");
+    await writeFile(join(root, "tsifdef"), "{\"zeta\":[\"ZETA\"],\"Alpha\":[\"ALPHA\"]}", "utf8");
     assert.deepEqual((await loadAllProfiles(root)).map((profile) => profile.name), ["Alpha", "zeta"]);
   });
   await withProject(async (root) => {
-    await mkdir(join(root, "Build", "macros"), { recursive: true });
-    await assert.rejects(loadAllProfiles(root), /No JSON profiles/);
+    await assert.rejects(loadAllProfiles(root), /Cannot read TSIfDef configuration/);
   });
 });
 
 test("packaged check uses stable diagnostic and configuration exit codes", async () => {
   await withProject(async (root) => {
-    await mkdir(join(root, "Build", "macros"), { recursive: true });
     await mkdir(join(root, "source"), { recursive: true });
-    await writeFile(join(root, "Build", "macros", "hok.json"), "{\"HOK\":true}", "utf8");
-    await writeFile(join(root, "source", "main.ts"), "#if UNKNOWN\n#endif\n", "utf8");
+    await writeFile(join(root, "tsifdef"), "{\"hok\":[\"HOK\"]}", "utf8");
+    await writeFile(join(root, "source", "main.ts"), "#if UNKNOWN\n#error hidden\n#endif\n", "utf8");
     const cli = join(process.cwd(), "dist", "cli", "main.js");
     const diagnostics = spawnSync(process.execPath, [cli, "check", "--all", "--source", "source"], {
       cwd: root,
       encoding: "utf8",
     });
-    assert.equal(diagnostics.status, 1);
-    assert.match(diagnostics.stderr, /\[hok\] main\.ts:1:5 unknown-macro:/);
+    assert.equal(diagnostics.status, 0, diagnostics.stderr);
+    assert.match(diagnostics.stdout, /no macro diagnostics/);
 
     const usage = spawnSync(process.execPath, [cli, "check", "--all", "--profile", "HOK"], {
       cwd: root,

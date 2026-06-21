@@ -1,6 +1,10 @@
 import { createRequire } from "node:module";
 
-import { loadProfileFile } from "../cli/profile.js";
+import {
+  loadTsIfDefConfig,
+  profileFromConfig,
+  tsIfDefConfigFileName,
+} from "../cli/config.js";
 import type { MacroDefinitions } from "../core/expression.js";
 import { ProfileStateController, configurationSection, profileConfigurationKey } from "./profile-state.js";
 import { MacroPresentationController } from "./macro-presentation.js";
@@ -252,8 +256,7 @@ export function activate(context: ExtensionContext): void {
   const profileController = new ProfileStateController(host);
   const presentation = new MacroPresentationController(host, () => definitions);
 
-  const profilePathFor = (root: string, profile: string): string =>
-    `${root}/Build/macros/${profile.toLowerCase()}.json`;
+  const configPathFor = (root: string): string => `${root}/${tsIfDefConfigFileName}`;
 
   const reloadDefinitions = async (): Promise<void> => {
     const root = host.workspaceRoot();
@@ -261,17 +264,20 @@ export function activate(context: ExtensionContext): void {
     if (root === undefined || profile === undefined) {
       definitions = undefined;
     } else {
-      const profilePath = profilePathFor(root, profile);
+      const configPath = configPathFor(root);
       try {
-        definitions = await loadProfileFile(profilePath);
+        definitions = profileFromConfig(
+          await loadTsIfDefConfig(root),
+          profile,
+        ).definitions;
         await host.configureTypeScriptPlugin("tsifdef-tsserver", {
           profile,
-          macrosDir: `${root}/Build/macros`,
+          configPath,
         });
         profileController.reportProfileLoad(profile);
       } catch (error) {
         definitions = undefined;
-        const message = `Failed to load TSIfDef profile '${profile}' from ${profilePath}: ${
+        const message = `Failed to load TSIfDef profile '${profile}' from ${configPath}: ${
           error instanceof Error ? error.message : String(error)
         }`;
         profileController.reportProfileLoad(profile, message);
@@ -287,7 +293,7 @@ export function activate(context: ExtensionContext): void {
     return {
       projectRoot: root,
       profileName: profile,
-      profilePath: root !== undefined && profile !== undefined ? profilePathFor(root, profile) : undefined,
+      configPath: root !== undefined && profile !== undefined ? configPathFor(root) : undefined,
       definitions,
     };
   });

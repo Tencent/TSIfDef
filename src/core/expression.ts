@@ -40,8 +40,7 @@ export type ExpressionDiagnosticCode =
   | "expected-defined-parenthesis"
   | "expected-defined-name"
   | "expected-closing-parenthesis"
-  | "unexpected-token"
-  | "unknown-macro";
+  | "unexpected-token";
 
 export interface ExpressionDiagnostic {
   readonly code: ExpressionDiagnosticCode;
@@ -94,9 +93,8 @@ export function evaluateMacroExpression(
     return { ...parsed, value: false };
   }
 
-  const diagnostics: ExpressionDiagnostic[] = [];
-  const value = evaluateNode(parsed.expression, definitions, diagnostics);
-  return { expression: parsed.expression, diagnostics, value };
+  const value = evaluateNode(parsed.expression, definitions);
+  return { expression: parsed.expression, diagnostics: [], value };
 }
 
 class ExpressionParser {
@@ -335,28 +333,17 @@ function makeToken(
 function evaluateNode(
   expression: MacroExpression,
   definitions: MacroDefinitions,
-  diagnostics: ExpressionDiagnostic[],
 ): boolean {
   switch (expression.kind) {
     case "identifier":
-      if (!Object.hasOwn(definitions, expression.name)) {
-        diagnostics.push({
-          code: "unknown-macro",
-          message: `Unknown macro ${expression.name}.`,
-          range: expression.range,
-        });
-        return false;
-      }
       return definitions[expression.name] === true;
     case "defined":
       return Object.hasOwn(definitions, expression.name);
     case "not":
-      return !evaluateNode(expression.operand, definitions, diagnostics);
+      return !evaluateNode(expression.operand, definitions);
     case "logical": {
-      // Evaluate both sides so unknown macros are diagnosed even when boolean
-      // short-circuiting would otherwise hide one side.
-      const left = evaluateNode(expression.left, definitions, diagnostics);
-      const right = evaluateNode(expression.right, definitions, diagnostics);
+      const left = evaluateNode(expression.left, definitions);
+      const right = evaluateNode(expression.right, definitions);
       return expression.operator === "&&" ? left && right : left || right;
     }
   }

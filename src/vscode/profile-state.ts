@@ -115,7 +115,7 @@ export class ProfileStateController {
       (name) => name.toLowerCase() === selected.toLowerCase(),
     );
     if (canonical === undefined) {
-      throw new Error(`TSIfDef profile '${selected}' does not exist under Build/macros.`);
+      throw new Error(`TSIfDef profile '${selected}' does not exist in the project tsifdef file.`);
     }
     return canonical;
   }
@@ -125,7 +125,7 @@ export class ProfileStateController {
     const root = this.host.workspaceRoot();
     const names = root === undefined ? [] : await discoverProfileNames(root);
     if (names.length === 0) {
-      this.host.showInformationMessage("No TSIfDef profiles found under Build/macros.");
+      this.host.showInformationMessage("No TSIfDef profiles found in the project tsifdef file.");
       return;
     }
     const current = this.effectiveProfile().profile;

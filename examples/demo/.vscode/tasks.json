@@ -2,32 +2,32 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "TSIfDef: Emit active demo",
-      "type": "process",
-      "command": "node",
-      "args": [
-        "${workspaceFolder}/../../dist/cli/main.js",
-        "emit",
-        "--profile",
-        "${command:tsifdef.activeProfile}",
-        "--root",
-        "${workspaceFolder}",
-        "--source",
-        "src"
-      ],
-      "problemMatcher": []
-    },
-    {
       "label": "TSIfDef: Compile active demo",
       "type": "process",
       "command": "node",
       "args": [
-        "${workspaceFolder}/../../node_modules/typescript/bin/tsc",
+        "${workspaceFolder}/../../dist/cli/main.js",
+        "tsc",
+        "--profile",
+        "${command:tsifdef.activeProfile}",
+        "--root",
+        "${workspaceFolder}",
+        "--",
         "-p",
-        "${workspaceFolder}/tsconfig.runtime.${command:tsifdef.activeProfile}.json"
+        "${workspaceFolder}/tsconfig.json",
+        "--noEmit",
+        "false",
+        "--rootDir",
+        "${workspaceFolder}/src",
+        "--outDir",
+        "${workspaceFolder}/Build/.demorun/${command:tsifdef.activeProfile}",
+        "--sourceMap",
+        "true",
+        "--inlineSources",
+        "true",
+        "--sourceRoot",
+        "../../../src"
       ],
-      "dependsOn": "TSIfDef: Emit active demo",
-      "dependsOrder": "sequence",
       "problemMatcher": "$tsc"
     }
   ]

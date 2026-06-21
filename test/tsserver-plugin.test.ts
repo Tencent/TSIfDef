@@ -46,17 +46,16 @@ function pluginInfo(
   };
 }
 
-test("plugin resolves a relative macrosDir against the project root and projects", async () => {
+test("plugin resolves the fixed project config and projects", async () => {
   await withProject(async (root) => {
-    await mkdir(join(root, "Build", "macros"), { recursive: true });
-    await writeFile(join(root, "Build", "macros", "hok.json"), "{\"HOK\":true}", "utf8");
+    await writeFile(join(root, "tsifdef"), "{\"HOK\":[\"HOK\"]}", "utf8");
     const file = join(root, "main.ts");
     const source = "#if HOK\nexport const value: number = 1;\n#else\nexport const value: string = 'x';\n#endif\n";
 
     const files = new Map([[file, { text: source, version: "1" }]]);
     const host = createMemoryHost(files);
     const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
-    const info = pluginInfo(root, host, languageService, { profile: "HOK", macrosDir: "Build/macros" });
+    const info = pluginInfo(root, host, languageService, { profile: "HOK" });
 
     const plugin = init({ typescript: ts });
     const wrapped = plugin.create(info);
@@ -75,10 +74,8 @@ test("plugin resolves a relative macrosDir against the project root and projects
 
 test("plugin reprojects when VSCode sends a different profile", async () => {
   await withProject(async (root) => {
-    const macrosDir = join(root, "Build", "macros");
-    await mkdir(macrosDir, { recursive: true });
-    await writeFile(join(macrosDir, "hok.json"), "{\"HOK\":true}", "utf8");
-    await writeFile(join(macrosDir, "domestic.json"), "{\"HOK\":false}", "utf8");
+    const configPath = join(root, "tsifdef");
+    await writeFile(configPath, "{\"HOK\":[\"HOK\"],\"DOMESTIC\":[]}", "utf8");
     const file = join(root, "main.ts");
     const source = "#if HOK\nconst selected = 'hok';\n#else\nconst selected = 'domestic';\n#endif\n";
     const host = createMemoryHost(new Map([[file, { text: source, version: "1" }]]));
@@ -86,11 +83,11 @@ test("plugin reprojects when VSCode sends a different profile", async () => {
     const plugin = init({ typescript: ts });
     plugin.create(pluginInfo(root, host, languageService, {
       profile: "HOK",
-      macrosDir: "Build/macros",
+      configPath: "tsifdef",
     }));
 
     assert.match(host.getScriptSnapshot(file)!.getText(0, source.length), /selected = 'hok'/);
-    plugin.onConfigurationChanged?.({ profile: "DOMESTIC", macrosDir });
+    plugin.onConfigurationChanged?.({ profile: "DOMESTIC", configPath });
     const projected = host.getScriptSnapshot(file)!.getText(0, source.length);
     assert.match(projected, /selected = 'domestic'/);
     assert.doesNotMatch(projected, /selected = 'hok'/);

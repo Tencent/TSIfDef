@@ -2,10 +2,10 @@
 import { resolve } from "node:path";
 
 import { checkProject, loadAllProfiles, type CheckProfile } from "./check.js";
+import { loadTsIfDefConfig, profileFromConfig, tsIfDefConfigFileName } from "./config.js";
 import { assertEmitProfileName, emitProject, EmitDiagnosticsError } from "./emit.js";
-import { loadPipelineConfig, runProfilePipeline } from "./pipeline.js";
-import { tscTypecheckRunner } from "./tsc-runner.js";
-import { loadProfileFile, selectProfile } from "./profile.js";
+import { runTypeScriptBuild } from "./tsc-build.js";
+import { selectProfile } from "./profile.js";
 import { watchProfile } from "./watch.js";
 
 export const CliExitCode = {
@@ -17,14 +17,14 @@ export const CliExitCode = {
 export async function runCli(args: readonly string[], cwd = process.cwd()): Promise<number> {
   try {
     const command = args[0];
-    if (command !== "emit" && command !== "check" && command !== "watch" && command !== "pipeline") {
-      throw new Error("Usage: tsifdef <emit|check|watch|pipeline> [options]");
+    if (command === "tsc") {
+      return await runTscCommand(args.slice(1), cwd);
+    }
+    if (command !== "emit" && command !== "check" && command !== "watch") {
+      throw new Error("Usage: tsifdef <emit|check|watch|tsc> [options]");
     }
     const values = parseOptions(args.slice(1), command);
     const projectRoot = resolve(cwd, values.root ?? ".");
-    if (command === "pipeline") {
-      return await runPipelineCommand(values, projectRoot);
-    }
     if (command === "check") {
       const profiles = await resolveCheckProfiles(values, projectRoot);
       const diagnostics = await checkProject({
@@ -52,14 +52,14 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
       environment: process.env,
     });
     assertEmitProfileName(selected.profile);
-    const profilePath = profilePathFor(projectRoot, selected.profile);
+    const configPath = configPathFor(projectRoot);
     const macroConfigVersion = values["config-version"] ?? "1";
     if (command === "watch") {
       await watchProfile({
         projectRoot,
         ...(values.source === undefined ? {} : { sourceRoot: values.source }),
         profileName: selected.profile,
-        profilePath,
+        configPath,
         macroConfigVersion,
         onResult: (error, result) => {
           if (error !== undefined) {
@@ -72,7 +72,10 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
       process.stdout.write(`Watching ${selected.profile}.\n`);
       return CliExitCode.success;
     }
-    const definitions = await loadProfileFile(profilePath);
+    const definitions = profileFromConfig(
+      await loadTsIfDefConfig(projectRoot),
+      selected.profile,
+    ).definitions;
     const result = await emitProject({
       projectRoot,
       ...(values.source === undefined ? {} : { sourceRoot: values.source }),
@@ -97,37 +100,43 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
   }
 }
 
-async function runPipelineCommand(
-  values: Readonly<Record<string, string | undefined>>,
-  projectRoot: string,
-): Promise<number> {
-  const config = await loadPipelineConfig(projectRoot);
-  const results = await runProfilePipeline({
-    projectRoot,
-    ...(values.source === undefined ? {} : { sourceRoot: values.source }),
-    entries: config.profiles,
-    definitionsFor: (profile) => loadProfileFile(profilePathFor(projectRoot, profile)),
-    typecheck: tscTypecheckRunner,
-  });
-
-  let hasDiagnostics = false;
-  for (const result of results) {
-    if (result.status === "passed") {
-      process.stdout.write(`[${result.profile}] passed (${result.emittedFiles ?? 0} file(s)).\n`);
-    } else if (result.status === "skipped-missing-declarations") {
-      process.stdout.write(
-        `[${result.profile}] skipped: missing declarations ${(result.missingDeclarations ?? []).join(", ")}.\n`,
-      );
-    } else {
-      hasDiagnostics = true;
-      const label = result.status === "macro-diagnostics" ? "macro diagnostics" : "type errors";
-      process.stderr.write(`[${result.profile}] ${label}:\n`);
-      for (const diagnostic of result.diagnostics ?? []) {
-        process.stderr.write(`  ${diagnostic}\n`);
-      }
-    }
+async function runTscCommand(args: readonly string[], cwd: string): Promise<number> {
+  const separator = args.indexOf("--");
+  if (separator < 0) {
+    throw new Error("Usage: tsifdef tsc --profile <PROFILE> -- <tsc options>");
   }
-  return hasDiagnostics ? CliExitCode.diagnostics : CliExitCode.success;
+  const values = parseTscWrapperOptions(args.slice(0, separator));
+  const projectRoot = resolve(cwd, values.root ?? ".");
+  const selected = selectProfile({
+    ...(values.profile === undefined ? {} : { cliProfile: values.profile }),
+    environment: process.env,
+  });
+  const definitions = profileFromConfig(
+    await loadTsIfDefConfig(projectRoot),
+    selected.profile,
+  ).definitions;
+  const result = await runTypeScriptBuild({
+    cwd,
+    args: args.slice(separator + 1),
+    definitions,
+  });
+  for (const error of result.errors) {
+    process.stderr.write(`${error}\n`);
+  }
+  return result.errors.length === 0 ? CliExitCode.success : CliExitCode.diagnostics;
+}
+
+function parseTscWrapperOptions(args: readonly string[]): Record<string, string | undefined> {
+  const values: Record<string, string | undefined> = {};
+  for (let index = 0; index < args.length; index += 2) {
+    const option = args[index];
+    const value = args[index + 1];
+    if ((option !== "--profile" && option !== "--root") || value === undefined) {
+      throw new Error(`Invalid tsc wrapper option '${option ?? ""}'.`);
+    }
+    values[option.slice(2)] = value;
+  }
+  return values;
 }
 
 async function resolveCheckProfiles(
@@ -148,17 +157,20 @@ async function resolveCheckProfiles(
   assertEmitProfileName(selected.profile);
   return [{
     name: selected.profile,
-    definitions: await loadProfileFile(profilePathFor(projectRoot, selected.profile)),
+    definitions: profileFromConfig(
+      await loadTsIfDefConfig(projectRoot),
+      selected.profile,
+    ).definitions,
   }];
 }
 
-function profilePathFor(projectRoot: string, profile: string): string {
-  return resolve(projectRoot, "Build", "macros", `${profile.toLowerCase()}.json`);
+function configPathFor(projectRoot: string): string {
+  return resolve(projectRoot, tsIfDefConfigFileName);
 }
 
 function parseOptions(
   args: readonly string[],
-  command: "emit" | "check" | "watch" | "pipeline",
+  command: "emit" | "check" | "watch",
 ): Record<string, string | undefined> {
   const values: Record<string, string | undefined> = {};
   const valueOptions = command === "watch"

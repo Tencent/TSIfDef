@@ -38,7 +38,7 @@ test("evaluates nested if, elif, and else branches", () => {
   assert.equal(isInactive(source.indexOf("fallbackCode"), result.inactiveRanges), true);
 });
 
-test("validates expressions inside inactive parent branches", () => {
+test("treats absent macros as false inside inactive parent branches", () => {
   const source = [
     "#if DISABLED",
     "#if UNKNOWN_IN_INACTIVE_BRANCH",
@@ -49,9 +49,7 @@ test("validates expressions inside inactive parent branches", () => {
 
   const result = analyzeConditionals(source, { DISABLED: false });
 
-  assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
-    "unknown-macro",
-  ]);
+  assert.deepEqual(result.diagnostics, []);
   assert.equal(isInactive(source.indexOf("hidden"), result.inactiveRanges), true);
 });
 
@@ -84,7 +82,6 @@ test("composes structural, expression, and directive diagnostics", () => {
 
   assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
     "unterminated-if",
-    "unknown-macro",
     "unexpected-directive-argument",
   ]);
 });

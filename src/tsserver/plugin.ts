@@ -2,14 +2,15 @@ import { readFileSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import type * as ts from "typescript";
 
-import { parseProfileDefinitions, selectProfile } from "../cli/profile.js";
+import { parseTsIfDefConfig, profileFromConfig, tsIfDefConfigFileName } from "../cli/config.js";
+import { selectProfile } from "../cli/profile.js";
 import { wrapHostWithProjection, type ActiveProfile } from "./host-projection.js";
 import { ProfileProjectionController } from "./project-controller.js";
 
 /** Plugin configuration accepted from the `tsconfig.json` plugins entry. */
 interface PluginConfig {
   readonly profile?: string;
-  readonly macrosDir?: string;
+  readonly configPath?: string;
 }
 
 /**
@@ -31,11 +32,11 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
     create(info: ts.server.PluginCreateInfo): ts.LanguageService {
       const projectConfig = (info.config ?? {}) as PluginConfig;
       const config = (): PluginConfig => ({ ...projectConfig, ...externalConfig });
-      const macrosDir = (): string => resolveMacrosDir(config(), info);
+      const configPath = (): string => resolveConfigPath(config(), info);
       const log = (message: string): void => info.project.projectService.logger.info(message);
 
       const controller = new ProfileProjectionController({
-        resolve: () => resolveProfile(config(), macrosDir(), log),
+        resolve: () => resolveProfile(config(), configPath(), log),
         markDirty: () => invalidateProject(info.project),
         log,
       });
@@ -49,7 +50,7 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
       // re-projects without restarting the server. If cache refresh proves
       // unstable in practice, the documented fallback is the
       // `TypeScript: Restart TS Server` command.
-      watchMacrosDirectory(info, macrosDir(), () => controller.reload());
+      watchConfigDirectory(info, configPath(), () => controller.reload());
 
       return info.languageService;
     },
@@ -62,19 +63,18 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
   };
 }
 
-function resolveMacrosDir(config: PluginConfig, info: ts.server.PluginCreateInfo): string {
+function resolveConfigPath(config: PluginConfig, info: ts.server.PluginCreateInfo): string {
   const projectName = info.project.getProjectName();
   const projectRoot = projectName ? dirname(projectName) : info.project.getCurrentDirectory();
-  if (config.macrosDir !== undefined) {
-    // A relative macrosDir is resolved against the project, not the process cwd.
-    return isAbsolute(config.macrosDir) ? config.macrosDir : join(projectRoot, config.macrosDir);
+  if (config.configPath !== undefined) {
+    return isAbsolute(config.configPath) ? config.configPath : join(projectRoot, config.configPath);
   }
-  return join(projectRoot, "Build", "macros");
+  return join(projectRoot, tsIfDefConfigFileName);
 }
 
 function resolveProfile(
   config: PluginConfig,
-  macrosDir: string,
+  configPath: string,
   log: (message: string) => void,
 ): ActiveProfile | undefined {
   let name: string;
@@ -86,16 +86,18 @@ function resolveProfile(
   } catch {
     return undefined;
   }
-  const profilePath = join(macrosDir, `${name.toLowerCase()}.json`);
   try {
-    const text = readFileSync(profilePath, "utf8");
-    const definitions = parseProfileDefinitions(text, profilePath);
+    const text = readFileSync(configPath, "utf8");
+    const definitions = profileFromConfig(
+      parseTsIfDefConfig(text, configPath),
+      name,
+    ).definitions;
     // The version ties the AST cache to the Profile name and its content, so
     // editing or switching the Profile produces a new version and invalidation.
     return { definitions, version: `${name}:${text.length}:${hashText(text)}` };
   } catch (error) {
     log(
-      `[tsifdef] failed to load profile '${name}' from ${profilePath}: ${
+      `[tsifdef] failed to load profile '${name}' from ${configPath}: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
@@ -111,16 +113,16 @@ function invalidateProject(project: ts.server.Project): void {
   project.refreshDiagnostics();
 }
 
-function watchMacrosDirectory(
+function watchConfigDirectory(
   info: ts.server.PluginCreateInfo,
-  macrosDir: string,
+  configPath: string,
   onChange: () => void,
 ): void {
   const serverHost = info.serverHost;
   if (typeof serverHost.watchDirectory !== "function") {
     return;
   }
-  serverHost.watchDirectory(macrosDir, () => onChange(), /* recursive */ false);
+  serverHost.watchDirectory(dirname(configPath), () => onChange(), /* recursive */ false);
 }
 
 /** Small deterministic content hash; only used for AST-cache versioning. */

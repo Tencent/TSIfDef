@@ -49,11 +49,9 @@ test("analyzeDocument reuses core analysis for diagnostics and inactive ranges",
   assert.equal(inactive.start.line <= 4, true);
   assert.equal(inactive.end.line >= 4, true);
 
-  // MISSING is unknown under this profile and reported as an error.
-  const unknown = analysis.diagnostics.find((diagnostic) => diagnostic.code === "unknown-macro");
-  assert.notEqual(unknown, undefined);
-  assert.equal(unknown!.severity, DiagnosticSeverity.error);
-  assert.equal(unknown!.range.start.line, 6);
+  // MISSING is absent, so it is false without an editor diagnostic.
+  assert.deepEqual(analysis.diagnostics, []);
+  assert.equal(analysis.inactiveRanges.some((range) => range.start.line <= 6), true);
 });
 
 const hok: MacroDefinitions = { HOK: true };

@@ -88,10 +88,9 @@ test("watch rebuilder serializes work and coalesces changes while busy", async (
 
 test("watch reloads a changed profile through an injected subscription", async () => {
   await withProject(async (root) => {
-    await mkdir(join(root, "Build", "macros"), { recursive: true });
     await mkdir(join(root, "src"), { recursive: true });
-    const profilePath = join(root, "Build", "macros", "test.json");
-    await writeFile(profilePath, "{\"ON\":true}", "utf8");
+    const configPath = join(root, "tsifdef");
+    await writeFile(configPath, "{\"TEST\":[\"ON\"]}", "utf8");
     await writeFile(join(root, "src", "main.ts"), "#if ON\nconst on = true;\n#else\nconst off = true;\n#endif\n", "utf8");
     const callbacks: Array<(fileName?: string) => void> = [];
     const subscribe: WatchSubscribe = (_path, _recursive, onChange) => {
@@ -102,14 +101,14 @@ test("watch reloads a changed profile through an injected subscription", async (
       projectRoot: root,
       sourceRoot: "src",
       profileName: "TEST",
-      profilePath,
+      configPath,
       macroConfigVersion: "1",
       subscribe,
     });
     let output = await readFile(join(root, "Build", ".macrobuild", "TEST", "main.ts"), "utf8");
     assert.equal(output.includes("const on"), true);
-    await writeFile(profilePath, "{\"ON\":false}", "utf8");
-    callbacks.at(-1)?.("test.json");
+    await writeFile(configPath, "{\"TEST\":[]}", "utf8");
+    callbacks.at(-1)?.("tsifdef");
     await handle.rebuilder.waitForIdle();
     output = await readFile(join(root, "Build", ".macrobuild", "TEST", "main.ts"), "utf8");
     assert.equal(output.includes("const off"), true);

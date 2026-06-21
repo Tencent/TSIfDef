@@ -13,6 +13,25 @@ parallel source or tsconfig configuration.
 
 ## Completed This Session
 
+- Implemented D027's missing-macro semantics: bare absent identifiers now
+  evaluate to `false` without diagnostics in core, CLI, VSCode, tsserver, build,
+  and debug projections; `defined(NAME)` still tests membership.
+- Added the fixed package-adjacent `tsifdef` loader using the minimal
+  `Profile -> enabled macro names[]` schema. It rejects build fields, invalid or
+  duplicate macro names, ambiguous Profile names, empty configuration, and
+  malformed JSON; definitions contain only enabled (`true`) macros.
+- Migrated Profile discovery/loading in CLI check/emit/watch, VSCode switching,
+  and the tsserver plugin to the one `tsifdef` file. Removed the legacy boolean
+  Profile loader, `pipeline.json` CLI orchestration, Profile-specific demo
+  configs, and demo tsconfig plugin declaration.
+- Added `tsifdef tsc --profile <PROFILE> -- <original tsc args>`. It parses the
+  project's original tsconfig/CLI options and wraps TypeScript file reads, so
+  every TypeScript-family file selected through include/imports is projected
+  without a TSIfDef source list. Programmatic and packaged tests cover imported
+  files and absent macros.
+- Migrated demo debug compilation to the original `tsconfig.json` through the
+  tsc wrapper. Verified HOK and Domestic runtime output, CommonJS overrides,
+  incremental rebuild, explicit outDir/tsbuildinfo, and source-map options.
 - Recorded the revised INT-002 product contract before implementation: the fixed
   JSON file `tsifdef` lives beside `package.json`, contains only Profile-to-active
   macro lists, and absent macro identifiers evaluate to `false`. Existing build
@@ -279,7 +298,8 @@ parallel source or tsconfig configuration.
   `dist/tsserver/plugin.js` from the extension root.
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 101 tests.
+- `npm test`: passed; 95 tests (legacy pipeline/Profile-loader tests removed;
+  fixed-config and build-graph wrapper tests added).
 - Demo HOK runtime: passed; produced the HOK-only
   `openId/globalAccount/globalFeatures` structure.
 - Demo Domestic runtime: passed; produced the Domestic-only
@@ -323,12 +343,16 @@ parallel source or tsconfig configuration.
   now reject them with `SourceEncodingError` and exit code `2`; they must be
   re-encoded as UTF-8 before they can be processed. Supporting legacy encodings
   would require an explicit future configuration and byte/offset design.
+- `tsifdef tsc` currently implements one-shot tsc semantics. Passing `--watch`
+  would perform one build and exit rather than preserving tsc watch behavior;
+  INT-002 remains ACTIVE until compiler watch wrapping is implemented.
 
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
 continue `INT-002` from D027. Implement the fixed `tsifdef` configuration beside
-`package.json`, Profile-to-enabled-macro loading, and absent-identifier-as-false
-semantics first. Then wrap the existing TypeScript invocation so its own
-tsconfig/import graph determines every projected file before Babel and later
-stages; do not add source, tsconfig, or output paths to TSIfDef configuration.
+`package.json` and one-shot build-graph projection are complete. Next implement
+true `tsc --watch` behavior over the projected compiler System, including
+reloading `tsifdef`, then replace the real TsScripts `npx tsc` invocation boundary
+with `npx tsifdef tsc --profile ${CURRENT_REGION} -- <existing args>`. Do not add
+source, tsconfig, or output paths to TSIfDef configuration.

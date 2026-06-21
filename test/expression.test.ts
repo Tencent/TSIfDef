@@ -45,20 +45,12 @@ test("defined checks presence independently of macro value", () => {
   assert.deepEqual(missing.diagnostics, []);
 });
 
-test("reports every unknown bare macro including short-circuited operands", () => {
+test("treats every absent bare macro as false without diagnostics", () => {
   const result = evaluateMacroExpression("KNOWN || FIRST && SECOND", { KNOWN: true }, 20);
 
   assert.equal(result.value, true);
-  assert.deepEqual(
-    result.diagnostics.map((diagnostic) => ({
-      code: diagnostic.code,
-      textStart: diagnostic.range.start,
-    })),
-    [
-      { code: "unknown-macro", textStart: 29 },
-      { code: "unknown-macro", textStart: 38 },
-    ],
-  );
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(evaluateMacroExpression("NONE_EXIST_MACRO", {}).value, false);
 });
 
 test("maps syntax diagnostics with the supplied base offset", () => {

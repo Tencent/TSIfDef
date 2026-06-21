@@ -6,16 +6,13 @@ A small project for trying TSIfDef in VS Code and on the command line.
 
 ```
 examples/demo/
-  Build/macros/hok.json         HOK profile (HOK on, DOMESTIC off)
-  Build/macros/domestic.json    Domestic profile (DOMESTIC on, HOK off)
-  Build/macros/pipeline.json    emit+typecheck pipeline config
+  tsifdef                       Profile-to-enabled-macro configuration
   src/region.ts                 #if / #elif / #else / #error
   src/player.ts                 profile-specific conditional imports
   src/profiles/hok-player.ts    HOK-only global account data structure
   src/profiles/domestic-player.ts Domestic-only compliance data structure
   src/main.ts                   plain consumer
-  tsconfig.hok.json             typechecks the projected HOK tree
-  tsconfig.domestic.json        typechecks the projected DOMESTIC tree
+  tsconfig.json                 ordinary project TypeScript configuration
 ```
 
 Raw `src/*.ts` is intentionally **not** valid TypeScript: the `#if` lines are
@@ -49,25 +46,22 @@ commands all work in the Extension Development Host without any extra setup.
 From the repository root, after `npm run build`:
 
 ```bash
-# Validate macro structure for every profile (no writes).
+# Validate macro structure for every configured profile (no writes).
 node dist/cli/main.js check --all --root examples/demo --source src
 
-# Project one profile into Build/.macrobuild/<PROFILE> (source is never changed).
-node dist/cli/main.js emit --profile HOK      --root examples/demo --source src
-node dist/cli/main.js emit --profile DOMESTIC --root examples/demo --source src
-
-# Emit + typecheck every profile against its own tsconfig.
-node dist/cli/main.js pipeline --root examples/demo --source src
+# Compile the exact Program selected by the project's own tsconfig.
+node dist/cli/main.js tsc --profile HOK --root examples/demo -- -p examples/demo/tsconfig.json
 ```
 
-`emit` writes the equal-length projected source under
-`examples/demo/Build/.macrobuild/<PROFILE>`; open those files to see the inactive
-branches replaced by spaces while line numbers and offsets are preserved.
+`tsifdef tsc` wraps TypeScript file reads, so tsconfig include/exclude and imports
+remain the only source of participating files. It does not require a second
+source list or generated tsconfig.
 
 ## tsserver plugin (editor type-checking ignores inactive code)
 
-The demo's `tsconfig.json` registers the TSIfDef tsserver plugin so the native
-TypeScript language service projects the source before parsing it: inactive
+The extension contributes the TSIfDef tsserver plugin, so the ordinary project
+`tsconfig.json` needs no plugin entry. The native TypeScript language service
+projects the source before parsing it: inactive
 branches and `#` directive lines never produce type errors, completions, or
 duplicate-declaration diagnostics.
 
@@ -85,8 +79,8 @@ remains a fallback if the language service cache does not refresh.
 > Version** and **TypeScript: Restart TS Server** if a profile change does not
 > take effect. Producing a self-contained VSIX that ships the plugin is REL-001.
 
-The CLI `pipeline` command verifies the same property in CI without an editor:
-each profile type-checks against its own projected tree.
+The CLI `tsc` wrapper verifies the same property without an editor while using
+the project's original tsconfig and import graph.
 
 ## Run and debug both profiles
 

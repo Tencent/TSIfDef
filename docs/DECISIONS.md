@@ -404,3 +404,22 @@ INT-002.
 Reason: TSIfDef owns macro semantics, not the project's build graph. Requiring a
 second source list or tsconfig creates drift and allows editor, build, and debug
 to consume different programs.
+
+## D028 - Build projection wraps the TypeScript Program file reads
+
+Date: 2026-06-21
+
+`tsifdef tsc --profile <PROFILE> -- <tsc args>` parses the caller's original tsc
+arguments and tsconfig, then supplies TypeScript with a wrapped `System.readFile`.
+Every TypeScript-family file actually read while constructing the Program is
+strictly decoded as UTF-8 and projected through the shared core. The original
+file names, compiler options, output paths, module graph, diagnostics offsets,
+and source-map identities remain owned by TypeScript and the existing build.
+
+The legacy `Build/macros/pipeline.json` orchestration and Profile-specific
+generated tsconfigs are removed. CI and build callers invoke the wrapper with
+their own existing tsc arguments for each selected Profile.
+
+Reason: wrapping compiler reads covers tsconfig roots and transitive imports
+without a parallel source list or projected source tree, while leaving Babel and
+all downstream consumers attached to the original tsc output contract.

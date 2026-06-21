@@ -52,7 +52,6 @@ test("recovers deterministically from malformed nested conditionals", () => {
     "unmatched-elif",
     "unexpected-directive-argument",
     "elif-after-else",
-    "unknown-macro",
     "duplicate-else",
     "unexpected-directive-argument",
     "unmatched-endif",
