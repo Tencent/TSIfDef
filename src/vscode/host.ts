@@ -6,6 +6,11 @@
  * binds the real `vscode` module to this surface at activation time.
  */
 
+import type {
+  DocumentDiagnostic,
+  DocumentRange,
+} from "./document-analysis.js";
+
 export interface Disposable {
   dispose(): void;
 }
@@ -35,6 +40,28 @@ export interface QuickPickOptions {
   readonly placeHolder?: string;
 }
 
+/** An open macro document the presentation layer must keep in sync. */
+export interface DocumentSnapshot {
+  /** Stable document identity (its URI string in the real host). */
+  readonly uri: string;
+  /** Whether this document holds macro-bearing TypeScript-family source. */
+  readonly isMacroDocument: boolean;
+  /** The current in-memory text, including unsaved edits. */
+  getText(): string;
+}
+
+/** Subset of `vscode.DiagnosticCollection`. */
+export interface DiagnosticCollection extends Disposable {
+  set(uri: string, diagnostics: readonly DocumentDiagnostic[]): void;
+  delete(uri: string): void;
+  clear(): void;
+}
+
+/** Opaque handle for a decoration style; maps to `vscode.TextEditorDecorationType`. */
+export interface DecorationType extends Disposable {
+  readonly key: string;
+}
+
 /**
  * The capabilities the extension shell needs from its host. Every method maps
  * directly onto a real `vscode` API call in the activation adapter.
@@ -55,4 +82,12 @@ export interface ExtensionHost {
   showInformationMessage(message: string): void;
   /** The first workspace folder's filesystem path, if any. */
   workspaceRoot(): string | undefined;
+  /** Create the diagnostic collection that owns published macro diagnostics. */
+  createDiagnosticCollection(name: string): DiagnosticCollection;
+  /** Create the inactive-code decoration style applied to grayed ranges. */
+  createInactiveDecorationType(): DecorationType;
+  /** Apply a decoration's ranges to a document; an empty list clears them. */
+  setDecorations(uri: string, decoration: DecorationType, ranges: readonly DocumentRange[]): void;
+  /** Every currently open macro document. */
+  macroDocuments(): readonly DocumentSnapshot[];
 }

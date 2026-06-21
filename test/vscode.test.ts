@@ -6,87 +6,9 @@ import test from "node:test";
 
 import {
   ProfileStateController,
-  profileConfigurationKey,
   switchProfileCommand,
-  type Disposable,
-  type ExtensionHost,
-  type QuickPickItem,
-  type StatusBarItem,
-  type WorkspaceConfiguration,
 } from "../src/vscode/index.js";
-
-interface FakeHostOptions {
-  readonly root?: string;
-  readonly configuredProfile?: string;
-  readonly pick?: (items: readonly QuickPickItem[]) => QuickPickItem | undefined;
-}
-
-class FakeHost implements ExtensionHost {
-  public readonly statusItem: StatusBarItem & { disposed: boolean; shown: boolean };
-  public readonly commands = new Map<string, () => void | Promise<void>>();
-  public readonly informationMessages: string[] = [];
-  public quickPickItems: readonly QuickPickItem[] = [];
-  private configured: string | undefined;
-  private readonly root: string | undefined;
-  private readonly pick: (items: readonly QuickPickItem[]) => QuickPickItem | undefined;
-
-  public constructor(options: FakeHostOptions = {}) {
-    this.configured = options.configuredProfile;
-    this.root = options.root;
-    this.pick = options.pick ?? ((items) => items[0]);
-    this.statusItem = {
-      text: "",
-      tooltip: undefined,
-      command: undefined,
-      disposed: false,
-      shown: false,
-      show() {
-        this.shown = true;
-      },
-      hide() {
-        this.shown = false;
-      },
-      dispose() {
-        this.disposed = true;
-      },
-    };
-  }
-
-  public getConfiguration(): WorkspaceConfiguration {
-    return {
-      get: <T,>(key: string) =>
-        (key === profileConfigurationKey ? this.configured : undefined) as T | undefined,
-      update: (key: string, value: unknown) => {
-        if (key === profileConfigurationKey) {
-          this.configured = value as string;
-        }
-        return Promise.resolve();
-      },
-    };
-  }
-
-  public createStatusBarItem(): StatusBarItem {
-    return this.statusItem;
-  }
-
-  public registerCommand(command: string, handler: () => void | Promise<void>): Disposable {
-    this.commands.set(command, handler);
-    return { dispose: () => this.commands.delete(command) };
-  }
-
-  public showQuickPick(items: readonly QuickPickItem[]): Promise<QuickPickItem | undefined> {
-    this.quickPickItems = items;
-    return Promise.resolve(this.pick(items));
-  }
-
-  public showInformationMessage(message: string): void {
-    this.informationMessages.push(message);
-  }
-
-  public workspaceRoot(): string | undefined {
-    return this.root;
-  }
-}
+import { FakeHost } from "./fake-host.js";
 
 async function withProfiles(
   names: readonly string[],

@@ -234,3 +234,20 @@ evaluation, or projection.
 Reason: SPEC section 9 requires CI to run without the VSCode extension host, and
 D001 requires one shared macro and selection core. An injected host keeps editor
 behavior testable and prevents the extension from forking macro semantics.
+
+## D019 - Editor diagnostics and decorations reuse core analysis
+
+Date: 2026-06-21
+
+The VSCode diagnostics and inactive-range graying are a presentation layer over
+`analyzeConditionals`. `analyzeDocument` maps core UTF-16 offsets to zero-based
+line/character positions with a `PositionMapper` that counts `\r\n`, lone `\r`,
+and lone `\n` each as one line and keeps surrogate pairs intact. A
+`MacroPresentationController` publishes those diagnostics and applies one
+inactive-code decoration through the injected host. When no Profile is selected
+it clears diagnostics and decorations rather than analyzing with a default
+Profile.
+
+Reason: editor display must match CLI and CI byte-for-byte (D001) and map
+positions back to the original document (D002). Computing a view from an
+arbitrary Profile when none is selected would mislabel inactive code.

@@ -4,14 +4,29 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`VSC-002 - Diagnostics and decorations`
+`VSC-003 - Folding and local CLI commands`
 
-Surface macro structural diagnostics and gray out inactive ranges in the editor
-by reusing the shared core analysis and projection, building on the VSC-001
-shell.
+Provide a folding-range provider for inactive ranges and commands that drive the
+local CLI (emit, check, watch) from VSCode, building on the VSC-001/002 shell.
 
 ## Completed This Session
 
+- Completed `VSC-002`.
+- Added a `vscode`-free `analyzeDocument`/`PositionMapper`
+  (`src/vscode/document-analysis.ts`) that reuses `analyzeConditionals` and maps
+  UTF-16 offsets to zero-based positions, counting CRLF/CR/LF as one line each
+  and preserving surrogate pairs.
+- Added a `MacroPresentationController` (`src/vscode/macro-presentation.ts`) that
+  publishes diagnostics and applies an inactive-range decoration per open macro
+  document, clears everything when no Profile is selected, and refreshes on
+  document, editor, and Profile changes.
+- Extended `ExtensionHost` with diagnostic-collection, decoration, and
+  open-document capabilities, and wired the real `vscode` API plus document and
+  configuration change events in `extension.ts`, caching loaded Profile
+  definitions and reloading them on switch.
+- Extracted the test `FakeHost` into `test/fake-host.ts` and added document
+  analysis, position-mapping, and presentation tests covering profiles,
+  no-selection clearing, non-macro skipping, document close, and profile change.
 - Completed `VSC-001`.
 - Added a `vscode`-free `ProfileStateController` (`src/vscode/profile-state.ts`)
   that resolves the effective Profile through the shared core `selectProfile`
@@ -154,7 +169,7 @@ shell.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 57 tests.
+- `npm test`: passed; 65 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
   executable bin, source maps, declarations, and package metadata.
 - TsScripts original HOK typecheck: passed.
@@ -195,7 +210,8 @@ shell.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-begin `VSC-002`. Reuse `analyzeConditionals` for structural diagnostics and the
-inactive ranges from `projectSource`/`analyzeConditionals` for decorations,
-driven through the existing injected `ExtensionHost` so the logic stays testable
-without the VSCode extension host. Do not reimplement macro analysis.
+begin `VSC-003`. Reuse the inactive ranges from `analyzeDocument` for a folding
+provider, and drive the existing CLI `emitProject`/`checkProject`/`watchProfile`
+entry points from VSCode commands through the injected `ExtensionHost` so the
+logic stays testable without the extension host. Do not reimplement macro
+analysis.

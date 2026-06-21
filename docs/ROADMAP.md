@@ -197,7 +197,29 @@ Acceptance criteria:
 - Profile-name discovery is shared with `check` rather than reimplemented.
 - `npm run build`, `npm run typecheck`, and `npm test` pass.
 
-### VSC-002 - Diagnostics and decorations (`TODO`)
+### VSC-002 - Diagnostics and decorations (`DONE`)
+
+Publish macro structural diagnostics and gray out inactive ranges in the editor
+by reusing the shared core analysis, building on the VSC-001 shell.
+
+Acceptance criteria:
+
+- A `vscode`-free document analyzer reuses `analyzeConditionals` to produce
+  editor-ready diagnostics and inactive ranges; it never reimplements scanning,
+  evaluation, or projection.
+- UTF-16 core offsets map to zero-based line/character positions that preserve
+  CR, LF, and CRLF line counts and keep surrogate pairs intact.
+- A presentation controller publishes diagnostics through an injected diagnostic
+  collection and applies an inactive-range decoration to every open macro
+  document for the effective Profile.
+- When no Profile is selected, diagnostics and decorations are cleared rather
+  than computed from an arbitrary Profile.
+- Switching the Profile or changing a document refreshes its diagnostics and
+  decorations; closing a document clears them.
+- The analyzer and controller run under the standard Node test runner with a
+  fake host, without the VSCode extension host.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
+
 ### VSC-003 - Folding and local CLI commands (`TODO`)
 
 ## M4 - TypeScript Server Plugin
