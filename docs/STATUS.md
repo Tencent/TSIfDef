@@ -4,14 +4,25 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CLI-003 - Check command`
+`CLI-004 - Watch and incremental cache`
 
-Define concrete acceptance criteria, then implement stable one-profile and
-`--all` structural/profile checking, exit codes, and human-readable diagnostic
-locations without writing projected output.
+Define concrete acceptance criteria, then add watch mode and an incremental
+cache keyed by source content, profile definitions, preprocessor version, and
+macro-config version. Preserve emit's whole-directory consistency guarantees.
 
 ## Completed This Session
 
+- Completed `CLI-003`.
+- Added read-only one-profile and `--all` check flows using shared source
+  discovery and conditional analysis.
+- Added deterministic JSON profile discovery with invalid/empty profile-set
+  failures.
+- Added profile/file diagnostic context, stable diagnostic codes, and one-based
+  CRLF-aware line/column locations.
+- Added stable CLI exit codes: success `0`, macro diagnostics `1`, and
+  usage/profile/I/O failure `2`.
+- Added programmatic and packaged CLI tests for success, diagnostics,
+  configuration failures, ordering, and no-write behavior.
 - Completed `CLI-002`.
 - Added the packaged `tsifdef emit --profile <PROFILE>` command with optional
   project and source roots.
@@ -84,7 +95,7 @@ locations without writing projected output.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 38 tests.
+- `npm test`: passed; 41 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, executable bin,
   source maps, declarations, and package metadata.
 
@@ -102,6 +113,6 @@ locations without writing projected output.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CLI-003`. Reuse source discovery without coupling check to emit
-output, define stable exit-code categories and line/column formatting, and make
-`--all` discover versioned profiles under `Build/macros` deterministically.
+complete `CLI-004`. Define cache storage and invalidation semantics before
+implementation, including atomic watch updates, source deletion, profile/config
+changes, and deterministic test control without timing-sensitive sleeps.

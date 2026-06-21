@@ -102,12 +102,26 @@ Acceptance criteria:
   modified, and interrupted preparation cannot expose partial output.
 - Programmatic emission and command parsing have focused integration tests.
 
-### CLI-003 - Check command (`ACTIVE`)
+### CLI-003 - Check command (`DONE`)
 
 Implement one-profile and `--all` structural/profile checking with stable exit
 codes and diagnostics.
 
-### CLI-004 - Watch and incremental cache (`TODO`)
+Acceptance criteria:
+
+- `check --profile <PROFILE>` checks one loaded profile, while `check --all`
+  deterministically discovers every `Build/macros/*.json`; the modes are
+  mutually exclusive.
+- Check reuses shared source discovery and conditional analysis, performs no
+  writes, and reports profile, relative file, diagnostic code, and one-based
+  line/column.
+- Exit codes are stable: `0` success, `1` macro diagnostics, and `2` usage,
+  profile, or I/O failure.
+- Invalid profiles in `--all` fail as configuration errors rather than being
+  skipped, and no discovered profiles is an error.
+- Programmatic one/all-profile behavior and packaged CLI output are tested.
+
+### CLI-004 - Watch and incremental cache (`ACTIVE`)
 
 Add watch mode and a cache key containing source content, profile definition,
 preprocessor version, and macro-config version.

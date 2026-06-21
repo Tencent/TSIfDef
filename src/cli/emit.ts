@@ -1,8 +1,9 @@
-import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 
 import { projectSource, type MacroDiagnostic } from "../core/index.js";
 import type { MacroDefinitions } from "../core/expression.js";
+import { discoverSourceFiles } from "./source-files.js";
 
 export interface EmitOptions {
   readonly projectRoot: string;
@@ -30,8 +31,6 @@ export class EmitDiagnosticsError extends Error {
   }
 }
 
-const sourceExtensionPattern = /(?:\.d)?\.(?:ts|tsx|mts|cts)$/i;
-const ignoredDirectories = new Set([".git", "node_modules"]);
 const profileNamePattern = /^[A-Za-z0-9_-]+$/;
 
 /** Project all TypeScript-family files and atomically replace one profile output. */
@@ -86,28 +85,4 @@ export function assertEmitProfileName(profileName: string): void {
   if (!profileNamePattern.test(profileName)) {
     throw new RangeError(`Invalid profile name '${profileName}'.`);
   }
-}
-
-async function discoverSourceFiles(
-  root: string,
-  generatedRoot: string,
-): Promise<string[]> {
-  const files: string[] = [];
-  const visit = async (directory: string): Promise<void> => {
-    const entries = await readdir(directory, { withFileTypes: true });
-    entries.sort((left, right) => left.name.localeCompare(right.name, "en"));
-    for (const entry of entries) {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (ignoredDirectories.has(entry.name) || resolve(path) === generatedRoot) {
-          continue;
-        }
-        await visit(path);
-      } else if (entry.isFile() && sourceExtensionPattern.test(entry.name)) {
-        files.push(path);
-      }
-    }
-  };
-  await visit(root);
-  return files;
 }

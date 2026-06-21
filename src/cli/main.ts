@@ -1,27 +1,52 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
 
+import { checkProject, loadAllProfiles, type CheckProfile } from "./check.js";
 import { assertEmitProfileName, emitProject, EmitDiagnosticsError } from "./emit.js";
 import { loadProfileFile, selectProfile } from "./profile.js";
 
+export const CliExitCode = {
+  success: 0,
+  diagnostics: 1,
+  failure: 2,
+} as const;
+
 export async function runCli(args: readonly string[], cwd = process.cwd()): Promise<number> {
   try {
-    if (args[0] !== "emit") {
-      throw new Error("Usage: tsifdef emit --profile <PROFILE> [--root <path>] [--source <path>]");
+    const command = args[0];
+    if (command !== "emit" && command !== "check") {
+      throw new Error("Usage: tsifdef <emit|check> [options]");
     }
-    const values = parseOptions(args.slice(1));
+    const values = parseOptions(args.slice(1), command === "check");
+    const projectRoot = resolve(cwd, values.root ?? ".");
+    if (command === "check") {
+      const profiles = await resolveCheckProfiles(values, projectRoot);
+      const diagnostics = await checkProject({
+        projectRoot,
+        ...(values.source === undefined ? {} : { sourceRoot: values.source }),
+        profiles,
+      });
+      for (const diagnostic of diagnostics) {
+        process.stderr.write(
+          `[${diagnostic.profile}] ${diagnostic.file}:${diagnostic.line}:${diagnostic.column} ${diagnostic.code}: ${diagnostic.message}\n`,
+        );
+      }
+      if (diagnostics.length > 0) {
+        return CliExitCode.diagnostics;
+      }
+      process.stdout.write(`Checked ${profiles.length} profile(s) with no macro diagnostics.\n`);
+      return CliExitCode.success;
+    }
+
+    if (values.all === "true") {
+      throw new Error("The emit command does not support --all.");
+    }
     const selected = selectProfile({
       ...(values.profile === undefined ? {} : { cliProfile: values.profile }),
       environment: process.env,
     });
     assertEmitProfileName(selected.profile);
-    const projectRoot = resolve(cwd, values.root ?? ".");
-    const profilePath = resolve(
-      projectRoot,
-      "Build",
-      "macros",
-      `${selected.profile.toLowerCase()}.json`,
-    );
+    const profilePath = profilePathFor(projectRoot, selected.profile);
     const definitions = await loadProfileFile(profilePath);
     const result = await emitProject({
       projectRoot,
@@ -30,7 +55,7 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
       definitions,
     });
     process.stdout.write(`Emitted ${result.files.length} file(s) to ${result.outputRoot}\n`);
-    return 0;
+    return CliExitCode.success;
   } catch (error) {
     if (error instanceof EmitDiagnosticsError) {
       for (const file of error.files) {
@@ -41,19 +66,55 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
     } else {
       process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     }
-    return 1;
+    return error instanceof EmitDiagnosticsError
+      ? CliExitCode.diagnostics
+      : CliExitCode.failure;
   }
 }
 
-function parseOptions(args: readonly string[]): Record<string, string | undefined> {
+async function resolveCheckProfiles(
+  values: Readonly<Record<string, string | undefined>>,
+  projectRoot: string,
+): Promise<readonly CheckProfile[]> {
+  const all = values.all === "true";
+  if (all && values.profile !== undefined) {
+    throw new Error("check --all and --profile are mutually exclusive.");
+  }
+  if (all) {
+    return loadAllProfiles(projectRoot);
+  }
+  const selected = selectProfile({
+    ...(values.profile === undefined ? {} : { cliProfile: values.profile }),
+    environment: process.env,
+  });
+  assertEmitProfileName(selected.profile);
+  return [{
+    name: selected.profile,
+    definitions: await loadProfileFile(profilePathFor(projectRoot, selected.profile)),
+  }];
+}
+
+function profilePathFor(projectRoot: string, profile: string): string {
+  return resolve(projectRoot, "Build", "macros", `${profile.toLowerCase()}.json`);
+}
+
+function parseOptions(
+  args: readonly string[],
+  allowAll: boolean,
+): Record<string, string | undefined> {
   const values: Record<string, string | undefined> = {};
-  for (let offset = 0; offset < args.length; offset += 2) {
+  for (let offset = 0; offset < args.length; offset += 1) {
     const option = args[offset];
+    if (option === "--all" && allowAll) {
+      values.all = "true";
+      continue;
+    }
     const value = args[offset + 1];
-    if (option === undefined || !["--profile", "--root", "--source"].includes(option) || value === undefined) {
-      throw new Error(`Invalid emit option '${option ?? ""}'.`);
+    if (option === undefined || !["--profile", "--root", "--source"].includes(option) || value === undefined || value.startsWith("--")) {
+      throw new Error(`Invalid option '${option ?? ""}'.`);
     }
     values[option.slice(2)] = value;
+    offset += 1;
   }
   return values;
 }

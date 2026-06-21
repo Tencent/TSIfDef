@@ -134,3 +134,15 @@ writes a temporary sibling directory and then replaces
 
 Reason: `tsc` and ESLint must never observe a partially projected tree, stale
 files from prior runs, or output from a source set containing macro errors.
+
+## D012 - Check is read-only with stable process outcomes
+
+Date: 2026-06-21
+
+Check analyzes source directly for one selected profile or every JSON profile
+under `Build/macros`. It never emits projected files. CLI exit codes are `0`
+for success, `1` for macro diagnostics, and `2` for usage, profile, or I/O
+failure. Diagnostics use one-based line and column positions.
+
+Reason: CI must distinguish source failures from tool/configuration failures,
+and check must be safe to run without changing a developer's generated tree.
