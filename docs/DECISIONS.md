@@ -214,3 +214,23 @@ configuration and byte/offset design rather than automatic detection.
 Reason: the TsScripts pilot found four legacy-encoded files whose bytes changed
 during a no-directive emit. Silent decoding replacement can corrupt strings and
 comments even when TypeScript still happens to compile the projected tree.
+
+## D018 - VSCode shell depends on an injected host, not the `vscode` module
+
+Date: 2026-06-21
+
+The extension logic lives in a `vscode`-free `ProfileStateController` that
+depends only on an `ExtensionHost` interface. `src/vscode/extension.ts` resolves
+the real `vscode` module lazily at activation through `createRequire` and adapts
+it to that interface. The package therefore builds and tests without
+`@types/vscode` or a `vscode` dependency, and the controller runs under the
+standard Node test runner.
+
+The controller resolves the effective Profile through the shared core
+`selectProfile` precedence and shares `Build/macros/*.json` discovery with
+`check` via `discoverProfileNames`. It does not reimplement macro scanning,
+evaluation, or projection.
+
+Reason: SPEC section 9 requires CI to run without the VSCode extension host, and
+D001 requires one shared macro and selection core. An injected host keeps editor
+behavior testable and prevents the extension from forking macro semantics.

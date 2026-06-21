@@ -4,14 +4,30 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`VSC-001 - Extension shell and profile state`
+`VSC-002 - Diagnostics and decorations`
 
-Create the VSCode extension shell that displays the active Profile in the status
-bar, provides a command to switch Profiles, and resolves the Profile through the
-shared core selection precedence without duplicating macro semantics.
+Surface macro structural diagnostics and gray out inactive ranges in the editor
+by reusing the shared core analysis and projection, building on the VSC-001
+shell.
 
 ## Completed This Session
 
+- Completed `VSC-001`.
+- Added a `vscode`-free `ProfileStateController` (`src/vscode/profile-state.ts`)
+  that resolves the effective Profile through the shared core `selectProfile`
+  precedence, renders status-bar text and a source-naming tooltip, and exposes a
+  no-selection state without throwing.
+- Added an injectable `ExtensionHost` interface (`src/vscode/host.ts`) and a thin
+  `extension.ts` entry that resolves the real `vscode` module lazily at
+  activation, adapts it to the host, registers the switch command and status-bar
+  item, and disposes every resource on deactivation.
+- Shared `Build/macros/*.json` discovery between the switcher and `check` through
+  a new `discoverProfileNames`; the extension reimplements no macro semantics.
+- Added fake-host tests covering status text/tooltip, environment-over-VSCode
+  precedence, the no-selection state, persisted and cancelled switches, the
+  empty-profile message, and command registration/disposal.
+- Built and tested with no `@types/vscode` or `vscode` dependency, so CI runs
+  without the extension host.
 - Completed `CLI-006`.
 - Added a shared `readSourceText` loader using a fatal, BOM-preserving UTF-8
   `TextDecoder` so malformed bytes raise `SourceEncodingError` instead of
@@ -138,9 +154,9 @@ shared core selection precedence without duplicating macro semantics.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 50 tests.
-- `npm pack --dry-run`: passed; package contains the core, CLI, executable bin,
-  source maps, declarations, and package metadata.
+- `npm test`: passed; 57 tests.
+- `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
+  executable bin, source maps, declarations, and package metadata.
 - TsScripts original HOK typecheck: passed.
 - TsScripts `check --all`: passed for 2 profiles and 582 source files.
 - TsScripts HOK and Domestic emit: passed; 582 files each.
@@ -179,6 +195,7 @@ shared core selection precedence without duplicating macro semantics.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-begin `VSC-001`. The shared `core` selection precedence and profile loading
-already exist in `src/cli/profile.ts`; the VSCode extension must reuse them and
-must not reimplement macro scanning, evaluation, or projection.
+begin `VSC-002`. Reuse `analyzeConditionals` for structural diagnostics and the
+inactive ranges from `projectSource`/`analyzeConditionals` for decorations,
+driven through the existing injected `ExtensionHost` so the logic stays testable
+without the VSCode extension host. Do not reimplement macro analysis.

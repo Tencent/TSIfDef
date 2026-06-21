@@ -48,17 +48,33 @@ export async function checkProject(options: CheckOptions): Promise<readonly Chec
 }
 
 export async function loadAllProfiles(projectRoot: string): Promise<readonly CheckProfile[]> {
-  const directory = join(resolve(projectRoot), "Build", "macros");
-  const entries = (await readdir(directory, { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".json"))
-    .sort((left, right) => left.name.localeCompare(right.name, "en"));
-  if (entries.length === 0) {
+  const directory = profilesDirectory(projectRoot);
+  const names = await discoverProfileNames(projectRoot);
+  if (names.length === 0) {
     throw new Error(`No JSON profiles found in '${directory}'.`);
   }
-  return Promise.all(entries.map(async (entry) => ({
-    name: entry.name.slice(0, -5),
-    definitions: await loadProfileFile(join(directory, entry.name)),
+  return Promise.all(names.map(async (name) => ({
+    name,
+    definitions: await loadProfileFile(join(directory, `${name}.json`)),
   })));
+}
+
+/** Discover `Build/macros/*.json` profile names in deterministic order. */
+export async function discoverProfileNames(projectRoot: string): Promise<readonly string[]> {
+  let entries: Awaited<ReturnType<typeof readdir>>;
+  try {
+    entries = await readdir(profilesDirectory(projectRoot), { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".json"))
+    .map((entry) => entry.name.slice(0, -5))
+    .sort((left, right) => left.localeCompare(right, "en"));
+}
+
+function profilesDirectory(projectRoot: string): string {
+  return join(resolve(projectRoot), "Build", "macros");
 }
 
 function offsetLocation(source: string, target: number): { line: number; column: number } {

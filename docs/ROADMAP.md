@@ -171,7 +171,32 @@ Acceptance criteria:
 
 ## M3 - VSCode Extension
 
-### VSC-001 - Extension shell and profile state (`TODO`)
+### VSC-001 - Extension shell and profile state (`DONE`)
+
+Provide the VSCode extension shell: a status-bar Profile indicator, a command to
+switch Profiles, and effective-Profile resolution that reuses the shared core
+selection precedence. The macro core, scanner, evaluator, and projection are not
+reimplemented.
+
+Acceptance criteria:
+
+- A `vscode`-free `ProfileStateController` resolves the effective Profile through
+  the shared `selectProfile` precedence (environment over VSCode-local), renders
+  status-bar text and a tooltip naming the selection source, and exposes a
+  no-selection state without throwing.
+- Switching Profiles offers the deterministically discovered
+  `Build/macros/*.json` names through an injected host, persists the chosen name
+  to VSCode-local configuration, and refreshes the status bar; a cancelled
+  selection changes nothing.
+- The controller depends only on an injected host interface, never on the real
+  `vscode` module, so it runs under the standard Node test runner without the
+  extension host.
+- The extension entry registers the switch command and status-bar item, binds
+  the real `vscode` API to the host interface at activation, and disposes every
+  registered resource on deactivation.
+- Profile-name discovery is shared with `check` rather than reimplemented.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
+
 ### VSC-002 - Diagnostics and decorations (`TODO`)
 ### VSC-003 - Folding and local CLI commands (`TODO`)
 
