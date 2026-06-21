@@ -3,11 +3,13 @@
 // `region` resolves to the active branch's type.
 #if HOK
 export const region: string = "hok";
+export const profileName = "HOK" as const;
 export function describeRegion(): string {
   return `Region ${region.toUpperCase()}`;
 }
 #elif DOMESTIC
 export const region: number = 86;
+export const profileName = "DOMESTIC" as const;
 export function describeRegion(): string {
   return `Region #${region}`;
 }

@@ -33,6 +33,10 @@ export class FakeHost implements ExtensionHost {
   public readonly diagnostics = new Map<string, readonly DocumentDiagnostic[]>();
   public readonly decorations = new Map<string, RecordedDecoration>();
   public readonly errorMessages: string[] = [];
+  public readonly typeScriptPluginConfigurations: Array<{
+    readonly name: string;
+    readonly configuration: Readonly<Record<string, unknown>>;
+  }> = [];
   public foldingProvider: FoldingRangeProvider | undefined;
   public diagnosticsCleared = 0;
   public documents: readonly DocumentSnapshot[];
@@ -156,6 +160,14 @@ export class FakeHost implements ExtensionHost {
 
   public showErrorMessage(message: string): void {
     this.errorMessages.push(message);
+  }
+
+  public configureTypeScriptPlugin(
+    name: string,
+    configuration: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
+    this.typeScriptPluginConfigurations.push({ name, configuration });
+    return Promise.resolve();
   }
 
   public get diagnosticCollectionDisposed(): boolean {

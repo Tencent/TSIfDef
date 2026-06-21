@@ -97,6 +97,14 @@ interface VsCodeApi {
   readonly commands: {
     registerCommand(command: string, handler: () => unknown): Disposable;
   };
+  readonly extensions: {
+    getExtension(id: string):
+      | {
+          readonly exports: unknown;
+          activate(): PromiseLike<unknown>;
+        }
+      | undefined;
+  };
 }
 
 /** The shape VSCode passes to `activate`; only `subscriptions` is required here. */
@@ -207,6 +215,22 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
         },
       ),
     showErrorMessage: (message) => void vscode.window.showErrorMessage(message),
+    configureTypeScriptPlugin: async (name, configuration) => {
+      const extension = vscode.extensions.getExtension("vscode.typescript-language-features");
+      if (extension === undefined) {
+        throw new Error("VSCode TypeScript language features extension is unavailable.");
+      }
+      const exports = (await extension.activate()) as {
+        getAPI?(version: number): {
+          configurePlugin(pluginName: string, config: Readonly<Record<string, unknown>>): void;
+        };
+      };
+      const api = exports.getAPI?.(0);
+      if (api === undefined) {
+        throw new Error("VSCode TypeScript extension API 0 is unavailable.");
+      }
+      api.configurePlugin(name, configuration);
+    },
   };
 }
 
@@ -241,6 +265,10 @@ export function activate(context: ExtensionContext): void {
       const profilePath = profilePathFor(root, profile);
       try {
         definitions = await loadProfileFile(profilePath);
+        await host.configureTypeScriptPlugin("tsifdef-tsserver", {
+          profile,
+          macrosDir: `${root}/Build/macros`,
+        });
         profileController.reportProfileLoad(profile);
       } catch (error) {
         definitions = undefined;

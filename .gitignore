@@ -2,5 +2,5 @@ dist/
 .test-dist/
 node_modules/
 *.tgz
-Build/.macrobuild/
-
+**/Build/.macrobuild/
+**/Build/.demorun/

@@ -11,6 +11,7 @@ import { createMemoryHost } from "./tsserver-fixtures.js";
 import initPlugin = require("../src/tsserver/plugin.js");
 const init = initPlugin as unknown as (modules: { typescript: typeof ts }) => {
   create(info: unknown): ts.LanguageService;
+  onConfigurationChanged?(config: Record<string, unknown>): void;
 };
 
 async function withProject(callback: (root: string) => Promise<void>): Promise<void> {
@@ -38,6 +39,9 @@ function pluginInfo(
       projectService: { logger: { info: (message: string) => messages.push(message) } },
       getProjectName: () => join(root, "tsconfig.json"),
       getCurrentDirectory: () => root,
+      markAsDirty: () => undefined,
+      updateGraph: () => undefined,
+      refreshDiagnostics: () => undefined,
     },
   };
 }
@@ -66,6 +70,30 @@ test("plugin resolves a relative macrosDir against the project root and projects
     assert.equal(projected.length, source.length);
     // The version carries a profile tag so a profile change invalidates reuse.
     assert.match(wrapped.getProgram() ? host.getScriptVersion(file) : "", /tsifdef:/);
+  });
+});
+
+test("plugin reprojects when VSCode sends a different profile", async () => {
+  await withProject(async (root) => {
+    const macrosDir = join(root, "Build", "macros");
+    await mkdir(macrosDir, { recursive: true });
+    await writeFile(join(macrosDir, "hok.json"), "{\"HOK\":true}", "utf8");
+    await writeFile(join(macrosDir, "domestic.json"), "{\"HOK\":false}", "utf8");
+    const file = join(root, "main.ts");
+    const source = "#if HOK\nconst selected = 'hok';\n#else\nconst selected = 'domestic';\n#endif\n";
+    const host = createMemoryHost(new Map([[file, { text: source, version: "1" }]]));
+    const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
+    const plugin = init({ typescript: ts });
+    plugin.create(pluginInfo(root, host, languageService, {
+      profile: "HOK",
+      macrosDir: "Build/macros",
+    }));
+
+    assert.match(host.getScriptSnapshot(file)!.getText(0, source.length), /selected = 'hok'/);
+    plugin.onConfigurationChanged?.({ profile: "DOMESTIC", macrosDir });
+    const projected = host.getScriptSnapshot(file)!.getText(0, source.length);
+    assert.match(projected, /selected = 'domestic'/);
+    assert.doesNotMatch(projected, /selected = 'hok'/);
   });
 });
 

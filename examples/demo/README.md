@@ -10,7 +10,9 @@ examples/demo/
   Build/macros/domestic.json    Domestic profile (DOMESTIC on, HOK off)
   Build/macros/pipeline.json    emit+typecheck pipeline config
   src/region.ts                 #if / #elif / #else / #error
-  src/player.ts                 nested #if (GLOBAL_GENERAL inside HOK)
+  src/player.ts                 profile-specific conditional imports
+  src/profiles/hok-player.ts    HOK-only global account data structure
+  src/profiles/domestic-player.ts Domestic-only compliance data structure
   src/main.ts                   plain consumer
   tsconfig.hok.json             typechecks the projected HOK tree
   tsconfig.domestic.json        typechecks the projected DOMESTIC tree
@@ -73,8 +75,9 @@ The extension contributes the `tsifdef-tsserver` package to VS Code's TypeScript
 plugin probe path. After `npm install` and `npm run build` at the repository root,
 open `src/region.ts` in the demo: with the `HOK` profile the file type-checks
 cleanly even though the raw text contains `#if` / `#elif` / `#else`. Edit
-`tsconfig.json`'s plugin `profile` (or set `HOK_TS_PROFILE`) and restart the TS
-server to switch which branch the checker sees.
+the active Profile through **TSIfDef: Switch Profile** to update decorations,
+folding, and the tsserver projection together. **TypeScript: Restart TS Server**
+remains a fallback if the language service cache does not refresh.
 
 > The plugin loads under the **workspace** TypeScript version. In the Extension
 > Development Host, the demo is wired through `.vscode/settings.json`; in a plain
@@ -84,3 +87,22 @@ server to switch which branch the checker sees.
 
 The CLI `pipeline` command verifies the same property in CI without an editor:
 each profile type-checks against its own projected tree.
+
+## Run and debug both profiles
+
+In the `[Extension Development Host]` window, open **Run and Debug** and choose:
+
+- **Debug Demo (HOK)**
+- **Debug Demo (DOMESTIC)**
+
+Each launch first projects `src` with the selected Profile, compiles the
+projected tree, and then starts Node with source maps pointing back to the
+original `src` directory. Put a breakpoint on the `console.log` in
+`src/main.ts`; it should bind and stop in the original file.
+
+The two launches intentionally exercise different imports and incompatible data
+structures. HOK imports `profiles/hok-player.ts` and produces
+`openId/globalAccount/globalFeatures`. Domestic imports
+`profiles/domestic-player.ts` and produces `roleId/channel/compliance`. The
+terminal output includes the selected Profile and full object so a wrong branch
+is immediately visible.

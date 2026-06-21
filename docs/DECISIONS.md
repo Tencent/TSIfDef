@@ -349,3 +349,19 @@ Reason: VSCode starts tsserver with extension contribution directories as plugin
 probe locations. A package placed only in the workspace `node_modules` is not a
 reliable plugin candidate and was ignored by the live VSCode 1.111 server even
 though direct tsserver tests could resolve it.
+
+## D025 - VSCode Profile changes configure the tsserver plugin live
+
+Date: 2026-06-21
+
+After loading a selected Profile, the extension calls API version 0 of
+`vscode.typescript-language-features` and configures `tsifdef-tsserver` with the
+Profile name and macros directory. The plugin implements
+`onConfigurationChanged`, keeps per-project base configuration, overlays the
+live editor configuration, reloads each projection controller, and invalidates
+only projects whose resolved Profile version changed.
+
+Reason: decoration and folding state alone cannot select the language-service
+view. A VSCode Profile switch must update tsserver in the same operation so
+diagnostics, completion, runtime build selection, and visible inactive ranges do
+not disagree.

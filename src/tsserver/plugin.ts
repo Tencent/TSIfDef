@@ -25,17 +25,21 @@ interface PluginConfig {
  */
 function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
   const typescript = modules.typescript;
+  let externalConfig: PluginConfig = {};
+  const reloaders = new Set<() => void>();
   return {
     create(info: ts.server.PluginCreateInfo): ts.LanguageService {
-      const config = (info.config ?? {}) as PluginConfig;
-      const macrosDir = resolveMacrosDir(config, info);
+      const projectConfig = (info.config ?? {}) as PluginConfig;
+      const config = (): PluginConfig => ({ ...projectConfig, ...externalConfig });
+      const macrosDir = (): string => resolveMacrosDir(config(), info);
       const log = (message: string): void => info.project.projectService.logger.info(message);
 
       const controller = new ProfileProjectionController({
-        resolve: () => resolveProfile(config, macrosDir, log),
+        resolve: () => resolveProfile(config(), macrosDir(), log),
         markDirty: () => invalidateProject(info.project),
         log,
       });
+      reloaders.add(() => controller.reload());
 
       wrapHostWithProjection(typescript, info.languageServiceHost, {
         getProfile: () => controller.getProfile(),
@@ -45,9 +49,15 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
       // re-projects without restarting the server. If cache refresh proves
       // unstable in practice, the documented fallback is the
       // `TypeScript: Restart TS Server` command.
-      watchMacrosDirectory(info, macrosDir, () => controller.reload());
+      watchMacrosDirectory(info, macrosDir(), () => controller.reload());
 
       return info.languageService;
+    },
+    onConfigurationChanged(config: PluginConfig): void {
+      externalConfig = config ?? {};
+      for (const reload of reloaders) {
+        reload();
+      }
     },
   };
 }

@@ -12,6 +12,14 @@ stages, reusing the CLI rather than adding macro semantics.
 
 ## Completed This Session
 
+- Turned the VS Code demo into a runnable and debuggable two-Profile program:
+  HOK and Domestic now use different conditional imports and incompatible player
+  data structures, with Profile-specific emit/compile tasks, Node launch
+  configurations, and source maps back to the original `src` files.
+- Synchronized VS Code Profile switches with the contributed tsserver plugin via
+  the TypeScript extension API. The plugin now handles live configuration
+  changes, reloads the selected Profile, invalidates the project, and reprojects
+  without restarting the Extension Host; added a HOK-to-Domestic plugin test.
 - Fixed the VS Code tsserver plugin integration after the live server log showed
   `Couldn't find tsifdef`: the extension now contributes a resolvable
   `tsifdef-tsserver` package through `typescriptServerPlugins`, the demo
@@ -259,7 +267,13 @@ stages, reusing the CLI rather than adding macro semantics.
   `dist/tsserver/plugin.js` from the extension root.
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 99 tests.
+- `npm test`: passed; 100 tests.
+- Demo HOK runtime: passed; produced the HOK-only
+  `openId/globalAccount/globalFeatures` structure.
+- Demo Domestic runtime: passed; produced the Domestic-only
+  `roleId/channel/compliance` structure.
+- Demo runtime source maps: passed; both Profiles resolve generated `main.js`
+  back to the original `examples/demo/src/main.ts`.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
   tsserver plugin, executable bin, source maps, declarations, and package
   metadata.

@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.runtime.base.json",
+  "compilerOptions": {
+    "rootDir": "Build/.macrobuild/HOK",
+    "outDir": "Build/.demorun/HOK"
+  },
+  "include": ["Build/.macrobuild/HOK/**/*.ts"]
+}

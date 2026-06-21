@@ -98,4 +98,6 @@ export interface ExtensionHost {
   registerFoldingRangeProvider(provider: FoldingRangeProvider): Disposable;
   /** Surface a non-blocking error message. */
   showErrorMessage(message: string): void;
+  /** Send live configuration to the contributed TypeScript server plugin. */
+  configureTypeScriptPlugin(name: string, configuration: Readonly<Record<string, unknown>>): Promise<void>;
 }
