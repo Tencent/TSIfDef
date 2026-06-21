@@ -76,7 +76,7 @@ export interface ExtensionHost {
   /** Create a left-aligned status-bar item. */
   createStatusBarItem(): StatusBarItem;
   /** Register a command handler, returning its disposable. */
-  registerCommand(command: string, handler: () => void | Promise<void>): Disposable;
+  registerCommand(command: string, handler: () => unknown | Promise<unknown>): Disposable;
   /** Present a single-selection quick pick, resolving to the chosen item or undefined. */
   showQuickPick(
     items: readonly QuickPickItem[],

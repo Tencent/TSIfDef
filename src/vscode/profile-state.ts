@@ -6,6 +6,7 @@ import type { Disposable, ExtensionHost, StatusBarItem } from "./host.js";
 export const configurationSection = "tsifdef" as const;
 export const profileConfigurationKey = "profile" as const;
 export const switchProfileCommand = "tsifdef.switchProfile" as const;
+export const activeProfileCommand = "tsifdef.activeProfile" as const;
 
 /** Human-readable label for each selection source, shown in the status-bar tooltip. */
 const sourceLabels: Readonly<Record<ProfileSelectionSource, string>> = {
@@ -44,6 +45,9 @@ export class ProfileStateController {
     this.disposables.push(this.statusItem);
     this.disposables.push(
       this.host.registerCommand(switchProfileCommand, () => this.switchProfile()),
+    );
+    this.disposables.push(
+      this.host.registerCommand(activeProfileCommand, () => this.activeProfileName()),
     );
     this.refresh();
     this.statusItem.show();
@@ -98,6 +102,22 @@ export class ProfileStateController {
   public reportProfileLoad(profile: string, error?: string): void {
     this.loadFailure = error === undefined ? undefined : { profile, message: error };
     this.refresh();
+  }
+
+  /** Canonical Profile name used by task and debug command-variable expansion. */
+  public async activeProfileName(): Promise<string> {
+    const selected = this.effectiveProfile().profile;
+    const root = this.host.workspaceRoot();
+    if (selected === undefined || root === undefined) {
+      throw new Error("No TSIfDef profile is selected for this workspace.");
+    }
+    const canonical = (await discoverProfileNames(root)).find(
+      (name) => name.toLowerCase() === selected.toLowerCase(),
+    );
+    if (canonical === undefined) {
+      throw new Error(`TSIfDef profile '${selected}' does not exist under Build/macros.`);
+    }
+    return canonical;
   }
 
   /** Offer discovered profiles and persist the chosen one to VSCode configuration. */

@@ -27,7 +27,7 @@ export interface RecordedDecoration {
 /** In-memory ExtensionHost for testing the VSCode shell without the editor. */
 export class FakeHost implements ExtensionHost {
   public readonly statusItem: StatusBarItem & { disposed: boolean; shown: boolean };
-  public readonly commands = new Map<string, () => void | Promise<void>>();
+  public readonly commands = new Map<string, () => unknown | Promise<unknown>>();
   public readonly informationMessages: string[] = [];
   public quickPickItems: readonly QuickPickItem[] = [];
   public readonly diagnostics = new Map<string, readonly DocumentDiagnostic[]>();
@@ -87,7 +87,7 @@ export class FakeHost implements ExtensionHost {
     return this.statusItem;
   }
 
-  public registerCommand(command: string, handler: () => void | Promise<void>): Disposable {
+  public registerCommand(command: string, handler: () => unknown | Promise<unknown>): Disposable {
     this.commands.set(command, handler);
     return { dispose: () => this.commands.delete(command) };
   }

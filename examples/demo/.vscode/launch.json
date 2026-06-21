@@ -2,25 +2,14 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Demo (HOK)",
+      "name": "Debug Demo (Active Profile)",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/Build/.demorun/HOK/main.js",
+      "program": "${workspaceFolder}/Build/.demorun/${command:tsifdef.activeProfile}/main.js",
       "cwd": "${workspaceFolder}",
-      "preLaunchTask": "TSIfDef: Compile HOK demo",
+      "preLaunchTask": "TSIfDef: Compile active demo",
       "sourceMaps": true,
-      "outFiles": ["${workspaceFolder}/Build/.demorun/HOK/**/*.js"],
-      "skipFiles": ["<node_internals>/**"]
-    },
-    {
-      "name": "Debug Demo (DOMESTIC)",
-      "type": "node",
-      "request": "launch",
-      "program": "${workspaceFolder}/Build/.demorun/DOMESTIC/main.js",
-      "cwd": "${workspaceFolder}",
-      "preLaunchTask": "TSIfDef: Compile DOMESTIC demo",
-      "sourceMaps": true,
-      "outFiles": ["${workspaceFolder}/Build/.demorun/DOMESTIC/**/*.js"],
+      "outFiles": ["${workspaceFolder}/Build/.demorun/${command:tsifdef.activeProfile}/**/*.js"],
       "skipFiles": ["<node_internals>/**"]
     }
   ]

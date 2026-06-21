@@ -2,14 +2,14 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "TSIfDef: Emit HOK demo",
+      "label": "TSIfDef: Emit active demo",
       "type": "process",
       "command": "node",
       "args": [
         "${workspaceFolder}/../../dist/cli/main.js",
         "emit",
         "--profile",
-        "HOK",
+        "${command:tsifdef.activeProfile}",
         "--root",
         "${workspaceFolder}",
         "--source",
@@ -18,44 +18,15 @@
       "problemMatcher": []
     },
     {
-      "label": "TSIfDef: Compile HOK demo",
+      "label": "TSIfDef: Compile active demo",
       "type": "process",
       "command": "node",
       "args": [
         "${workspaceFolder}/../../node_modules/typescript/bin/tsc",
         "-p",
-        "${workspaceFolder}/tsconfig.runtime.hok.json"
+        "${workspaceFolder}/tsconfig.runtime.${command:tsifdef.activeProfile}.json"
       ],
-      "dependsOn": "TSIfDef: Emit HOK demo",
-      "dependsOrder": "sequence",
-      "problemMatcher": "$tsc"
-    },
-    {
-      "label": "TSIfDef: Emit DOMESTIC demo",
-      "type": "process",
-      "command": "node",
-      "args": [
-        "${workspaceFolder}/../../dist/cli/main.js",
-        "emit",
-        "--profile",
-        "DOMESTIC",
-        "--root",
-        "${workspaceFolder}",
-        "--source",
-        "src"
-      ],
-      "problemMatcher": []
-    },
-    {
-      "label": "TSIfDef: Compile DOMESTIC demo",
-      "type": "process",
-      "command": "node",
-      "args": [
-        "${workspaceFolder}/../../node_modules/typescript/bin/tsc",
-        "-p",
-        "${workspaceFolder}/tsconfig.runtime.domestic.json"
-      ],
-      "dependsOn": "TSIfDef: Emit DOMESTIC demo",
+      "dependsOn": "TSIfDef: Emit active demo",
       "dependsOrder": "sequence",
       "problemMatcher": "$tsc"
     }

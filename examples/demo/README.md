@@ -90,12 +90,12 @@ each profile type-checks against its own projected tree.
 
 ## Run and debug both profiles
 
-In the `[Extension Development Host]` window, open **Run and Debug** and choose:
+In the `[Extension Development Host]` window, select the desired Profile from
+the TSIfDef status bar, then open **Run and Debug** and choose
+**Debug Demo (Active Profile)**.
 
-- **Debug Demo (HOK)**
-- **Debug Demo (DOMESTIC)**
-
-Each launch first projects `src` with the selected Profile, compiles the
+The launch reads the current Profile directly from the extension, projects
+`src` with that same Profile, compiles the
 projected tree, and then starts Node with source maps pointing back to the
 original `src` directory. Put a breakpoint on the `console.log` in
 `src/main.ts`; it should bind and stop in the original file.

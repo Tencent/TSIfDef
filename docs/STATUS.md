@@ -12,6 +12,12 @@ stages, reusing the CLI rather than adding macro semantics.
 
 ## Completed This Session
 
+- Removed Profile-specific debug launches after live testing exposed a split
+  state (Domestic editor with HOK runtime). The demo now has one
+  `Debug Demo (Active Profile)` launch; VS Code task and launch variable
+  expansion resolve the canonical active Profile through
+  `tsifdef.activeProfile`, so emit, compile, runtime, decorations, and tsserver
+  share one selection. Added command coverage.
 - Turned the VS Code demo into a runnable and debuggable two-Profile program:
   HOK and Domestic now use different conditional imports and incompatible player
   data structures, with Profile-specific emit/compile tasks, Node launch
@@ -267,7 +273,7 @@ stages, reusing the CLI rather than adding macro semantics.
   `dist/tsserver/plugin.js` from the extension root.
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 100 tests.
+- `npm test`: passed; 101 tests.
 - Demo HOK runtime: passed; produced the HOK-only
   `openId/globalAccount/globalFeatures` structure.
 - Demo Domestic runtime: passed; produced the Domestic-only

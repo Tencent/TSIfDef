@@ -95,7 +95,7 @@ interface VsCodeApi {
     registerFoldingRangeProvider(selector: unknown, provider: VsFoldingProvider): Disposable;
   };
   readonly commands: {
-    registerCommand(command: string, handler: () => unknown): Disposable;
+    registerCommand(command: string, handler: () => unknown | Promise<unknown>): Disposable;
   };
   readonly extensions: {
     getExtension(id: string):
@@ -161,8 +161,7 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
       };
     },
     createStatusBarItem: () => vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100),
-    registerCommand: (command, handler) =>
-      vscode.commands.registerCommand(command, () => void handler()),
+    registerCommand: (command, handler) => vscode.commands.registerCommand(command, handler),
     showQuickPick: (items, options) => Promise.resolve(vscode.window.showQuickPick(items, options)),
     showInformationMessage: (message) => void vscode.window.showInformationMessage(message),
     workspaceRoot: () => vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,

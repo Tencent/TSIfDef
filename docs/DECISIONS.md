@@ -365,3 +365,17 @@ Reason: decoration and folding state alone cannot select the language-service
 view. A VSCode Profile switch must update tsserver in the same operation so
 diagnostics, completion, runtime build selection, and visible inactive ranges do
 not disagree.
+
+## D026 - Debug launch consumes the active editor Profile
+
+Date: 2026-06-21
+
+VSCode debug and task configurations must not hard-code a Profile independently
+of the extension state. The extension exposes `tsifdef.activeProfile` as a
+command variable that resolves the selected Profile to its canonical profile
+file name. Emit arguments, runtime tsconfig selection, output directory, and
+debug program path consume that same value.
+
+Reason: separate HOK and Domestic launch configurations allowed the editor and
+tsserver to display Domestic while Node ran an HOK build. One active Profile
+must determine every view and execution stage.

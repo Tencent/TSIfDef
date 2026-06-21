@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  activeProfileCommand,
   ProfileStateController,
   switchProfileCommand,
 } from "../src/vscode/index.js";
@@ -93,6 +94,17 @@ test("switching persists the chosen profile and refreshes the status bar", async
     assert.equal(host.quickPickItems.find((item) => item.label === "hok")?.description, "current");
     assert.equal(host.statusItem.text, "$(versions) TSIfDef: domestic");
     assert.deepEqual(controller.effectiveProfile(), { profile: "domestic", source: "vscode" });
+    controller.dispose();
+  });
+});
+
+test("debug command resolves the selected profile to its canonical file name", async () => {
+  await withProfiles(["domestic", "hok"], async (root) => {
+    const host = new FakeHost({ root, configuredProfile: "HOK" });
+    const controller = new ProfileStateController(host, {});
+    controller.activate();
+
+    assert.equal(await host.commands.get(activeProfileCommand)?.(), "hok");
     controller.dispose();
   });
 });
