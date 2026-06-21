@@ -122,3 +122,15 @@ reads and validates an immutable boolean macro map from UTF-8 JSON.
 Reason: emit, check, watch, VSCode, and CI must share precedence and validation
 without coupling those rules to a particular command-line parser. Formal builds
 must never infer their target environment from a developer workstation.
+
+## D011 - Emit prepares a complete profile directory before replacement
+
+Date: 2026-06-21
+
+Emit discovers and analyzes every TypeScript-family source file before writing.
+Any macro diagnostic aborts without changing existing output. A successful run
+writes a temporary sibling directory and then replaces
+`Build/.macrobuild/<PROFILE>` as a whole.
+
+Reason: `tsc` and ESLint must never observe a partially projected tree, stale
+files from prior runs, or output from a source set containing macro errors.

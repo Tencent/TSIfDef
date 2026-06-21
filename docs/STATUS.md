@@ -4,14 +4,24 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CLI-002 - Emit command`
+`CLI-003 - Check command`
 
-Define concrete acceptance criteria, then project source files into
-`Build/.macrobuild/<PROFILE>` without modifying tracked source directories.
-Reuse the shared core projection and CLI profile module.
+Define concrete acceptance criteria, then implement stable one-profile and
+`--all` structural/profile checking, exit codes, and human-readable diagnostic
+locations without writing projected output.
 
 ## Completed This Session
 
+- Completed `CLI-002`.
+- Added the packaged `tsifdef emit --profile <PROFILE>` command with optional
+  project and source roots.
+- Added deterministic TypeScript-family source discovery while excluding
+  generated output, `.git`, and `node_modules`.
+- Added preflight analysis so macro diagnostics preserve existing output and
+  identify their source file.
+- Added staged whole-directory replacement, stale output cleanup, safe profile
+  path segments, and source-tree immutability coverage.
+- Added programmatic emit and packaged-command integration tests.
 - Completed `CLI-001`.
 - Added UTF-8 JSON profile loading with immutable null-prototype definition
   maps, BOM support, macro schema validation, and stable load error codes.
@@ -74,9 +84,9 @@ Reuse the shared core projection and CLI profile module.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 34 tests.
-- `npm pack --dry-run`: passed (`CORE-001`); package contains only `dist` and package
-  metadata.
+- `npm test`: passed; 38 tests.
+- `npm pack --dry-run`: passed; package contains the core, CLI, executable bin,
+  source maps, declarations, and package metadata.
 
 ## Known Issues
 
@@ -92,6 +102,6 @@ Reuse the shared core projection and CLI profile module.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CLI-002`. Define source discovery, output mapping, cleanup behavior,
-diagnostic failure rules, and non-destructive guarantees before implementing
-the command. Generated content must stay under `Build/.macrobuild/<PROFILE>`.
+complete `CLI-003`. Reuse source discovery without coupling check to emit
+output, define stable exit-code categories and line/column formatting, and make
+`--all` discover versioned profiles under `Build/macros` deterministically.

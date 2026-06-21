@@ -83,12 +83,26 @@ Acceptance criteria:
 - Profile loading and selection remain independent of command parsing and have
   focused tests.
 
-### CLI-002 - Emit command (`ACTIVE`)
+### CLI-002 - Emit command (`DONE`)
 
 Project source files into `Build/.macrobuild/<PROFILE>` without modifying the
 source tree.
 
-### CLI-003 - Check command (`TODO`)
+Acceptance criteria:
+
+- `tsifdef emit --profile <PROFILE>` loads `Build/macros/<profile>.json` and
+  projects TypeScript-family files into `Build/.macrobuild/<PROFILE>` while
+  preserving relative paths and exact projected text.
+- Source discovery is deterministic, supports an optional source root, and
+  excludes generated output, `.git`, and `node_modules`.
+- Any macro diagnostic aborts before output replacement and reports its source
+  file; successful emission replaces the profile directory and removes stale
+  files.
+- Profile names cannot escape the output directory, source files are never
+  modified, and interrupted preparation cannot expose partial output.
+- Programmatic emission and command parsing have focused integration tests.
+
+### CLI-003 - Check command (`ACTIVE`)
 
 Implement one-profile and `--all` structural/profile checking with stable exit
 codes and diagnostics.

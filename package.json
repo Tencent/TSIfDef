@@ -5,6 +5,9 @@
   "license": "UNLICENSED",
   "main": "dist/core/index.js",
   "types": "dist/core/index.d.ts",
+  "bin": {
+    "tsifdef": "dist/cli/main.js"
+  },
   "exports": {
     "./core": {
       "types": "./dist/core/index.d.ts",
