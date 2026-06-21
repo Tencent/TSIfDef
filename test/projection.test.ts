@@ -1,0 +1,109 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import ts from "typescript";
+
+import {
+  analyzeConditionals,
+  maskSourceRanges,
+  projectSource,
+} from "../src/core/index.js";
+
+function newlineOffsets(source: string): number[] {
+  const offsets: number[] = [];
+  for (let offset = 0; offset < source.length; offset += 1) {
+    if (source[offset] === "\r" || source[offset] === "\n") {
+      offsets.push(offset);
+    }
+  }
+  return offsets;
+}
+
+test("preserves CRLF, UTF-16 length, Chinese text, and surrogate offsets", () => {
+  const source = [
+    'const shared = "中文😀";',
+    "#if HOK",
+    'const hok = "王者😀";',
+    "#else",
+    'const domestic = "国内😀";',
+    "#endif",
+    "",
+  ].join("\r\n");
+
+  const result = projectSource(source, { HOK: false });
+
+  assert.equal(result.projectedText.length, source.length);
+  assert.deepEqual(newlineOffsets(result.projectedText), newlineOffsets(source));
+  assert.equal(result.projectedText.includes('const shared = "中文😀";'), true);
+  assert.equal(result.projectedText.includes('const domestic = "国内😀";'), true);
+  assert.equal(result.projectedText.includes("#if"), false);
+  assert.equal(result.projectedText.includes("#else"), false);
+  assert.equal(result.projectedText.includes("#endif"), false);
+
+  const inactiveTextStart = source.indexOf("王者😀");
+  assert.equal(
+    result.projectedText.slice(inactiveTextStart, inactiveTextStart + "王者😀".length),
+    " ".repeat("王者😀".length),
+  );
+});
+
+test("produces a TypeScript 5.5.4 parseable active view", () => {
+  const source = [
+    "#if HOK",
+    "const region: string = 'hok';",
+    "#else",
+    "const region: number = 1;",
+    "#endif",
+    "region;",
+  ].join("\n");
+
+  const projected = projectSource(source, { HOK: true }).projectedText;
+  const transpiled = ts.transpileModule(
+    projected,
+    {
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+      fileName: "fixture.ts",
+      reportDiagnostics: true,
+    },
+  );
+
+  assert.equal(ts.version, "5.5.4");
+  assert.deepEqual(transpiled.diagnostics, []);
+  assert.equal(projected.includes("const region: string"), true);
+  assert.equal(projected.includes("const region: number"), false);
+});
+
+test("uses the exact ranges returned by conditional analysis", () => {
+  const source = ["#if OFF", "hidden();", "#else", "visible();", "#endif"].join("\n");
+  const definitions = { OFF: false };
+  const analysis = analyzeConditionals(source, definitions);
+  const projected = projectSource(source, definitions);
+  const expected = maskSourceRanges(
+    source,
+    analysis.directiveRanges.concat(analysis.inactiveRanges),
+  );
+
+  assert.equal(projected.projectedText, expected);
+});
+
+test("masks unknown directives while preserving their diagnostics", () => {
+  const source = ["#unknown value", "const valid = true;"].join("\n");
+  const result = projectSource(source, {});
+
+  assert.equal(result.projectedText.startsWith(" ".repeat("#unknown value".length)), true);
+  assert.equal(result.projectedText.includes("const valid = true;"), true);
+  assert.equal(result.diagnostics[0]?.code, "unknown-directive");
+});
+
+test("normalizes overlapping ranges and rejects invalid ranges", () => {
+  assert.equal(
+    maskSourceRanges("abcdef\r\ngh", [
+      { start: 4, end: 9 },
+      { start: 1, end: 5 },
+    ]),
+    "a     \r\n h",
+  );
+  assert.throws(
+    () => maskSourceRanges("abc", [{ start: 0, end: 4 }]),
+    RangeError,
+  );
+});

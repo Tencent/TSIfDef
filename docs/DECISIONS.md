@@ -97,3 +97,15 @@ so projection can hide them from TypeScript while retaining diagnostics.
 
 Reason: Inactive regional code must not silently decay, while `#error` remains
 an intentional assertion about the selected Profile only.
+
+## D009 - Projection consumes conditional analysis ranges
+
+Date: 2026-06-21
+
+`projectSource` is the shared projection entry point. It combines the directive
+and inactive ranges returned by `analyzeConditionals`, normalizes overlaps, and
+replaces every non-CR/LF UTF-16 code unit with an ASCII space. It does not scan
+or evaluate macro rules independently.
+
+Reason: VSCode, tsserver, CLI, and CI need one projection implementation and
+must preserve exact source offsets, including surrogate pairs.

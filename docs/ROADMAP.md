@@ -39,12 +39,12 @@ precedence and unknown-macro diagnostics.
 
 Evaluate nested `#if/#elif/#else/#endif` groups and active `#error` directives.
 
-### CORE-005 - Equal-length projection (`ACTIVE`)
+### CORE-005 - Equal-length projection (`DONE`)
 
 Mask inactive code with spaces while preserving CR, LF, total UTF-16 length,
 and offsets. Add golden tests for CRLF, Chinese text, and surrogate pairs.
 
-### CORE-006 - Core robustness suite (`TODO`)
+### CORE-006 - Core robustness suite (`ACTIVE`)
 
 Cover malformed nesting, expression errors, false directives, and projection
 invariants with golden and property-oriented tests.

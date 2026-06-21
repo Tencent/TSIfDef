@@ -4,14 +4,20 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CORE-005 - Equal-length projection`
+`CORE-006 - Core robustness suite`
 
-Mask all directive lines and inactive ranges with spaces while preserving every
-CR/LF code unit, total UTF-16 length, and source offset. Add golden tests for
-CRLF, Chinese text, surrogate pairs, and analysis/projection consistency.
+Expand malformed-input, lexical-edge, expression-recovery, and projection
+invariant coverage. Use failures to harden the existing core APIs without
+starting CLI work. Define explicit acceptance criteria before implementation.
 
 ## Completed This Session
 
+- Completed `CORE-005`.
+- Added the shared `projectSource` entry point and reusable range masking.
+- Merged overlapping directive/inactive ranges and rejected invalid ranges.
+- Verified equal UTF-16 length, identical CR/LF offsets, Chinese text, surrogate
+  pairs, unknown directive masking, and analysis/projection consistency.
+- Verified projected C-style macro source parses with TypeScript 5.5.4.
 - Completed `CORE-004`.
 - Added nested conditional evaluation and inactive source ranges.
 - Added unified scanner, expression, active `#error`, and unexpected-argument
@@ -48,7 +54,7 @@ CRLF, Chinese text, surrogate pairs, and analysis/projection consistency.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 21 tests.
+- `npm test`: passed; 26 tests.
 - `npm pack --dry-run`: passed (`CORE-001`); package contains only `dist` and package
   metadata.
 
@@ -66,6 +72,6 @@ CRLF, Chinese text, surrogate pairs, and analysis/projection consistency.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CORE-005`. Projection must consume `analyzeConditionals` output rather
-than rescan or reevaluate macro rules. After verification and push, continue
-automatically only if the context rule in `AGENTS.md` permits it.
+complete `CORE-006`. Start by writing concrete robustness acceptance criteria
+and adversarial tests around the existing scanner, expression, conditional, and
+projection APIs. Do not begin CLI work until this task passes and is pushed.
