@@ -1,0 +1,12 @@
+{
+  "profiles": [
+    {
+      "profile": "HOK",
+      "tsconfig": "tsconfig.hok.json"
+    },
+    {
+      "profile": "DOMESTIC",
+      "tsconfig": "tsconfig.domestic.json"
+    }
+  ]
+}

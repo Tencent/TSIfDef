@@ -12,6 +12,16 @@ stages, reusing the CLI rather than adding macro semantics.
 
 ## Completed This Session
 
+- Added a manual VS Code try-it setup (outside the numbered roadmap): root
+  `package.json` extension manifest (`engines.vscode`, `main`,
+  `activationEvents`, `contributes` commands and `tsifdef.profile`), `.vscode`
+  launch/build tasks, `.vscodeignore`, and an `examples/demo` workspace with HOK
+  and Domestic profiles, single and nested directives, per-profile tsconfigs, and
+  a README plus manual checklist. Editor-host packaging of the tsserver plugin is
+  deferred to REL-001 and noted in the demo README.
+- Fixed `discoverProfileNames` to exclude the reserved `pipeline.json` so
+  `check --all` and the VS Code profile switcher no longer treat the pipeline
+  config as a macro profile; added a regression test.
 - Completed `INT-001`.
 - Added `runProfilePipeline` (`src/cli/pipeline.ts`) that emits each Profile
   through the shared `emitProject` and then typechecks its `tsconfig`, resolving

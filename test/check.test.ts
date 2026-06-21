@@ -52,6 +52,8 @@ test("discovers all JSON profiles deterministically and rejects an empty set", a
     await writeFile(join(profiles, "zeta.json"), "{\"ZETA\":true}", "utf8");
     await writeFile(join(profiles, "Alpha.JSON"), "{\"ALPHA\":true}", "utf8");
     await writeFile(join(profiles, "notes.txt"), "ignored", "utf8");
+    // pipeline.json is reserved configuration, not a macro profile.
+    await writeFile(join(profiles, "pipeline.json"), "{\"profiles\":[]}", "utf8");
     assert.deepEqual((await loadAllProfiles(root)).map((profile) => profile.name), ["Alpha", "zeta"]);
   });
   await withProject(async (root) => {

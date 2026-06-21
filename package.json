@@ -5,6 +5,8 @@
   "license": "UNLICENSED",
   "main": "dist/core/index.js",
   "types": "dist/core/index.d.ts",
+  "publisher": "hok",
+  "displayName": "TSIfDef",
   "bin": {
     "tsifdef": "dist/cli/main.js"
   },
@@ -19,13 +21,53 @@
     "dist"
   ],
   "engines": {
-    "node": ">=18.17"
+    "node": ">=18.17",
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "tsifdef.switchProfile",
+        "title": "TSIfDef: Switch Profile"
+      },
+      {
+        "command": "tsifdef.emit",
+        "title": "TSIfDef: Emit Projected Sources"
+      },
+      {
+        "command": "tsifdef.check",
+        "title": "TSIfDef: Check Macros"
+      },
+      {
+        "command": "tsifdef.watch",
+        "title": "TSIfDef: Watch and Emit"
+      },
+      {
+        "command": "tsifdef.stopWatch",
+        "title": "TSIfDef: Stop Watch"
+      }
+    ],
+    "configuration": {
+      "title": "TSIfDef",
+      "properties": {
+        "tsifdef.profile": {
+          "type": "string",
+          "default": null,
+          "markdownDescription": "The active TSIfDef profile name. Macros load from `Build/macros/<profile>.json`. The `HOK_TS_PROFILE` environment variable takes precedence over this setting."
+        }
+      }
+    }
   },
   "scripts": {
     "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist','.test-dist']) fs.rmSync(path,{recursive:true,force:true})\"",
     "build": "npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "npm run build && tsc -p tsconfig.test.json && node scripts/run-tests.cjs"
+    "test": "npm run build && tsc -p tsconfig.test.json && node scripts/run-tests.cjs",
+    "vscode:prepublish": "npm run build"
   },
   "devDependencies": {
     "@types/node": "22.15.3",

@@ -59,6 +59,9 @@ export async function loadAllProfiles(projectRoot: string): Promise<readonly Che
   })));
 }
 
+/** Profile-directory JSON files that are configuration, not macro profiles. */
+const reservedProfileFiles = new Set(["pipeline.json"]);
+
 /** Discover `Build/macros/*.json` profile names in deterministic order. */
 export async function discoverProfileNames(projectRoot: string): Promise<readonly string[]> {
   let entries: Awaited<ReturnType<typeof readdir>>;
@@ -68,7 +71,12 @@ export async function discoverProfileNames(projectRoot: string): Promise<readonl
     return [];
   }
   return entries
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".json"))
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name.toLowerCase().endsWith(".json") &&
+        !reservedProfileFiles.has(entry.name.toLowerCase()),
+    )
     .map((entry) => entry.name.slice(0, -5))
     .sort((left, right) => left.localeCompare(right, "en"));
 }

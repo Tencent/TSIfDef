@@ -1,0 +1,14 @@
+.vscode/**
+.test-dist/**
+src/**
+test/**
+examples/**
+docs/**
+scripts/**
+node_modules/**
+tsconfig*.json
+AGENTS.md
+SPEC.md
+**/*.map
+**/*.ts
+!dist/**/*.d.ts
