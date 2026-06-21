@@ -85,3 +85,15 @@ unknown macro when the key is absent.
 
 Reason: `defined` must support intentional feature-presence checks, while bare
 macro typos must remain visible and deterministic in editor and CI diagnostics.
+
+## D008 - Validate every expression, report only active errors
+
+Date: 2026-06-21
+
+Every `#if` and `#elif` expression is parsed and checked even when its parent
+branch is inactive. `#error` produces a diagnostic only when its branch is
+active. Unknown and malformed directive lines are included in directive ranges
+so projection can hide them from TypeScript while retaining diagnostics.
+
+Reason: Inactive regional code must not silently decay, while `#error` remains
+an intentional assertion about the selected Profile only.

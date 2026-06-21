@@ -35,11 +35,11 @@ or comments. Return UTF-16 source ranges and structural diagnostics.
 Implement identifiers, `defined(NAME)`, `!`, `&&`, `||`, and parentheses with
 precedence and unknown-macro diagnostics.
 
-### CORE-004 - Conditional evaluator (`ACTIVE`)
+### CORE-004 - Conditional evaluator (`DONE`)
 
 Evaluate nested `#if/#elif/#else/#endif` groups and active `#error` directives.
 
-### CORE-005 - Equal-length projection (`TODO`)
+### CORE-005 - Equal-length projection (`ACTIVE`)
 
 Mask inactive code with spaces while preserving CR, LF, total UTF-16 length,
 and offsets. Add golden tests for CRLF, Chinese text, and surrogate pairs.

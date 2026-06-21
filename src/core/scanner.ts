@@ -36,7 +36,14 @@ export interface ScannerDiagnostic {
 
 export interface ScanResult {
   readonly directives: readonly Directive[];
+  /** Every directive-looking line, including unknown directives. */
+  readonly directiveRanges: readonly SourceRange[];
   readonly diagnostics: readonly ScannerDiagnostic[];
+}
+
+interface ParsedDirectiveLine {
+  readonly directive: Directive | null;
+  readonly range: SourceRange;
 }
 
 type LexicalMode =
@@ -60,7 +67,7 @@ interface ConditionalFrame {
   sawElse: boolean;
 }
 
-const directivePattern = /^[\t \v\f\uFEFF]*#([A-Za-z_][A-Za-z0-9_]*)(.*)$/;
+const directivePattern = /^[\t \v\f\uFEFF]*#(.*)$/;
 const directiveKinds = new Set<DirectiveKind>([
   "if",
   "elif",
@@ -86,6 +93,7 @@ const regexPrefixKeywords = new Set([
 /** Scan C/C++-style macro directives without evaluating their expressions. */
 export function scanDirectives(source: string): ScanResult {
   const directives: Directive[] = [];
+  const directiveRanges: SourceRange[] = [];
   const diagnostics: ScannerDiagnostic[] = [];
   const conditionalStack: ConditionalFrame[] = [];
   const lexicalState: LexicalState = { mode: "code", templates: [] };
@@ -95,15 +103,16 @@ export function scanDirectives(source: string): ScanResult {
   while (offset < source.length) {
     const lineEnd = findLineEnd(source, offset);
     const lineText = source.slice(offset, lineEnd);
-    const directive =
+    const parsedLine =
       lexicalState.mode === "code"
         ? parseDirectiveLine(lineText, offset, line, diagnostics)
         : null;
 
-    if (directive !== null) {
-      if (directive !== undefined) {
-        directives.push(directive);
-        checkStructure(directive, conditionalStack, diagnostics);
+    if (parsedLine !== null) {
+      directiveRanges.push(parsedLine.range);
+      if (parsedLine.directive !== null) {
+        directives.push(parsedLine.directive);
+        checkStructure(parsedLine.directive, conditionalStack, diagnostics);
       }
       // Directive arguments are not TypeScript and cannot change lexical state.
     } else {
@@ -123,7 +132,7 @@ export function scanDirectives(source: string): ScanResult {
   }
 
   diagnostics.sort((left, right) => left.range.start - right.range.start);
-  return { directives, diagnostics };
+  return { directives, directiveRanges, diagnostics };
 }
 
 function parseDirectiveLine(
@@ -131,18 +140,26 @@ function parseDirectiveLine(
   lineOffset: number,
   line: number,
   diagnostics: ScannerDiagnostic[],
-): Directive | null | undefined {
+): ParsedDirectiveLine | null {
   const match = directivePattern.exec(lineText);
   if (match === null) {
     return null;
   }
 
-  const name = match[1];
+  const hashIndex = lineText.indexOf("#");
+  const lineRange = { start: lineOffset, end: lineOffset + lineText.length };
+  const remainder = match[1] ?? "";
+  const nameMatch = /^([A-Za-z_][A-Za-z0-9_]*)(.*)$/.exec(remainder);
+  const name = nameMatch?.[1];
   if (name === undefined) {
-    return null;
+    diagnostics.push({
+      code: "unknown-directive",
+      message: "Expected a directive name after '#'.",
+      range: { start: lineOffset + hashIndex, end: lineOffset + hashIndex + 1 },
+    });
+    return { directive: null, range: lineRange };
   }
 
-  const hashIndex = lineText.indexOf("#");
   const keywordRange = {
     start: lineOffset + hashIndex,
     end: lineOffset + hashIndex + name.length + 1,
@@ -154,24 +171,27 @@ function parseDirectiveLine(
       message: `Unknown directive #${name}.`,
       range: keywordRange,
     });
-    return undefined;
+    return { directive: null, range: lineRange };
   }
 
-  const rawArgument = match[2] ?? "";
+  const rawArgument = nameMatch?.[2] ?? "";
   const leadingWhitespace = rawArgument.length - rawArgument.trimStart().length;
   const argument = rawArgument.trim();
   const argumentStart = keywordRange.end + leadingWhitespace;
 
   return {
-    kind: name as DirectiveKind,
-    line,
-    range: { start: lineOffset, end: lineOffset + lineText.length },
-    keywordRange,
-    argument,
-    argumentRange:
-      argument.length === 0
-        ? null
-        : { start: argumentStart, end: argumentStart + argument.length },
+    directive: {
+      kind: name as DirectiveKind,
+      line,
+      range: lineRange,
+      keywordRange,
+      argument,
+      argumentRange:
+        argument.length === 0
+          ? null
+          : { start: argumentStart, end: argumentStart + argument.length },
+    },
+    range: lineRange,
   };
 }
 

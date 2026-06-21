@@ -23,6 +23,7 @@ test("scans C-style directives and preserves UTF-16 ranges", () => {
     "endif",
   ]);
   assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.directiveRanges.length, 5);
 
   const first = result.directives[0];
   assert.ok(first);
@@ -141,7 +142,7 @@ test("reports unknown and malformed conditional structure", () => {
 });
 
 test("consumes unknown directive text without changing lexical state", () => {
-  const source = ["#unknown /*", "#if REAL", "#endif"].join("\n");
+  const source = ["#unknown /*", "  #", "#if REAL", "#endif"].join("\n");
 
   const result = scanDirectives(source);
 
@@ -151,7 +152,9 @@ test("consumes unknown directive text without changing lexical state", () => {
   ]);
   assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
     "unknown-directive",
+    "unknown-directive",
   ]);
+  assert.equal(result.directiveRanges.length, 4);
 });
 
 test("handles nested conditionals without structural diagnostics", () => {

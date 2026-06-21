@@ -4,14 +4,21 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CORE-004 - Conditional evaluator`
+`CORE-005 - Equal-length projection`
 
-Evaluate nested `#if/#elif/#else/#endif` groups with a macro Profile, compute
-active/inactive source ranges, and report active `#error` directives. Reuse the
-scanner and expression evaluator without duplicating their rules.
+Mask all directive lines and inactive ranges with spaces while preserving every
+CR/LF code unit, total UTF-16 length, and source offset. Add golden tests for
+CRLF, Chinese text, surrogate pairs, and analysis/projection consistency.
 
 ## Completed This Session
 
+- Completed `CORE-004`.
+- Added nested conditional evaluation and inactive source ranges.
+- Added unified scanner, expression, active `#error`, and unexpected-argument
+  diagnostics.
+- Added directive ranges for supported, unknown, and malformed directive lines
+  so every raw `#` line can be masked before TypeScript parsing.
+- Kept expression validation active inside inactive parent branches.
 - Completed `CORE-003`.
 - Added expression tokenization, AST generation, parsing, and Profile-based
   evaluation for identifiers, `defined(NAME)`, `!`, `&&`, `||`, and grouping.
@@ -41,7 +48,7 @@ scanner and expression evaluator without duplicating their rules.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 15 tests.
+- `npm test`: passed; 21 tests.
 - `npm pack --dry-run`: passed (`CORE-001`); package contains only `dist` and package
   metadata.
 
@@ -59,7 +66,6 @@ scanner and expression evaluator without duplicating their rules.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CORE-004`. Compose scanner and expression diagnostics, calculate
-branch activity, and keep projection/masking out of scope until `CORE-005`.
-After verification and push, continue automatically only if the context rule
-in `AGENTS.md` permits it.
+complete `CORE-005`. Projection must consume `analyzeConditionals` output rather
+than rescan or reevaluate macro rules. After verification and push, continue
+automatically only if the context rule in `AGENTS.md` permits it.
