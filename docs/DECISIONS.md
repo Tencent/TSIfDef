@@ -43,3 +43,15 @@ generated content into its tracked source directories.
 
 Reason: This is the TypeScript project found in the supplied HOK workspace; the
 originally stated `Programe\TsProject` path does not exist.
+
+## D005 - CommonJS package output
+
+Date: 2026-06-21
+
+Compile package modules as CommonJS while using Node16 module resolution. Tests
+are compiled before execution instead of relying on Node's native TypeScript
+support.
+
+Reason: VSCode extensions and tsserver plugins must load reliably across the
+supported Node hosts, including hosts older than the development machine's
+Node 24 runtime.

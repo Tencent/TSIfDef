@@ -7,7 +7,7 @@ the next session.
 
 ## M0 - Repository Foundation
 
-### CORE-001 - Package and test scaffold (`ACTIVE`)
+### CORE-001 - Package and test scaffold (`DONE`)
 
 Scope:
 
@@ -24,7 +24,7 @@ Acceptance criteria:
 
 ## M1 - Shared Core
 
-### CORE-002 - Directive scanner (`TODO`)
+### CORE-002 - Directive scanner (`ACTIVE`)
 
 Recognize line-comment directives without matching text inside strings,
 template strings, or block comments. Return UTF-16 source ranges and structural

@@ -4,26 +4,28 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CORE-001 - Package and test scaffold`
+`CORE-002 - Directive scanner`
 
-The next session should implement only this task and use its acceptance criteria
-from `docs/ROADMAP.md`.
+The next session should implement only this task. It must recognize directive
+comments without treating lookalikes in strings, template strings, or block
+comments as directives, and return UTF-16 ranges plus structural diagnostics.
 
 ## Completed This Session
 
-- Established the persistent, resumable development workflow.
-- Split the specification into ordered, independently verifiable tasks.
-- Confirmed that the test project path stated in conversation does not exist as
-  written.
-- Located the actual TypeScript project at
-  `E:\HOK_Trunk\Program\TsScripts`.
+- Completed `CORE-001`.
+- Created the npm package, TypeScript build, typecheck, and test configurations.
+- Pinned TypeScript 5.5.4 and generated `package-lock.json`.
+- Added a minimal `core` export without implementing macro behavior.
+- Added cross-platform compiled-test discovery and a smoke test.
 
 ## Verification
 
-- `E:\TsIfDef` currently contains only the specification and workflow files;
-  no implementation has been started.
-- `E:\HOK_Trunk\Program\TsScripts` contains `package.json`,
-  `package-lock.json`, `node_modules`, and TypeScript configurations.
+- `npm install`: passed; 0 vulnerabilities.
+- `npm run build`: passed.
+- `npm run typecheck`: passed.
+- `npm test`: passed; 1 test.
+- `npm pack --dry-run`: passed; package contains only `dist` and package
+  metadata.
 
 ## Known Issues
 
@@ -37,5 +39,6 @@ from `docs/ROADMAP.md`.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CORE-001`. Stop after its build/typecheck/test acceptance criteria
-pass and update this file to point to `CORE-002`.
+complete `CORE-002`. Do not implement expression parsing or branch evaluation;
+those belong to `CORE-003` and `CORE-004`. Update this file to point to
+`CORE-003` only after scanner tests, build, and typecheck pass.
