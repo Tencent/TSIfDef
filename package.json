@@ -56,6 +56,12 @@
         "title": "TSIfDef: Stop Watch"
       }
     ],
+    "typescriptServerPlugins": [
+      {
+        "name": "tsifdef-tsserver",
+        "enableForWorkspaceTypeScriptVersions": true
+      }
+    ],
     "configuration": {
       "title": "TSIfDef",
       "properties": {
@@ -76,6 +82,7 @@
   },
   "devDependencies": {
     "@types/node": "22.15.3",
+    "tsifdef-tsserver": "file:./tsserver-package",
     "typescript": "5.5.4"
   }
 }

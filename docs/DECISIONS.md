@@ -334,3 +334,18 @@ Reason: the TsScripts workspace carries only one region's declarations, so a CI
 or local run must still succeed for the region it can build while clearly
 reporting the region it cannot. The pipeline adds no macro semantics; it composes
 the existing emit and core with `tsc`.
+
+## D024 - VSCode contributes a dedicated tsserver plugin package
+
+Date: 2026-06-21
+
+The extension manifest contributes `tsifdef-tsserver` through
+`contributes.typescriptServerPlugins`, with support enabled for workspace
+TypeScript versions. A small local package of that name resolves to
+`dist/tsserver/plugin.js`; project `tsconfig.json` plugin configuration uses the
+same name.
+
+Reason: VSCode starts tsserver with extension contribution directories as plugin
+probe locations. A package placed only in the workspace `node_modules` is not a
+reliable plugin candidate and was ignored by the live VSCode 1.111 server even
+though direct tsserver tests could resolve it.

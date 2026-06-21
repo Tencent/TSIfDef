@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "plugins": [
       {
-        "name": "tsifdef",
+        "name": "tsifdef-tsserver",
         "profile": "HOK",
         "macrosDir": "Build/macros"
       }

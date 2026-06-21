@@ -238,10 +238,17 @@ export function activate(context: ExtensionContext): void {
     if (root === undefined || profile === undefined) {
       definitions = undefined;
     } else {
+      const profilePath = profilePathFor(root, profile);
       try {
-        definitions = await loadProfileFile(profilePathFor(root, profile));
-      } catch {
+        definitions = await loadProfileFile(profilePath);
+        profileController.reportProfileLoad(profile);
+      } catch (error) {
         definitions = undefined;
+        const message = `Failed to load TSIfDef profile '${profile}' from ${profilePath}: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        profileController.reportProfileLoad(profile, message);
+        host.showErrorMessage(message);
       }
     }
     presentation.refresh();

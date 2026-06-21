@@ -62,6 +62,21 @@ test("shows a no-selection state without throwing", () => {
   controller.dispose();
 });
 
+test("shows when the selected profile definitions failed to load", () => {
+  const host = new FakeHost({ configuredProfile: "HOK" });
+  const controller = new ProfileStateController(host, {});
+  controller.activate();
+
+  controller.reportProfileLoad("HOK", "Profile file was not found");
+
+  assert.equal(host.statusItem.text, "$(error) TSIfDef: HOK (unavailable)");
+  assert.equal(host.statusItem.tooltip, "Profile file was not found");
+
+  controller.reportProfileLoad("HOK");
+  assert.equal(host.statusItem.text, "$(versions) TSIfDef: HOK");
+  controller.dispose();
+});
+
 test("switching persists the chosen profile and refreshes the status bar", async () => {
   await withProfiles(["domestic", "hok"], async (root) => {
     const host = new FakeHost({

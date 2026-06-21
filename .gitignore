@@ -4,9 +4,3 @@ node_modules/
 *.tgz
 Build/.macrobuild/
 
-# The demo ships a tiny tsserver-plugin shim under node_modules so the workspace
-# TypeScript can resolve the "tsifdef" plugin by name without an install.
-!examples/demo/node_modules/
-!examples/demo/node_modules/tsifdef/
-!examples/demo/node_modules/tsifdef/**
-

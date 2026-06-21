@@ -29,6 +29,7 @@ export interface EffectiveProfile {
  */
 export class ProfileStateController {
   private statusItem: StatusBarItem | undefined;
+  private loadFailure: { readonly profile: string; readonly message: string } | undefined;
   private readonly disposables: Disposable[] = [];
 
   public constructor(
@@ -84,8 +85,19 @@ export class ProfileStateController {
       this.statusItem.tooltip = "No TSIfDef profile selected. Click to choose one.";
       return;
     }
+    if (this.loadFailure?.profile === profile) {
+      this.statusItem.text = `$(error) TSIfDef: ${profile} (unavailable)`;
+      this.statusItem.tooltip = this.loadFailure.message;
+      return;
+    }
     this.statusItem.text = `$(versions) TSIfDef: ${profile}`;
     this.statusItem.tooltip = `TSIfDef profile '${profile}' from ${sourceLabels[source ?? "vscode"]}. Click to switch.`;
+  }
+
+  /** Reflect whether the selected Profile definitions were actually loaded. */
+  public reportProfileLoad(profile: string, error?: string): void {
+    this.loadFailure = error === undefined ? undefined : { profile, message: error };
+    this.refresh();
   }
 
   /** Offer discovered profiles and persist the chosen one to VSCode configuration. */

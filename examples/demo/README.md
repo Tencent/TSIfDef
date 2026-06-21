@@ -27,7 +27,9 @@ From the repository root (`E:\TsIfDef`):
 1. `npm install` then `npm run build`.
 2. Press **F5** (or Run and Debug -> "Run TSIfDef Extension"). This launches an
    Extension Development Host with `examples/demo` already open.
-3. In the dev host:
+3. Work in the **second** window whose title contains
+   `[Extension Development Host]`, not the original repository window.
+4. In the dev host:
    - The status bar shows `TSIfDef: HOK` (the demo sets `tsifdef.profile` to
      `HOK` in `.vscode/settings.json`).
    - Open `src/region.ts`: the `#elif DOMESTIC` branch is **grayed** and
@@ -67,11 +69,10 @@ TypeScript language service projects the source before parsing it: inactive
 branches and `#` directive lines never produce type errors, completions, or
 duplicate-declaration diagnostics.
 
-The plugin is resolved by name `tsifdef` through a tiny shim committed at
-`examples/demo/node_modules/tsifdef/` that re-exports the built
-`dist/tsserver/plugin.js`. After `npm run build` at the repository root, open
-`src/region.ts` in the demo: with the `HOK` profile the file type-checks cleanly
-even though the raw text contains `#if` / `#elif` / `#else`. Edit
+The extension contributes the `tsifdef-tsserver` package to VS Code's TypeScript
+plugin probe path. After `npm install` and `npm run build` at the repository root,
+open `src/region.ts` in the demo: with the `HOK` profile the file type-checks
+cleanly even though the raw text contains `#if` / `#elif` / `#else`. Edit
 `tsconfig.json`'s plugin `profile` (or set `HOK_TS_PROFILE`) and restart the TS
 server to switch which branch the checker sees.
 

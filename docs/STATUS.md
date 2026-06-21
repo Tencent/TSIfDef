@@ -12,6 +12,17 @@ stages, reusing the CLI rather than adding macro semantics.
 
 ## Completed This Session
 
+- Fixed the VS Code tsserver plugin integration after the live server log showed
+  `Couldn't find tsifdef`: the extension now contributes a resolvable
+  `tsifdef-tsserver` package through `typescriptServerPlugins`, the demo
+  `tsconfig.json` uses that package name, and both bundled and workspace
+  TypeScript versions are enabled. The prior demo-local shim was ineffective
+  because VS Code did not add workspace `node_modules` to plugin probe paths.
+- Fixed the misleading VS Code state where the status bar showed a selected
+  Profile even when its `Build/macros/<profile>.json` could not be loaded (for
+  example, when testing in the repository window instead of the demo Extension
+  Development Host). The status bar now shows `<profile> (unavailable)` and the
+  extension reports the attempted path and load error; added a regression test.
 - Made the manual VS Code demo actually run end to end (outside the numbered
   roadmap):
   - Fixed the extension entry: `package.json` `main` now points at
@@ -244,9 +255,11 @@ stages, reusing the CLI rather than adding macro semantics.
 ## Verification
 
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
+- `require.resolve('tsifdef-tsserver')`: passed; resolves to
+  `dist/tsserver/plugin.js` from the extension root.
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 98 tests.
+- `npm test`: passed; 99 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
   tsserver plugin, executable bin, source maps, declarations, and package
   metadata.
