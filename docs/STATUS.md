@@ -4,14 +4,25 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CORE-006 - Core robustness suite`
+`CLI-001 - Profile loading and precedence`
 
-Expand malformed-input, lexical-edge, expression-recovery, and projection
-invariant coverage. Use failures to harden the existing core APIs without
-starting CLI work. Define explicit acceptance criteria before implementation.
+Define concrete acceptance criteria, then load and validate JSON profiles and
+implement profile selection precedence. Explicit CLI selection must override
+`HOK_TS_PROFILE`; Junction inference remains development-only.
 
 ## Completed This Session
 
+- Completed `CORE-006`.
+- Defined explicit robustness acceptance criteria before implementation.
+- Added malformed-nesting recovery and source-ordered diagnostic coverage.
+- Added malformed-expression recovery and bounded UTF-16 diagnostic coverage.
+- Added lexical-boundary golden coverage across comments, strings, templates,
+  template expressions, and regular expressions.
+- Added a deterministic 100-sample projection corpus covering mixed line
+  endings, Chinese text, surrogate pairs, malformed directives, masking,
+  bounded ranges, length/newline preservation, and idempotence.
+- Confirmed the existing core APIs satisfy the new suite without semantic
+  changes.
 - Completed `CORE-005`.
 - Added the shared `projectSource` entry point and reusable range masking.
 - Merged overlapping directive/inactive ranges and rejected invalid ranges.
@@ -54,7 +65,7 @@ starting CLI work. Define explicit acceptance criteria before implementation.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 26 tests.
+- `npm test`: passed; 30 tests.
 - `npm pack --dry-run`: passed (`CORE-001`); package contains only `dist` and package
   metadata.
 
@@ -72,6 +83,6 @@ starting CLI work. Define explicit acceptance criteria before implementation.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CORE-006`. Start by writing concrete robustness acceptance criteria
-and adversarial tests around the existing scanner, expression, conditional, and
-projection APIs. Do not begin CLI work until this task passes and is pushed.
+complete `CLI-001`. Start by defining profile schema, lookup inputs, selection
+precedence, and failure behavior as acceptance criteria. Keep profile loading
+separate from command parsing so later emit/check/watch commands reuse it.

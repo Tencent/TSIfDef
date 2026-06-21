@@ -44,14 +44,27 @@ Evaluate nested `#if/#elif/#else/#endif` groups and active `#error` directives.
 Mask inactive code with spaces while preserving CR, LF, total UTF-16 length,
 and offsets. Add golden tests for CRLF, Chinese text, and surrogate pairs.
 
-### CORE-006 - Core robustness suite (`ACTIVE`)
+### CORE-006 - Core robustness suite (`DONE`)
 
 Cover malformed nesting, expression errors, false directives, and projection
 invariants with golden and property-oriented tests.
 
+Acceptance criteria:
+
+- Malformed nesting produces stable, source-ordered diagnostics and never
+  exposes inactive text after recovery.
+- Empty, incomplete, and multiply malformed expressions return bounded UTF-16
+  diagnostics without throwing; later directives are still analyzed.
+- Directive lookalikes across comments, strings, templates, template
+  expressions, and regular expressions have golden coverage.
+- For a deterministic corpus containing mixed line endings, non-ASCII text,
+  surrogate pairs, and malformed directives, projection preserves total UTF-16
+  length and every CR/LF offset, masks every reported range, and is idempotent.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
+
 ## M2 - CLI
 
-### CLI-001 - Profile loading and precedence (`TODO`)
+### CLI-001 - Profile loading and precedence (`ACTIVE`)
 
 Load JSON profiles and implement explicit CLI profile and
 `HOK_TS_PROFILE` precedence. Junction inference is development-only.
