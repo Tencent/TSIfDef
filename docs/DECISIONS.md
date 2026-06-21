@@ -109,3 +109,16 @@ or evaluate macro rules independently.
 
 Reason: VSCode, tsserver, CLI, and CI need one projection implementation and
 must preserve exact source offsets, including surrogate pairs.
+
+## D010 - Profile selection is separate from profile loading
+
+Date: 2026-06-21
+
+Profile selection returns a name and its source using fixed precedence: CLI,
+`HOK_TS_PROFILE`, VSCode local configuration, then Junction inference. Junction
+inference requires an explicit development-mode opt-in. Loading separately
+reads and validates an immutable boolean macro map from UTF-8 JSON.
+
+Reason: emit, check, watch, VSCode, and CI must share precedence and validation
+without coupling those rules to a particular command-line parser. Formal builds
+must never infer their target environment from a developer workstation.

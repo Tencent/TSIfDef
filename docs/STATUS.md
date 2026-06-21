@@ -4,14 +4,23 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CLI-001 - Profile loading and precedence`
+`CLI-002 - Emit command`
 
-Define concrete acceptance criteria, then load and validate JSON profiles and
-implement profile selection precedence. Explicit CLI selection must override
-`HOK_TS_PROFILE`; Junction inference remains development-only.
+Define concrete acceptance criteria, then project source files into
+`Build/.macrobuild/<PROFILE>` without modifying tracked source directories.
+Reuse the shared core projection and CLI profile module.
 
 ## Completed This Session
 
+- Completed `CLI-001`.
+- Added UTF-8 JSON profile loading with immutable null-prototype definition
+  maps, BOM support, macro schema validation, and stable load error codes.
+- Added fixed CLI, environment, VSCode, and development Junction selection
+  precedence with clear missing/blank selection errors.
+- Kept selection, profile loading, Junction inference, and future command-line
+  parsing as separate concerns.
+- Added focused profile loading, failure, precedence, and inference-gating
+  tests.
 - Completed `CORE-006`.
 - Defined explicit robustness acceptance criteria before implementation.
 - Added malformed-nesting recovery and source-ordered diagnostic coverage.
@@ -65,7 +74,7 @@ implement profile selection precedence. Explicit CLI selection must override
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 30 tests.
+- `npm test`: passed; 34 tests.
 - `npm pack --dry-run`: passed (`CORE-001`); package contains only `dist` and package
   metadata.
 
@@ -83,6 +92,6 @@ implement profile selection precedence. Explicit CLI selection must override
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CLI-001`. Start by defining profile schema, lookup inputs, selection
-precedence, and failure behavior as acceptance criteria. Keep profile loading
-separate from command parsing so later emit/check/watch commands reuse it.
+complete `CLI-002`. Define source discovery, output mapping, cleanup behavior,
+diagnostic failure rules, and non-destructive guarantees before implementing
+the command. Generated content must stay under `Build/.macrobuild/<PROFILE>`.

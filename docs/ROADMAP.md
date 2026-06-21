@@ -64,12 +64,26 @@ Acceptance criteria:
 
 ## M2 - CLI
 
-### CLI-001 - Profile loading and precedence (`ACTIVE`)
+### CLI-001 - Profile loading and precedence (`DONE`)
 
 Load JSON profiles and implement explicit CLI profile and
 `HOK_TS_PROFILE` precedence. Junction inference is development-only.
 
-### CLI-002 - Emit command (`TODO`)
+Acceptance criteria:
+
+- UTF-8 JSON profile files load into an immutable macro definition map and
+  reject unreadable files, malformed JSON, invalid macro names, and non-boolean
+  values with stable error codes.
+- Selection precedence is explicit CLI profile, `HOK_TS_PROFILE`, VSCode local
+  profile, then development-only Junction inference.
+- Junction inference is never invoked unless explicitly enabled and all higher
+  priority sources are absent.
+- Missing and blank explicit selections fail clearly; a blank environment
+  variable behaves as unset.
+- Profile loading and selection remain independent of command parsing and have
+  focused tests.
+
+### CLI-002 - Emit command (`ACTIVE`)
 
 Project source files into `Build/.macrobuild/<PROFILE>` without modifying the
 source tree.
