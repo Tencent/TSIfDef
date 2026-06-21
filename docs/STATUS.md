@@ -12,6 +12,12 @@ with generated output only under `Build/.macrobuild`, and document results.
 
 ## Completed This Session
 
+- Clarified that macros are external, project-global Profile inputs which
+  source files, imports, and file order cannot define or mutate.
+- Required future tsserver integration to analyze each complete in-memory
+  snapshot before returning a complete equal-length projected snapshot.
+- Made packaged one-shot emit/check uncached and retained caching only for
+  watch or explicit programmatic incremental emission.
 - Completed `CLI-004`.
 - Added SHA-256 incremental cache keys covering source content, sorted profile
   definitions, core preprocessor version, and macro-config version.
@@ -120,6 +126,15 @@ with generated output only under `Build/.macrobuild`, and document results.
   change encoding.
 - Raw macro source is intentionally not valid TypeScript. Any tool invoking the
   TypeScript parser or ESLint must consume the projected view, not raw source.
+- Macro definitions are external and immutable for a selected Profile. Source
+  `#define`, import order, and cross-file conditional pairing are unsupported.
+- The future tsserver plugin must analyze each complete current snapshot before
+  returning a complete projected snapshot; slice reads cannot be projected in
+  isolation, and unsaved text must not be replaced by disk content.
+- Incremental caching is optional optimization only. Full uncached projection
+  remains the reference behavior; cache failure must degrade to a miss and
+  cached output must equal uncached output byte-for-byte. Packaged one-shot
+  emit/check are uncached; packaged watch enables the cache.
 
 ## Handoff
 

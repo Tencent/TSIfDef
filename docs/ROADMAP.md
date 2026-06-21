@@ -121,7 +121,7 @@ Acceptance criteria:
   skipped, and no discovered profiles is an error.
 - Programmatic one/all-profile behavior and packaged CLI output are tested.
 
-### CLI-004 - Watch and incremental cache (`DONE`)
+### CLI-004 - Watch and optional incremental cache (`DONE`)
 
 Add watch mode and a cache key containing source content, profile definition,
 preprocessor version, and macro-config version.
@@ -140,6 +140,11 @@ Acceptance criteria:
   arrive while a rebuild is running.
 - Cache invalidation and watch scheduling tests use explicit hooks rather than
   timing-sensitive sleeps.
+- Cache use is never required for correctness: uncached projection is the
+  reference behavior, cache failures become misses, and cached/uncached output
+  must be byte-for-byte identical.
+- Packaged one-shot `emit` and `check` run uncached; watch is the only packaged
+  command that enables the incremental cache.
 
 ### CLI-005 - TsScripts pilot integration (`ACTIVE`)
 
@@ -154,7 +159,18 @@ commands and observed build constraints.
 
 ## M4 - TypeScript Server Plugin
 
-### TSS-001 - Snapshot projection (`TODO`)
+### TSS-001 - Whole-file snapshot projection (`TODO`)
+
+Acceptance criteria:
+
+- Read every current snapshot with `getText(0, getLength())`, analyze all
+  per-file directive pairs, and return one complete equal-length projected
+  `ScriptSnapshot`; never infer macro state from a requested text slice.
+- Use the in-memory snapshot, including unsaved edits, rather than rereading
+  the file from disk.
+- Apply one externally selected, read-only Profile consistently to every file;
+  imports and file order never mutate macro definitions.
+
 ### TSS-002 - Profile version and project invalidation (`TODO`)
 ### TSS-003 - TypeScript 5.5.4 language-service integration tests (`TODO`)
 

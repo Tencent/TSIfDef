@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -86,5 +86,6 @@ test("runs the packaged emit command", async () => {
       (await readFile(join(root, "Build", ".macrobuild", "HOK", "main.ts"), "utf8")).includes("const ok"),
       true,
     );
+    await assert.rejects(stat(join(root, "Build", ".macrobuild", ".cache")));
   });
 });

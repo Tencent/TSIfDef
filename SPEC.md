@@ -58,6 +58,12 @@ defined(NAME)
 
 不支持源码内 `#define`、文本替换宏和函数宏。宏值全部来自受版本管理的 Profile 或构建参数。
 
+宏定义是一次检查、投影或语言服务会话的外部全局输入。同一个选定 Profile
+对项目内所有文件一致生效，处理单个文件时宏表只读且不会被源码改变。`import`、
+模块加载顺序和依赖图不传播、增加或覆盖宏；任何源码中的 `#define` 都是错误，
+不能影响当前文件或其他文件。条件指令的嵌套和配对则限制在单个物理文件内，
+不能从一个文件跨越到另一个文件。
+
 推荐宏包围完整的 import/export、声明、语句、类成员或对象属性，不在表达式参数列表中间插入宏，避免生成语法残片。
 
 ## 4. Profile
@@ -145,6 +151,14 @@ host.getScriptSnapshot = fileName => {
 };
 ```
 
+`getScriptSnapshot(fileName)` 获得的是一个文件的完整 `ScriptSnapshot`，而
+`ScriptSnapshot.getText(start, end)` 才是从该快照读取片段。插件不能根据
+tsserver 某一次请求的片段局部判断宏状态：它必须先通过
+`snapshot.getText(0, snapshot.getLength())` 读取当前版本的完整文件，扫描并校验
+该文件内全部条件指令，再创建同长度的完整投影快照返回。之后 tsserver 无论读取
+哪个片段，看到的都必须来自这份已经按整文件求值的投影。未保存编辑内容同样以
+当前快照的完整文本为准，不能回退读取磁盘文件。
+
 还需要把 Profile 版本加入 `getScriptVersion()`，避免 tsserver 复用旧 AST。Profile 切换后标记 Project dirty；如果缓存刷新不稳定，则由 VSCode 命令执行 `TypeScript: Restart TS Server`。
 
 效果是 inactive 代码：
@@ -180,7 +194,12 @@ tsifdef watch --profile HOK
 tsifdef check --all
 ```
 
-CLI 需要支持增量缓存，缓存键至少包含：
+增量缓存不是宏正确性的组成部分。无缓存地重新读取完整源文件并投影是基准行为，
+一次性 `emit`/`check` 默认使用这一基准行为，它也用于验证缓存实现。只有在真实工程测量表明 watch
+或重复 emit 的全量投影产生明显延迟时，才启用可选增量缓存。删除缓存、缓存损坏
+或缓存未命中必须安全退化为完整重算，输出结果必须与禁用缓存逐字节一致。
+
+启用缓存时，缓存键至少包含：
 
 ```text
 源文件内容

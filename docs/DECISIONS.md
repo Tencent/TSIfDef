@@ -159,3 +159,44 @@ the profile each time and serializes/coalesces rebuilds.
 
 Reason: cache corruption or invalidation must never change macro semantics, and
 watch must preserve the same no-partial-tree guarantee as a one-shot emit.
+
+## D014 - Macro definitions are external, global, and immutable
+
+Date: 2026-06-21
+
+One selected Profile supplies the same read-only macro map to every source file
+in a check, emit, watch rebuild, or language-service view. Source files cannot
+define or mutate macros. Imports, dependency order, and module evaluation do
+not affect macro values. Conditional nesting must open and close within one
+physical file.
+
+Reason: regional build selection is project configuration, not C/C++-style
+translation-unit state, and must remain deterministic regardless of imports.
+
+## D015 - Tsserver projection always analyzes a whole snapshot
+
+Date: 2026-06-21
+
+The plugin obtains the complete current file text from
+`getScriptSnapshot(fileName)` using `getText(0, getLength())`, analyzes every
+directive in that file, and returns a complete equal-length projected snapshot.
+Later slice reads are served from that projection. Unsaved snapshots are never
+replaced with disk content.
+
+Reason: branch activity and directive pairing cannot be determined correctly
+from an arbitrary requested slice, especially when its opening directive lies
+outside that slice.
+
+## D016 - Uncached projection is the correctness baseline
+
+Date: 2026-06-21
+
+Caching is optional and justified only by measured repeated-projection cost.
+Packaged one-shot emit and check commands run uncached; packaged watch enables
+the incremental cache.
+Removing, disabling, corrupting, or missing a cache must cause full recompute,
+and cached output must be byte-for-byte identical to uncached output. Cache
+state never decides macro semantics or whether diagnostics exist.
+
+Reason: invalidation adds failure modes. Correctness and debuggability take
+priority over avoiding scans whose performance cost has not been demonstrated.

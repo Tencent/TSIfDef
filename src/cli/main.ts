@@ -73,7 +73,6 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
       ...(values.source === undefined ? {} : { sourceRoot: values.source }),
       profileName: selected.profile,
       definitions,
-      cache: { macroConfigVersion },
     });
     process.stdout.write(`Emitted ${result.files.length} file(s) to ${result.outputRoot}\n`);
     return CliExitCode.success;
@@ -124,7 +123,7 @@ function parseOptions(
   command: "emit" | "check" | "watch",
 ): Record<string, string | undefined> {
   const values: Record<string, string | undefined> = {};
-  const valueOptions = command === "check"
+  const valueOptions = command !== "watch"
     ? ["--profile", "--root", "--source"]
     : ["--profile", "--root", "--source", "--config-version"];
   for (let offset = 0; offset < args.length; offset += 1) {
