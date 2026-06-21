@@ -55,3 +55,19 @@ support.
 Reason: VSCode extensions and tsserver plugins must load reliably across the
 supported Node hosts, including hosts older than the development machine's
 Node 24 runtime.
+
+## D006 - C/C++-style directive lines
+
+Date: 2026-06-21
+
+Directives use dedicated lines such as `#if HOK`, with `#` as the first
+non-whitespace character. They are not wrapped in TypeScript comments. Text that
+looks like a directive inside a string, template string, line comment, or block
+comment is not a directive.
+
+Every projected view masks all directive-line characters as spaces while
+preserving line endings and UTF-16 length, regardless of whether the surrounding
+branch is active.
+
+Reason: The requested source syntax should match C/C++ preprocessing syntax.
+Raw macro source is therefore not passed directly to TypeScript or ESLint.

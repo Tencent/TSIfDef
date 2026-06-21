@@ -17,7 +17,7 @@ HOK 工程使用 Unity、C#、Puerts 和 TypeScript，国内与海外环境存�
 
 采用以下三层组合：
 
-1. 注释型 `#if` 预处理器负责正确性，在 `tsc` 前剔除未激活代码。
+1. C/C++ 风格的 `#if` 预处理器负责正确性，在 `tsc` 前剔除未激活代码。
 2. TypeScript Server Plugin 劫持 `ScriptSnapshot`，让编辑器语言服务忽略未激活代码。
 3. VSCode Extension 负责 Profile 切换、灰显、折叠、状态栏和本地命令。
 
@@ -25,17 +25,21 @@ HOK 工程使用 Unity、C#、Puerts 和 TypeScript，国内与海外环境存�
 
 ## 3. 宏语法
 
-宏指令使用合法 TypeScript 注释：
+宏指令使用 C/C++ 风格的独占行语法，`#` 必须是该行第一个非空白字符：
 
 ```ts
-// #if HOK
+#if HOK
 const data = CSharp.HOK.PlayerData.Get();
-// #elif DOMESTIC
+#elif DOMESTIC
 const data = CSharp.SMoba.PlayerData.Get();
-// #else
-// #error Unknown region
-// #endif
+#else
+#error Unknown region
+#endif
 ```
+
+原始文件在宏处理前不一定是合法 TypeScript。CLI 和 TypeScript Server Plugin
+提供给 `tsc`、ESLint 和语言服务的投影视图必须等长遮盖所有宏指令行。字符串、
+模板字符串、行注释和块注释中的 `#if` 等文本不是宏指令。
 
 第一阶段只支持：
 
@@ -89,13 +93,14 @@ CLI --profile
 
 ## 5. 等长遮盖
 
-预处理时不直接删除未激活代码，而是将非换行字符替换为空格：
+预处理时不直接删除未激活代码，而是将未激活代码以及所有宏指令行的非换行
+字符替换为空格：
 
 ```text
 原始源码
   -> 计算 inactive ranges
   -> 保留 CR/LF 和文本总长度
-  -> inactive 字符替换为空格
+  -> inactive 字符和宏指令行字符替换为空格
 ```
 
 这样可保证：

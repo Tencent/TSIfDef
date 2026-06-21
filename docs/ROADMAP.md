@@ -26,9 +26,9 @@ Acceptance criteria:
 
 ### CORE-002 - Directive scanner (`ACTIVE`)
 
-Recognize line-comment directives without matching text inside strings,
-template strings, or block comments. Return UTF-16 source ranges and structural
-diagnostics.
+Recognize C/C++-style directives whose `#` is the first non-whitespace
+character on a line, without matching text inside strings, template strings,
+or comments. Return UTF-16 source ranges and structural diagnostics.
 
 ### CORE-003 - Expression parser (`TODO`)
 

@@ -6,12 +6,15 @@ Last updated: 2026-06-21
 
 `CORE-002 - Directive scanner`
 
-The next session should implement only this task. It must recognize directive
-comments without treating lookalikes in strings, template strings, or block
+The next session should implement only this task. It must recognize C/C++-style
+directive lines without treating lookalikes in strings, template strings, or
 comments as directives, and return UTF-16 ranges plus structural diagnostics.
 
 ## Completed This Session
 
+- Changed the macro syntax from TypeScript comment directives to C/C++-style
+  directive lines such as `#if HOK`.
+- Updated the specification to require projection to mask every directive line.
 - Completed `CORE-001`.
 - Created the npm package, TypeScript build, typecheck, and test configurations.
 - Pinned TypeScript 5.5.4 and generated `package-lock.json`.
@@ -35,6 +38,8 @@ comments as directives, and return UTF-16 ranges plus structural diagnostics.
 - PowerShell's default output encoding displayed `SPEC.md` as mojibake. Read it
   explicitly as UTF-8 when needed; do not rewrite the specification merely to
   change encoding.
+- Raw macro source is intentionally not valid TypeScript. Any tool invoking the
+  TypeScript parser or ESLint must consume the projected view, not raw source.
 
 ## Handoff
 
