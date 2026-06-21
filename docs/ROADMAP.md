@@ -33,7 +33,8 @@ or comments. Return UTF-16 source ranges and structural diagnostics.
 ### CORE-003 - Expression parser (`DONE`)
 
 Implement identifiers, `defined(NAME)`, `!`, `&&`, `||`, and parentheses with
-precedence and unknown-macro diagnostics.
+precedence. The original unknown-macro diagnostic behavior is superseded by
+INT-002: absent identifiers evaluate to `false`.
 
 ### CORE-004 - Conditional evaluator (`DONE`)
 
@@ -337,6 +338,27 @@ Acceptance criteria:
   returns `0` for success including skips, `1` for macro or type diagnostics, and
   `2` for configuration or I/O failure.
 - `npm run build`, `npm run typecheck`, and `npm test` pass.
-### INT-002 - Existing build-pipeline integration (`TODO`)
+### INT-002 - Existing build-pipeline integration (`ACTIVE`)
+
+Acceptance criteria:
+
+- The only TSIfDef project configuration is the fixed JSON file `tsifdef` beside
+  `package.json`; it maps Profile names to lists of enabled macros and contains
+  no source, tsconfig, output, include/exclude, or declaration paths.
+- Any macro absent from the selected Profile evaluates to `false` in core,
+  VSCode, tsserver, CLI, build, and debug flows without an unknown-macro
+  diagnostic. `defined(NAME)` still tests explicit membership.
+- The existing build configuration and TypeScript Program determine the complete
+  participating file set. TSIfDef projects every TypeScript-family file actually
+  read by the build and does not maintain a parallel build graph.
+- The existing `init.mjs -> compile.mjs -> build.mjs` flow changes only at the
+  TypeScript invocation boundary; projected input feeds the original tsc output,
+  Babel, PFBS/V8CC, source-map, and distribution stages.
+- Legacy `Build/macros/*.json` and `Build/macros/pipeline.json` configuration is
+  migrated away; build/typecheck orchestration receives build inputs from the
+  caller rather than macro configuration.
+- `npm run build`, `npm run typecheck`, and `npm test` pass, with an integration
+  proving files included through tsconfig/imports are projected without a
+  TSIfDef source list.
 ### INT-003 - CI jobs (`TODO`)
 ### REL-001 - Version-matched VSIX and tgz artifacts (`TODO`)

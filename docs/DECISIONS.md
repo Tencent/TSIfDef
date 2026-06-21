@@ -379,3 +379,28 @@ debug program path consume that same value.
 Reason: separate HOK and Domestic launch configurations allowed the editor and
 tsserver to display Domestic while Node ran an HOK build. One active Profile
 must determine every view and execution stage.
+
+## D027 - Macro configuration is fixed, minimal, and build-graph free
+
+Date: 2026-06-21
+
+The project macro configuration is a JSON file with the fixed filename
+`tsifdef`, located beside `package.json`. It maps Profile names directly to lists
+of enabled macros. Macros absent from the selected list evaluate to `false`;
+bare absent identifiers do not produce an `unknown-macro` diagnostic, while
+`defined(NAME)` continues to test explicit membership.
+
+The file contains no source root, tsconfig, output directory, include/exclude,
+declaration path, or other build graph data. Existing build.json/package scripts,
+tsconfig, and build scripts exclusively determine participating files. TSIfDef
+must project every TypeScript-family file actually consumed by that build graph.
+
+This decision supersedes D007's unknown-macro diagnostic, D010's profile file
+location, D012's `Build/macros` discovery, D018's `Build/macros` VSCode
+discovery, and D023's `Build/macros/pipeline.json` configuration. Those entries
+remain historical records of the implemented prototype and must be migrated in
+INT-002.
+
+Reason: TSIfDef owns macro semantics, not the project's build graph. Requiring a
+second source list or tsconfig creates drift and allows editor, build, and debug
+to consume different programs.

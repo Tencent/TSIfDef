@@ -56,7 +56,9 @@ defined(NAME)
 ()
 ```
 
-不支持源码内 `#define`、文本替换宏和函数宏。宏值全部来自受版本管理的 Profile 或构建参数。
+不支持源码内 `#define`、文本替换宏和函数宏。宏值全部来自与 `package.json`
+同目录的固定配置文件 `tsifdef` 或构建时选择的 Profile。表达式中的标识符若未列入
+当前 Profile，值为 `false`；`#if NONE_EXIST_MACRO` 是合法表达式，不产生未知宏诊断。
 
 宏定义是一次检查、投影或语言服务会话的外部全局输入。同一个选定 Profile
 对项目内所有文件一致生效，处理单个文件时宏表只读且不会被源码改变。`import`、
@@ -66,25 +68,21 @@ defined(NAME)
 
 推荐宏包围完整的 import/export、声明、语句、类成员或对象属性，不在表达式参数列表中间插入宏，避免生成语法残片。
 
-## 4. Profile
+## 4. Profile 与配置文件
 
 ```json
-// Build/macros/hok.json
+// 与 package.json 同目录，固定文件名：tsifdef
 {
-  "HOK": true,
-  "DOMESTIC": false,
-  "GLOBAL_GENERAL": true
+  "HOK": ["HOK", "GLOBAL_GENERAL"],
+  "DOMESTIC": ["DOMESTIC"]
 }
 ```
 
-```json
-// Build/macros/domestic.json
-{
-  "HOK": false,
-  "DOMESTIC": true,
-  "GLOBAL_GENERAL": false
-}
-```
+`tsifdef` 只描述每个 Profile 中启用的宏。未列出的宏全部为 `false`。该文件不得包含
+`source`、`tsconfig`、`outDir`、include/exclude 或任何构建文件清单。现有
+`build.json`、`package.json` scripts、`tsconfig` 或构建脚本是 build graph 的唯一
+来源；TSIfDef 必须透明处理该 build graph 实际纳入的全部 TypeScript 文件，不能要求
+工程为 TSIfDef 重复配置输入文件。
 
 Profile 来源优先级固定为：
 
@@ -124,7 +122,7 @@ CLI --profile
 - 命令切换 Profile。
 - 使用 `TextEditorDecorationType` 灰显 inactive ranges。
 - 使用 `FoldingRangeProvider` 折叠 inactive ranges。
-- 提供宏结构错误、未知宏和不配对指令诊断。
+- 提供宏结构错误和不配对指令诊断；未配置宏按 `false` 求值，不报未知宏。
 - 通知 TypeScript Server Plugin 当前 Profile。
 - 驱动本地 CLI 的 emit、watch 和 check。
 
@@ -269,7 +267,7 @@ VSCode 市场中应只考虑官方 `oven.bun-vscode`。第三方 `Pandy.bun` 仅
 必须覆盖：
 
 - `if/elif/else` 嵌套和表达式优先级。
-- 未配对指令、未知宏和 `#error`。
+- 未配对指令、缺省为 `false` 的未配置宏和 `#error`。
 - 字符串、模板字符串和注释中的伪指令。
 - CRLF、中文和 UTF-16 surrogate pair offset。
 - VSCode 未保存文档的 Snapshot。

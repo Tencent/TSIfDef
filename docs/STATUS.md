@@ -6,12 +6,18 @@ Last updated: 2026-06-21
 
 `INT-002 - Existing build-pipeline integration`
 
-Insert the macro emit step ahead of the existing `init.mjs -> compile.mjs ->
-build.mjs` pipeline so projected source feeds `tsc`, Babel, and downstream
-stages, reusing the CLI rather than adding macro semantics.
+Integrate projection at the existing TypeScript invocation boundary. The
+existing build graph determines every participating file; TSIfDef reads only the
+fixed `tsifdef` macro/Profile file beside `package.json` and must not require a
+parallel source or tsconfig configuration.
 
 ## Completed This Session
 
+- Recorded the revised INT-002 product contract before implementation: the fixed
+  JSON file `tsifdef` lives beside `package.json`, contains only Profile-to-active
+  macro lists, and absent macro identifiers evaluate to `false`. Existing build
+  configuration exclusively owns source, tsconfig, output, and participating
+  files; legacy `Build/macros`/`pipeline.json` configuration will be migrated.
 - Removed Profile-specific debug launches after live testing exposed a split
   state (Domestic editor with HOK runtime). The demo now has one
   `Debug Demo (Active Profile)` launch; VS Code task and launch variable
@@ -321,8 +327,8 @@ stages, reusing the CLI rather than adding macro semantics.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-begin `INT-002`. Insert `tsifdef emit`/`pipeline` ahead of the existing
-`init.mjs -> compile.mjs -> build.mjs` flow so `tsc` and Babel consume the
-projected tree under `Build/.macrobuild/<PROFILE>`, not raw macro source. Keep
-the integration a thin wrapper over the CLI; do not duplicate macro semantics,
-and preserve the no-partial-tree and encoding-safety guarantees.
+continue `INT-002` from D027. Implement the fixed `tsifdef` configuration beside
+`package.json`, Profile-to-enabled-macro loading, and absent-identifier-as-false
+semantics first. Then wrap the existing TypeScript invocation so its own
+tsconfig/import graph determines every projected file before Babel and later
+stages; do not add source, tsconfig, or output paths to TSIfDef configuration.
