@@ -4,13 +4,26 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CLI-006 - Source encoding safety`
+`VSC-001 - Extension shell and profile state`
 
-Reject malformed UTF-8 source input before analysis or projection, preserve
-existing emit output on failure, and report the relative source file through
-stable programmatic and packaged CLI failures.
+Create the VSCode extension shell that displays the active Profile in the status
+bar, provides a command to switch Profiles, and resolves the Profile through the
+shared core selection precedence without duplicating macro semantics.
 
 ## Completed This Session
+
+- Completed `CLI-006`.
+- Added a shared `readSourceText` loader using a fatal, BOM-preserving UTF-8
+  `TextDecoder` so malformed bytes raise `SourceEncodingError` instead of
+  silently becoming `U+FFFD`.
+- Routed check and emit source reads through the loader, identifying the
+  relative source file; emit reads and analyzes every file before any output
+  replacement, so encoding failures cannot expose partial output.
+- Confirmed the loader rejects exactly the four known non-UTF-8 TsScripts files
+  and accepts the remaining 578, and that a correctly encoded literal `U+FFFD`
+  remains valid source.
+- Added programmatic and packaged CLI tests covering invalid UTF-8 for check and
+  emit, exit code `2` with file context, and output preservation on failure.
 
 - Completed `CLI-005` and documented the exact experiment in
   `docs/TSSCRIPTS_PILOT.md`.
@@ -125,7 +138,7 @@ stable programmatic and packaged CLI failures.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 45 tests.
+- `npm test`: passed; 50 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, executable bin,
   source maps, declarations, and package metadata.
 - TsScripts original HOK typecheck: passed.
@@ -134,6 +147,8 @@ stable programmatic and packaged CLI failures.
 - TsScripts projected HOK typecheck: passed.
 - TsScripts projected Domestic typecheck: blocked by missing Domestic
   declaration packages.
+- TsScripts encoding scan: `readSourceText` rejected exactly the four known
+  non-UTF-8 files and accepted the remaining 578.
 
 ## Known Issues
 
@@ -154,13 +169,16 @@ stable programmatic and packaged CLI failures.
   remains the reference behavior; cache failure must degrade to a miss and
   cached output must equal uncached output byte-for-byte. Packaged one-shot
   emit/check are uncached; packaged watch enables the cache.
-- Four TsScripts source files contain invalid UTF-8 byte sequences. Current
-  source loading silently produces replacement characters and changes emitted
-  bytes; one-shot emit is not safe for those files until `CLI-006` is complete.
+- Four TsScripts source files contain invalid UTF-8 byte sequences
+  (`CChampionshipSelectTicketLogic.mts`, `CChampionshipSelectTicketView.mts`,
+  `CChampionshipTicketItemView.mts`, `Kernel/shortcuts_all.ts`). Check and emit
+  now reject them with `SourceEncodingError` and exit code `2`; they must be
+  re-encoded as UTF-8 before they can be processed. Supporting legacy encodings
+  would require an explicit future configuration and byte/offset design.
 
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CLI-006`. Add shared validated UTF-8 source loading for check and
-emit, retain a correctly encoded literal `U+FFFD`, fail before output
-replacement, and cover both programmatic and packaged CLI behavior.
+begin `VSC-001`. The shared `core` selection precedence and profile loading
+already exist in `src/cli/profile.ts`; the VSCode extension must reuse them and
+must not reimplement macro scanning, evaluation, or projection.

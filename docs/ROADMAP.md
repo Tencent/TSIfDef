@@ -151,7 +151,7 @@ Acceptance criteria:
 Test against `E:\HOK_Trunk\Program\TsScripts`, then document the non-destructive
 commands and observed build constraints.
 
-### CLI-006 - Source encoding safety (`ACTIVE`)
+### CLI-006 - Source encoding safety (`DONE`)
 
 Reject source files that cannot be decoded as valid UTF-8 before analysis or
 projection.

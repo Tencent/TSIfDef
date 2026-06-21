@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 
 import { coreApiVersion, projectSource, type MacroDiagnostic } from "../core/index.js";
 import type { MacroDefinitions } from "../core/expression.js";
-import { discoverSourceFiles } from "./source-files.js";
+import { discoverSourceFiles, readSourceText } from "./source-files.js";
 
 export interface EmitOptions {
   readonly projectRoot: string;
@@ -67,8 +67,8 @@ export async function emitProject(options: EmitOptions): Promise<EmitResult> {
   let cacheHits = 0;
 
   for (const file of sourceFiles) {
-    const source = await readFile(file, "utf8");
     const relativePath = relative(sourceRoot, file);
+    const source = await readSourceText(file, relativePath);
     const key = options.cache === undefined
       ? ""
       : createProjectionCacheKey(

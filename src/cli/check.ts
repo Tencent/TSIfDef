@@ -1,10 +1,10 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 import { analyzeConditionals, type MacroDiagnostic } from "../core/index.js";
 import type { MacroDefinitions } from "../core/expression.js";
 import { loadProfileFile } from "./profile.js";
-import { discoverSourceFiles } from "./source-files.js";
+import { discoverSourceFiles, readSourceText } from "./source-files.js";
 
 export interface CheckProfile {
   readonly name: string;
@@ -31,13 +31,14 @@ export async function checkProject(options: CheckOptions): Promise<readonly Chec
   const diagnostics: CheckDiagnostic[] = [];
   for (const profile of options.profiles) {
     for (const file of files) {
-      const source = await readFile(file, "utf8");
+      const relativePath = relative(sourceRoot, file);
+      const source = await readSourceText(file, relativePath);
       for (const diagnostic of analyzeConditionals(source, profile.definitions).diagnostics) {
         const location = offsetLocation(source, diagnostic.range.start);
         diagnostics.push({
           ...diagnostic,
           profile: profile.name,
-          file: relative(sourceRoot, file),
+          file: relativePath,
           ...location,
         });
       }
