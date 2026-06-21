@@ -312,7 +312,31 @@ Acceptance criteria:
 
 ## M5 - Product Integration and Release
 
-### INT-001 - HOK and Domestic profile/typecheck pipeline (`TODO`)
+### INT-001 - HOK and Domestic profile/typecheck pipeline (`DONE`)
+
+Project and typecheck each Profile against its own declarations, reusing the CLI
+emit and core rather than adding macro semantics.
+
+Acceptance criteria:
+
+- A pipeline orchestration emits each Profile through the existing `emitProject`
+  and then typechecks that Profile's `tsconfig` against its own declarations; it
+  adds no new macro scanning, evaluation, or projection.
+- Per-Profile pipeline configuration (`tsconfig` path and required declaration
+  directories) is loaded from a versioned `Build/macros/pipeline.json`.
+- Each Profile resolves to one stable status: `passed`, `macro-diagnostics`
+  (typecheck skipped), `type-errors`, or `skipped-missing-declarations`; a macro
+  diagnostic prevents typecheck and preserves prior output behavior.
+- A Profile whose required declaration directories are absent is reported as a
+  skippable configuration status, not a hard failure, matching the TsScripts
+  workspace that lacks Domestic declarations.
+- The typecheck and directory-existence steps are injected so the orchestration
+  is testable without a real `tsc`, with a TypeScript 5.5.4 fixture proving a
+  clean tree passes and a type error is reported.
+- The packaged `tsifdef pipeline` command prints a per-Profile summary and
+  returns `0` for success including skips, `1` for macro or type diagnostics, and
+  `2` for configuration or I/O failure.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
 ### INT-002 - Existing build-pipeline integration (`TODO`)
 ### INT-003 - CI jobs (`TODO`)
 ### REL-001 - Version-matched VSIX and tgz artifacts (`TODO`)

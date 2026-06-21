@@ -311,3 +311,26 @@ Reason: SPEC section 7 requires that switching the Profile not reuse an AST buil
 for another Profile, while needless rebuilds on an unchanged Profile must be
 avoided. Gating invalidation on the version keeps reprojection correct and cheap,
 and injected hooks keep it testable without a live tsserver project.
+
+## D023 - The profile pipeline orchestrates emit and typecheck, missing declarations skip
+
+Date: 2026-06-21
+
+`runProfilePipeline` (`src/cli/pipeline.ts`) emits each Profile through the
+shared `emitProject` and then typechecks that Profile's `tsconfig`. Per-Profile
+configuration (tsconfig path and required declaration directories) lives in a
+versioned `Build/macros/pipeline.json`. Each Profile resolves to exactly one
+status: `passed`, `macro-diagnostics` (typecheck skipped), `type-errors`, or
+`skipped-missing-declarations`. The typecheck and directory-existence steps are
+injected; the default `tscTypecheckRunner` lazily loads the workspace TypeScript
+so `dist` keeps no static dependency on it. The packaged `pipeline` command
+returns `0` for success including skips, `1` for diagnostics, and `2` for
+configuration or I/O failure.
+
+A Profile whose required declaration directories are absent is a skippable
+configuration status, not a failure.
+
+Reason: the TsScripts workspace carries only one region's declarations, so a CI
+or local run must still succeed for the region it can build while clearly
+reporting the region it cannot. The pipeline adds no macro semantics; it composes
+the existing emit and core with `tsc`.

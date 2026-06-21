@@ -4,57 +4,49 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`INT-001 - HOK and Domestic profile/typecheck pipeline`
+`INT-002 - Existing build-pipeline integration`
 
-Establish the two-profile emit-and-typecheck pipeline so HOK and Domestic views
-each project and compile against their own declarations, reusing the CLI and core
-rather than adding new macro semantics.
+Insert the macro emit step ahead of the existing `init.mjs -> compile.mjs ->
+build.mjs` pipeline so projected source feeds `tsc`, Babel, and downstream
+stages, reusing the CLI rather than adding macro semantics.
 
 ## Completed This Session
 
+- Completed `INT-001`.
+- Added `runProfilePipeline` (`src/cli/pipeline.ts`) that emits each Profile
+  through the shared `emitProject` and then typechecks its `tsconfig`, resolving
+  one stable status per Profile: `passed`, `macro-diagnostics` (typecheck
+  skipped), `type-errors`, or `skipped-missing-declarations`.
+- Loaded per-Profile build configuration (tsconfig path and required declaration
+  directories) from a versioned `Build/macros/pipeline.json`.
+- Reported a Profile with absent required declaration directories as a skippable
+  configuration status rather than a failure, matching the TsScripts workspace
+  that lacks Domestic declarations.
+- Added a default `tscTypecheckRunner` (`src/cli/tsc-runner.ts`) that lazily
+  loads the workspace TypeScript so `dist` keeps no static TypeScript dependency,
+  and injected the typecheck and directory-existence steps for testability.
+- Added the packaged `tsifdef pipeline` command with a per-Profile summary and
+  stable exit codes: `0` success including skips, `1` diagnostics, `2` config/IO.
+- Added programmatic tests for passed, macro-diagnostics, type-errors, and
+  skipped-missing-declarations, config loading, a TypeScript 5.5.4 typecheck of a
+  projected tree, and a packaged pipeline run.
 - Completed `TSS-003`, finishing milestone M4.
 - Added a TypeScript 5.5.4 language-service integration suite over the
   projection-wrapping host covering completion, definition, find-all-references,
-  rename, and quick fix.
-- Confirmed completion at an active position excludes inactive-branch
-  identifiers, definition resolves to the active declaration, references and
-  rename touch only active occurrences (including across two files), and quick-fix
-  and diagnostic spans stay within the equal-length original document.
-- Asserted query and result positions are original-document offsets throughout.
-- Extracted the in-memory host into a shared `test/tsserver-fixtures.ts`
-  (`createMemoryHost`, `createWrappedService`, `offsetOf`) and refactored the
-  existing tsserver tests to use it; the helper resolves in-memory modules so
-  cross-file references work.
+  rename, and quick fix, asserting original-document offsets and that
+  inactive-branch code never participates.
+- Extracted the in-memory host into a shared `test/tsserver-fixtures.ts`.
 - Completed `TSS-002`.
 - Converted the host wrapper to read the active Profile through a live
-  `getProfile()` callback on every snapshot/version request, so a Profile change
-  takes effect without recreating the language service; no Profile passes raw
-  snapshots and versions through.
-- Added a `ProfileProjectionController` (`src/tsserver/project-controller.ts`)
-  that re-resolves the Profile on `reload()` and marks the project dirty only
-  when the resolved version changes, including none<->selected transitions.
-- Wired the controller into the plugin: it watches the macros directory, reloads
-  on change, and invalidates the project via `markAsDirty`/`updateGraph`/
-  `refreshDiagnostics`, with `TypeScript: Restart TS Server` as the documented
-  fallback.
-- Added controller unit tests and a TypeScript 5.5.4 integration confirming that
-  switching the Profile flips semantic diagnostics on the same language service
-  (the version change invalidates the cached AST).
+  `getProfile()` callback, and added a `ProfileProjectionController` that marks
+  the project dirty only when the resolved Profile version changes.
+- Wired the controller into the plugin with a macros-directory watch and
+  `markAsDirty`/`updateGraph`/`refreshDiagnostics` invalidation.
 - Completed `TSS-001`.
-- Added `wrapHostWithProjection` (`src/tsserver/host-projection.ts`) that wraps
-  `getScriptSnapshot` to read each complete snapshot via `getText(0, getLength())`,
-  project it through the shared `projectSource`, and return one equal-length
-  `ScriptSnapshot`; non-macro files and missing snapshots pass through.
-- Appended a Profile version to `getScriptVersion()` for macro files so tsserver
-  never reuses an AST built for a different Profile.
-- Added the tsserver plugin entry (`src/tsserver/plugin.ts`) that resolves one
-  external, read-only Profile via the shared `selectProfile` precedence and
-  loads it with `parseProfileDefinitions`, wraps the host, and returns the
-  native language service unchanged; no Profile selected disables projection.
-- Extracted `parseProfileDefinitions` from `loadProfileFile` so synchronous host
-  code and the async CLI share one profile validator.
-- Injected the `typescript` module into the wrapper so it is unit-testable and
-  the published `dist` keeps no runtime TypeScript dependency.
+- Added `wrapHostWithProjection` that returns an equal-length projected snapshot
+  per whole file and a Profile-versioned `getScriptVersion`, plus the plugin
+  entry resolving one external read-only Profile; the injected `typescript` keeps
+  `dist` dependency-free.
 - Added unit tests for equal-length projection, version suffixing, non-macro and
   missing-snapshot passthrough, and unsaved in-memory edits, plus two TypeScript
   5.5.4 language-service integrations confirming inactive-branch symbols are
@@ -231,7 +223,7 @@ rather than adding new macro semantics.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 89 tests.
+- `npm test`: passed; 96 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
   tsserver plugin, executable bin, source maps, declarations, and package
   metadata.
@@ -273,9 +265,8 @@ rather than adding new macro semantics.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-begin `INT-001`. Drive the existing `emitProject` and a `tsc` step per Profile so
-HOK and Domestic each project into `Build/.macrobuild/<PROFILE>` and typecheck
-against their own declarations. The TsScripts pilot found the Domestic
-declarations are absent in this workspace, so design the pipeline to report a
-missing-declaration profile as a clear, skippable configuration state rather than
-a hard failure, and keep all macro semantics in the shared core.
+begin `INT-002`. Insert `tsifdef emit`/`pipeline` ahead of the existing
+`init.mjs -> compile.mjs -> build.mjs` flow so `tsc` and Babel consume the
+projected tree under `Build/.macrobuild/<PROFILE>`, not raw macro source. Keep
+the integration a thin wrapper over the CLI; do not duplicate macro semantics,
+and preserve the no-partial-tree and encoding-safety guarantees.

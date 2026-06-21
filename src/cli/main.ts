@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 
 import { checkProject, loadAllProfiles, type CheckProfile } from "./check.js";
 import { assertEmitProfileName, emitProject, EmitDiagnosticsError } from "./emit.js";
+import { loadPipelineConfig, runProfilePipeline } from "./pipeline.js";
+import { tscTypecheckRunner } from "./tsc-runner.js";
 import { loadProfileFile, selectProfile } from "./profile.js";
 import { watchProfile } from "./watch.js";
 
@@ -15,11 +17,14 @@ export const CliExitCode = {
 export async function runCli(args: readonly string[], cwd = process.cwd()): Promise<number> {
   try {
     const command = args[0];
-    if (command !== "emit" && command !== "check" && command !== "watch") {
-      throw new Error("Usage: tsifdef <emit|check|watch> [options]");
+    if (command !== "emit" && command !== "check" && command !== "watch" && command !== "pipeline") {
+      throw new Error("Usage: tsifdef <emit|check|watch|pipeline> [options]");
     }
     const values = parseOptions(args.slice(1), command);
     const projectRoot = resolve(cwd, values.root ?? ".");
+    if (command === "pipeline") {
+      return await runPipelineCommand(values, projectRoot);
+    }
     if (command === "check") {
       const profiles = await resolveCheckProfiles(values, projectRoot);
       const diagnostics = await checkProject({
@@ -92,6 +97,39 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
   }
 }
 
+async function runPipelineCommand(
+  values: Readonly<Record<string, string | undefined>>,
+  projectRoot: string,
+): Promise<number> {
+  const config = await loadPipelineConfig(projectRoot);
+  const results = await runProfilePipeline({
+    projectRoot,
+    ...(values.source === undefined ? {} : { sourceRoot: values.source }),
+    entries: config.profiles,
+    definitionsFor: (profile) => loadProfileFile(profilePathFor(projectRoot, profile)),
+    typecheck: tscTypecheckRunner,
+  });
+
+  let hasDiagnostics = false;
+  for (const result of results) {
+    if (result.status === "passed") {
+      process.stdout.write(`[${result.profile}] passed (${result.emittedFiles ?? 0} file(s)).\n`);
+    } else if (result.status === "skipped-missing-declarations") {
+      process.stdout.write(
+        `[${result.profile}] skipped: missing declarations ${(result.missingDeclarations ?? []).join(", ")}.\n`,
+      );
+    } else {
+      hasDiagnostics = true;
+      const label = result.status === "macro-diagnostics" ? "macro diagnostics" : "type errors";
+      process.stderr.write(`[${result.profile}] ${label}:\n`);
+      for (const diagnostic of result.diagnostics ?? []) {
+        process.stderr.write(`  ${diagnostic}\n`);
+      }
+    }
+  }
+  return hasDiagnostics ? CliExitCode.diagnostics : CliExitCode.success;
+}
+
 async function resolveCheckProfiles(
   values: Readonly<Record<string, string | undefined>>,
   projectRoot: string,
@@ -120,12 +158,12 @@ function profilePathFor(projectRoot: string, profile: string): string {
 
 function parseOptions(
   args: readonly string[],
-  command: "emit" | "check" | "watch",
+  command: "emit" | "check" | "watch" | "pipeline",
 ): Record<string, string | undefined> {
   const values: Record<string, string | undefined> = {};
-  const valueOptions = command !== "watch"
-    ? ["--profile", "--root", "--source"]
-    : ["--profile", "--root", "--source", "--config-version"];
+  const valueOptions = command === "watch"
+    ? ["--profile", "--root", "--source", "--config-version"]
+    : ["--profile", "--root", "--source"];
   for (let offset = 0; offset < args.length; offset += 1) {
     const option = args[offset];
     if (option === "--all" && command === "check") {
