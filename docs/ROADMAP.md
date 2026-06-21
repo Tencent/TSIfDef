@@ -146,10 +146,28 @@ Acceptance criteria:
 - Packaged one-shot `emit` and `check` run uncached; watch is the only packaged
   command that enables the incremental cache.
 
-### CLI-005 - TsScripts pilot integration (`ACTIVE`)
+### CLI-005 - TsScripts pilot integration (`DONE`)
 
 Test against `E:\HOK_Trunk\Program\TsScripts`, then document the non-destructive
 commands and observed build constraints.
+
+### CLI-006 - Source encoding safety (`ACTIVE`)
+
+Reject source files that cannot be decoded as valid UTF-8 before analysis or
+projection.
+
+Acceptance criteria:
+
+- Source loading validates UTF-8 bytes without silently replacing malformed
+  sequences with `U+FFFD`.
+- Check and emit failures identify the relative source file and use the CLI
+  configuration/I/O failure exit code `2`.
+- Emit detects all source read/encoding failures before replacing existing
+  output.
+- Valid UTF-8 files, including a real `U+FFFD` character encoded correctly,
+  continue to work.
+- Programmatic and packaged CLI tests cover invalid UTF-8 for check and emit.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
 
 ## M3 - VSCode Extension
 

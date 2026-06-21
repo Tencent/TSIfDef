@@ -200,3 +200,17 @@ state never decides macro semantics or whether diagnostics exist.
 
 Reason: invalidation adds failure modes. Correctness and debuggability take
 priority over avoiding scans whose performance cost has not been demonstrated.
+
+## D017 - Source encoding failures are explicit
+
+Date: 2026-06-21
+
+CLI source loading must not silently replace malformed UTF-8 byte sequences or
+rewrite such files as normalized UTF-8. Unsupported source encoding is a
+configuration/input failure with file context. Correctly encoded `U+FFFD` text
+remains valid source. Supporting legacy encodings requires a future explicit
+configuration and byte/offset design rather than automatic detection.
+
+Reason: the TsScripts pilot found four legacy-encoded files whose bytes changed
+during a no-directive emit. Silent decoding replacement can corrupt strings and
+comments even when TypeScript still happens to compile the projected tree.

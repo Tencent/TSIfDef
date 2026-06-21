@@ -4,14 +4,27 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`CLI-005 - TsScripts pilot integration`
+`CLI-006 - Source encoding safety`
 
-Inspect `E:\HOK_Trunk\Program\TsScripts` non-destructively, identify its source,
-profile, tsconfig, and build constraints, run safe check/emit pilot commands
-with generated output only under `Build/.macrobuild`, and document results.
+Reject malformed UTF-8 source input before analysis or projection, preserve
+existing emit output on failure, and report the relative source file through
+stable programmatic and packaged CLI failures.
 
 ## Completed This Session
 
+- Completed `CLI-005` and documented the exact experiment in
+  `docs/TSSCRIPTS_PILOT.md`.
+- Inspected the real 582-file `SystemScripts/src` tree without modifying
+  tracked HOK source or build configuration.
+- Passed uncached check and emit for HOK and Domestic profiles using a pilot
+  root wholly contained under `Build/.macrobuild`.
+- Passed the original and projected HOK TypeScript 5.5.4 typechecks with real
+  HOK declarations and matching build compiler options.
+- Confirmed Domestic typecheck is unavailable in this workspace because five
+  required Domestic declaration packages are absent.
+- Found four non-UTF-8 source files whose no-directive projection changed
+  bytes through decoder replacement, and defined `CLI-006` to prevent silent
+  source corruption.
 - Clarified that macros are external, project-global Profile inputs which
   source files, imports, and file order cannot define or mutate.
 - Required future tsserver integration to analyze each complete in-memory
@@ -115,6 +128,12 @@ with generated output only under `Build/.macrobuild`, and document results.
 - `npm test`: passed; 45 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, executable bin,
   source maps, declarations, and package metadata.
+- TsScripts original HOK typecheck: passed.
+- TsScripts `check --all`: passed for 2 profiles and 582 source files.
+- TsScripts HOK and Domestic emit: passed; 582 files each.
+- TsScripts projected HOK typecheck: passed.
+- TsScripts projected Domestic typecheck: blocked by missing Domestic
+  declaration packages.
 
 ## Known Issues
 
@@ -135,10 +154,13 @@ with generated output only under `Build/.macrobuild`, and document results.
   remains the reference behavior; cache failure must degrade to a miss and
   cached output must equal uncached output byte-for-byte. Packaged one-shot
   emit/check are uncached; packaged watch enables the cache.
+- Four TsScripts source files contain invalid UTF-8 byte sequences. Current
+  source loading silently produces replacement characters and changes emitted
+  bytes; one-shot emit is not safe for those files until `CLI-006` is complete.
 
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-complete `CLI-005`. Inspect the external project before choosing command roots;
-do not modify tracked source or existing build configuration. Record exact
-commands, output locations, diagnostics, and any blockers for later integration.
+complete `CLI-006`. Add shared validated UTF-8 source loading for check and
+emit, retain a correctly encoded literal `U+FFFD`, fail before output
+replacement, and cover both programmatic and packaged CLI behavior.
