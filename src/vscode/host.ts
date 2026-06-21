@@ -9,6 +9,7 @@
 import type {
   DocumentDiagnostic,
   DocumentRange,
+  FoldingRange,
 } from "./document-analysis.js";
 
 export interface Disposable {
@@ -62,6 +63,9 @@ export interface DecorationType extends Disposable {
   readonly key: string;
 }
 
+/** Provides folding ranges for one macro document, given its current text. */
+export type FoldingRangeProvider = (document: DocumentSnapshot) => readonly FoldingRange[];
+
 /**
  * The capabilities the extension shell needs from its host. Every method maps
  * directly onto a real `vscode` API call in the activation adapter.
@@ -90,4 +94,8 @@ export interface ExtensionHost {
   setDecorations(uri: string, decoration: DecorationType, ranges: readonly DocumentRange[]): void;
   /** Every currently open macro document. */
   macroDocuments(): readonly DocumentSnapshot[];
+  /** Register a folding-range provider for macro documents. */
+  registerFoldingRangeProvider(provider: FoldingRangeProvider): Disposable;
+  /** Surface a non-blocking error message. */
+  showErrorMessage(message: string): void;
 }

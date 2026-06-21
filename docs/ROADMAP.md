@@ -220,7 +220,31 @@ Acceptance criteria:
   fake host, without the VSCode extension host.
 - `npm run build`, `npm run typecheck`, and `npm test` pass.
 
-### VSC-003 - Folding and local CLI commands (`TODO`)
+### VSC-003 - Folding and local CLI commands (`DONE`)
+
+Fold inactive ranges and run the local CLI (emit, check, watch) from VSCode,
+building on the VSC-001/002 shell.
+
+Acceptance criteria:
+
+- A `vscode`-free folding computation reuses the inactive ranges from
+  `analyzeDocument` and yields only inclusive, zero-based, multi-line line
+  ranges; single-line inactive regions produce no fold.
+- A folding-range provider registered for macro documents serves those ranges
+  for the effective Profile through the injected host.
+- Emit, check, watch, and stop-watch commands drive the existing
+  `emitProject`/`checkProject`/`watchProfile` entry points through an injected
+  runner; the extension never reimplements emit, check, or watch logic.
+- Commands require a selected Profile and an open workspace, reporting a clear
+  message instead of throwing when either is absent.
+- At most one watch session runs at a time; starting a new watch or stopping
+  disposes the previous session, and disposal stops any active watch.
+- Successful and diagnostic/error command outcomes are reported through the host
+  rather than raised to the extension host.
+- The folding computation and command controller run under the standard Node
+  test runner with a fake host and a fake runner.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
+
 
 ## M4 - TypeScript Server Plugin
 

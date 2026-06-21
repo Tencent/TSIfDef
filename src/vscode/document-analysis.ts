@@ -34,6 +34,12 @@ export interface DocumentAnalysis {
   readonly inactiveRanges: readonly DocumentRange[];
 }
 
+/** Inclusive, zero-based line range to collapse, mirroring `vscode.FoldingRange`. */
+export interface FoldingRange {
+  readonly start: number;
+  readonly end: number;
+}
+
 // Every current macro diagnostic is a hard structural or semantic error.
 const warningCodes: ReadonlySet<string> = new Set<string>();
 
@@ -103,4 +109,27 @@ export function analyzeDocument(
     })),
     inactiveRanges: analysis.inactiveRanges.map((range) => mapper.rangeOf(range)),
   };
+}
+
+/**
+ * Compute foldable regions for inactive code in the selected Profile.
+ *
+ * Folds are inclusive zero-based line ranges. A range that begins and ends on
+ * the same editor line spans nothing foldable and is omitted, matching how
+ * VSCode treats single-line folds.
+ */
+export function computeFoldingRanges(
+  source: string,
+  definitions: MacroDefinitions,
+): readonly FoldingRange[] {
+  const folds: FoldingRange[] = [];
+  for (const range of analyzeDocument(source, definitions).inactiveRanges) {
+    // An inactive range that ends at the start of a later line folds up to the
+    // last line it actually covers, never pulling in the following active line.
+    const end = range.end.character === 0 ? range.end.line - 1 : range.end.line;
+    if (end > range.start.line) {
+      folds.push({ start: range.start.line, end });
+    }
+  }
+  return folds;
 }

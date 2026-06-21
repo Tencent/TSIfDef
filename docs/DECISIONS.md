@@ -251,3 +251,19 @@ Profile.
 Reason: editor display must match CLI and CI byte-for-byte (D001) and map
 positions back to the original document (D002). Computing a view from an
 arbitrary Profile when none is selected would mislabel inactive code.
+
+## D020 - Local VSCode commands drive the CLI through an injected runner
+
+Date: 2026-06-21
+
+The emit, check, watch, and stop-watch commands delegate to the existing
+`emitProject`, `checkProject`, and `watchProfile` entry points through a
+`CliRunner` interface that defaults to those functions. `MacroCommandController`
+holds command flow, single-watch lifecycle, and user messaging; tests inject a
+fake runner. Folding is computed by `computeFoldingRanges` from the same
+inactive ranges as decorations and yields only inclusive multi-line ranges.
+
+Reason: D001 requires one shared build core; the editor must not fork emit,
+check, or watch behavior. An injected runner keeps command flow testable without
+the extension host or the filesystem, and folding reuses the analysis already
+proven for decorations.

@@ -1,5 +1,5 @@
 import type { MacroDefinitions } from "../core/expression.js";
-import { analyzeDocument } from "./document-analysis.js";
+import { analyzeDocument, computeFoldingRanges } from "./document-analysis.js";
 import type {
   DecorationType,
   DiagnosticCollection,
@@ -42,6 +42,9 @@ export class MacroPresentationController {
     this.diagnostics = this.host.createDiagnosticCollection(diagnosticCollectionName);
     this.inactiveDecoration = this.host.createInactiveDecorationType();
     this.disposables.push(this.diagnostics, this.inactiveDecoration);
+    this.disposables.push(
+      this.host.registerFoldingRangeProvider((document) => this.foldingRanges(document)),
+    );
     this.refresh();
   }
 
@@ -96,6 +99,15 @@ export class MacroPresentationController {
   /** Clear diagnostics and decorations for a closed document. */
   public closeDocument(uri: string): void {
     this.clearDocument(uri);
+  }
+
+  /** Folding ranges for one macro document under the effective Profile. */
+  public foldingRanges(document: DocumentSnapshot) {
+    const definitions = this.definitionsProvider();
+    if (definitions === undefined || !document.isMacroDocument) {
+      return [];
+    }
+    return computeFoldingRanges(document.getText(), definitions);
   }
 
   private render(document: DocumentSnapshot, definitions: MacroDefinitions): void {

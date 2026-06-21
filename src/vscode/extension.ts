@@ -4,12 +4,14 @@ import { loadProfileFile } from "../cli/profile.js";
 import type { MacroDefinitions } from "../core/expression.js";
 import { ProfileStateController, configurationSection, profileConfigurationKey } from "./profile-state.js";
 import { MacroPresentationController } from "./macro-presentation.js";
+import { MacroCommandController } from "./macro-commands.js";
 import type {
   DecorationType,
   DiagnosticCollection,
   Disposable,
   DocumentSnapshot,
   ExtensionHost,
+  FoldingRangeProvider,
   QuickPickItem,
   QuickPickOptions,
   StatusBarItem,
@@ -29,6 +31,9 @@ import {
 interface VsRange {
   new (startLine: number, startCharacter: number, endLine: number, endCharacter: number): unknown;
 }
+interface VsFoldingRange {
+  new (start: number, end: number): unknown;
+}
 interface VsUri {
   parse(value: string): unknown;
 }
@@ -37,6 +42,9 @@ interface VsTextDocument {
   readonly languageId: string;
   readonly fileName: string;
   getText(): string;
+}
+interface VsFoldingProvider {
+  provideFoldingRanges(document: VsTextDocument): readonly unknown[];
 }
 interface VsTextEditor {
   readonly document: VsTextDocument;
@@ -50,6 +58,7 @@ interface VsCodeApi {
   readonly DiagnosticSeverity: { readonly Error: number; readonly Warning: number };
   readonly ConfigurationTarget: { readonly Workspace: number };
   readonly Range: VsRange;
+  readonly FoldingRange: VsFoldingRange;
   readonly Uri: VsUri;
   Diagnostic: new (range: unknown, message: string, severity?: number) => { code?: unknown };
   readonly window: {
@@ -60,6 +69,7 @@ interface VsCodeApi {
       options?: QuickPickOptions,
     ): PromiseLike<QuickPickItem | undefined>;
     showInformationMessage(message: string): PromiseLike<unknown>;
+    showErrorMessage(message: string): PromiseLike<unknown>;
     readonly visibleTextEditors: readonly VsTextEditor[];
     readonly onDidChangeVisibleTextEditors: VsEvent<readonly VsTextEditor[]>;
   };
@@ -82,6 +92,7 @@ interface VsCodeApi {
       clear(): void;
       dispose(): void;
     };
+    registerFoldingRangeProvider(selector: unknown, provider: VsFoldingProvider): Disposable;
   };
   readonly commands: {
     registerCommand(command: string, handler: () => unknown): Disposable;
@@ -185,12 +196,24 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
       }
     },
     macroDocuments: () => vscode.workspace.textDocuments.map(toSnapshot),
+    registerFoldingRangeProvider: (provider: FoldingRangeProvider): Disposable =>
+      vscode.languages.registerFoldingRangeProvider(
+        [{ language: "typescript" }, { language: "typescriptreact" }],
+        {
+          provideFoldingRanges: (document) =>
+            provider(toSnapshot(document)).map(
+              (fold) => new vscode.FoldingRange(fold.start, fold.end),
+            ),
+        },
+      ),
+    showErrorMessage: (message) => void vscode.window.showErrorMessage(message),
   };
 }
 
 interface ActiveExtension {
   readonly profileController: ProfileStateController;
   readonly presentation: MacroPresentationController;
+  readonly commands: MacroCommandController;
   dispose(): void;
 }
 
@@ -206,6 +229,9 @@ export function activate(context: ExtensionContext): void {
   const profileController = new ProfileStateController(host);
   const presentation = new MacroPresentationController(host, () => definitions);
 
+  const profilePathFor = (root: string, profile: string): string =>
+    `${root}/Build/macros/${profile.toLowerCase()}.json`;
+
   const reloadDefinitions = async (): Promise<void> => {
     const root = host.workspaceRoot();
     const { profile } = profileController.effectiveProfile();
@@ -213,9 +239,7 @@ export function activate(context: ExtensionContext): void {
       definitions = undefined;
     } else {
       try {
-        definitions = await loadProfileFile(
-          `${root}/Build/macros/${profile.toLowerCase()}.json`,
-        );
+        definitions = await loadProfileFile(profilePathFor(root, profile));
       } catch {
         definitions = undefined;
       }
@@ -223,8 +247,20 @@ export function activate(context: ExtensionContext): void {
     presentation.refresh();
   };
 
+  const commands = new MacroCommandController(host, () => {
+    const root = host.workspaceRoot();
+    const { profile } = profileController.effectiveProfile();
+    return {
+      projectRoot: root,
+      profileName: profile,
+      profilePath: root !== undefined && profile !== undefined ? profilePathFor(root, profile) : undefined,
+      definitions,
+    };
+  });
+
   profileController.activate();
   presentation.activate();
+  commands.activate();
   void reloadDefinitions();
 
   const subscriptions: Disposable[] = [
@@ -249,10 +285,12 @@ export function activate(context: ExtensionContext): void {
   active = {
     profileController,
     presentation,
+    commands,
     dispose: () => {
       for (const subscription of subscriptions) {
         subscription.dispose();
       }
+      commands.dispose();
       presentation.dispose();
       profileController.dispose();
     },

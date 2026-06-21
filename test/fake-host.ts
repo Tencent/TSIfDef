@@ -7,6 +7,7 @@ import {
   type DocumentRange,
   type DocumentSnapshot,
   type ExtensionHost,
+  type FoldingRangeProvider,
   type QuickPickItem,
   type StatusBarItem,
   type WorkspaceConfiguration,
@@ -31,6 +32,8 @@ export class FakeHost implements ExtensionHost {
   public quickPickItems: readonly QuickPickItem[] = [];
   public readonly diagnostics = new Map<string, readonly DocumentDiagnostic[]>();
   public readonly decorations = new Map<string, RecordedDecoration>();
+  public readonly errorMessages: string[] = [];
+  public foldingProvider: FoldingRangeProvider | undefined;
   public diagnosticsCleared = 0;
   public documents: readonly DocumentSnapshot[];
   private configured: string | undefined;
@@ -140,6 +143,19 @@ export class FakeHost implements ExtensionHost {
 
   public macroDocuments(): readonly DocumentSnapshot[] {
     return this.documents;
+  }
+
+  public registerFoldingRangeProvider(provider: FoldingRangeProvider): Disposable {
+    this.foldingProvider = provider;
+    return {
+      dispose: () => {
+        this.foldingProvider = undefined;
+      },
+    };
+  }
+
+  public showErrorMessage(message: string): void {
+    this.errorMessages.push(message);
   }
 
   public get diagnosticCollectionDisposed(): boolean {

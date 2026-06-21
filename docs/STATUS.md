@@ -4,13 +4,28 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`VSC-003 - Folding and local CLI commands`
+`TSS-001 - Whole-file snapshot projection`
 
-Provide a folding-range provider for inactive ranges and commands that drive the
-local CLI (emit, check, watch) from VSCode, building on the VSC-001/002 shell.
+Implement the TypeScript Server plugin that wraps `getScriptSnapshot`, analyzes
+each complete current snapshot, and returns one equal-length projected snapshot
+for the externally selected Profile, reusing the shared core projection.
 
 ## Completed This Session
 
+- Completed `VSC-003`, finishing milestone M3.
+- Added a `vscode`-free `computeFoldingRanges` reusing `analyzeDocument` inactive
+  ranges and emitting only inclusive multi-line line folds, plus a folding
+  provider registered through the host for the effective Profile.
+- Added a `MacroCommandController` (`src/vscode/macro-commands.ts`) with emit,
+  check, watch, and stop-watch commands that drive the existing
+  `emitProject`/`checkProject`/`watchProfile` entry points through an injected
+  `CliRunner`, keep a single watch session, and report outcomes via the host.
+- Extended `ExtensionHost` with folding-provider registration and error
+  messaging and wired the real `vscode` folding API and command context in
+  `extension.ts`.
+- Added folding and command tests with the shared fake host and a fake runner
+  covering folding scope, profile dependence, command success and diagnostics,
+  missing profile/workspace, single-watch lifecycle, and disposal.
 - Completed `VSC-002`.
 - Added a `vscode`-free `analyzeDocument`/`PositionMapper`
   (`src/vscode/document-analysis.ts`) that reuses `analyzeConditionals` and maps
@@ -169,7 +184,7 @@ local CLI (emit, check, watch) from VSCode, building on the VSC-001/002 shell.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 65 tests.
+- `npm test`: passed; 75 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
   executable bin, source maps, declarations, and package metadata.
 - TsScripts original HOK typecheck: passed.
@@ -210,8 +225,8 @@ local CLI (emit, check, watch) from VSCode, building on the VSC-001/002 shell.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-begin `VSC-003`. Reuse the inactive ranges from `analyzeDocument` for a folding
-provider, and drive the existing CLI `emitProject`/`checkProject`/`watchProfile`
-entry points from VSCode commands through the injected `ExtensionHost` so the
-logic stays testable without the extension host. Do not reimplement macro
-analysis.
+begin `TSS-001`. Reuse `projectSource` to build the equal-length projected
+snapshot from each complete current snapshot (`getText(0, getLength())`), apply
+one externally selected read-only Profile, and add the Profile version to
+`getScriptVersion()`. Per D003, run the language-service integration against the
+pinned TypeScript 5.5.4. Do not reimplement macro analysis or projection.
