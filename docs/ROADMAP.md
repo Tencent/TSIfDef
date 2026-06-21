@@ -266,7 +266,28 @@ Acceptance criteria:
   while active-branch symbols resolve.
 - `npm run build`, `npm run typecheck`, and `npm test` pass.
 
-### TSS-002 - Profile version and project invalidation (`TODO`)
+### TSS-002 - Profile version and project invalidation (`DONE`)
+
+Re-project and rebuild affected ASTs when the selected Profile changes, building
+on the TSS-001 host wrapper.
+
+Acceptance criteria:
+
+- The host wrapper reads the current Profile through a live provider on each
+  `getScriptSnapshot`/`getScriptVersion` call rather than capturing it once, so a
+  later Profile change is reflected without recreating the language service.
+- A controller re-resolves the Profile on demand and marks the project dirty only
+  when the resolved Profile version actually changes, including transitions
+  between no Profile and a selected Profile.
+- When no Profile is selected the wrapper passes raw snapshots and versions
+  through unchanged.
+- A change to the Profile file or macros directory triggers a reload through the
+  controller; the documented fallback when cache refresh is unstable is the
+  `TypeScript: Restart TS Server` command.
+- The controller runs under the standard Node test runner with injected resolve,
+  mark-dirty, and log hooks, and a TypeScript 5.5.4 integration confirms that
+  switching the Profile flips semantic diagnostics on the same language service.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
 ### TSS-003 - TypeScript 5.5.4 language-service integration tests (`TODO`)
 
 ## M5 - Product Integration and Release

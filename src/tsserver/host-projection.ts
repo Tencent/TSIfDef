@@ -6,11 +6,22 @@ import type { MacroDefinitions } from "../core/expression.js";
 /** Default macro-file matcher: TypeScript-family extensions. */
 const macroExtensionPattern = /\.(?:d\.)?(?:ts|tsx|mts|cts)$/i;
 
-export interface HostProjectionOptions {
-  /** The externally selected, read-only Profile applied to every macro file. */
+/** The active Profile applied to macro files, or `undefined` when none is selected. */
+export interface ActiveProfile {
+  /** The externally selected, read-only macro definitions. */
   readonly definitions: MacroDefinitions;
   /** A version tag identifying the Profile, appended to each script version. */
-  readonly profileVersion: string;
+  readonly version: string;
+}
+
+export interface HostProjectionOptions {
+  /**
+   * Return the currently active Profile, read fresh on every snapshot and
+   * version request. Returning `undefined` disables projection so raw snapshots
+   * and versions pass through. Reading live (rather than capturing once) lets a
+   * later Profile change take effect without recreating the language service.
+   */
+  readonly getProfile: () => ActiveProfile | undefined;
   /** Decide whether a file participates in macro projection. */
   readonly isMacroFile?: (fileName: string) => boolean;
 }
@@ -27,7 +38,8 @@ export interface HostProjectionOptions {
  * snapshot rather than the file on disk.
  *
  * `getScriptVersion` gains the Profile version so tsserver never reuses an AST
- * built for a different Profile. Non-macro files pass through unchanged.
+ * built for a different Profile. Non-macro files, and all files while no Profile
+ * is selected, pass through unchanged.
  *
  * The `ts` module is injected (tsserver supplies it to the plugin) so this
  * wrapper is testable without a global TypeScript dependency.
@@ -43,22 +55,24 @@ export function wrapHostWithProjection<THost extends ts.LanguageServiceHost>(
 
   host.getScriptSnapshot = (fileName: string): ts.IScriptSnapshot | undefined => {
     const snapshot = originalGetScriptSnapshot(fileName);
-    if (snapshot === undefined || !isMacroFile(fileName)) {
+    const profile = options.getProfile();
+    if (snapshot === undefined || profile === undefined || !isMacroFile(fileName)) {
       return snapshot;
     }
     // Read the entire current file; directive pairing spans the whole file and
     // cannot be evaluated from an isolated slice.
     const source = snapshot.getText(0, snapshot.getLength());
-    const projected = projectSource(source, options.definitions).projectedText;
+    const projected = projectSource(source, profile.definitions).projectedText;
     return typescript.ScriptSnapshot.fromString(projected);
   };
 
   host.getScriptVersion = (fileName: string): string => {
     const version = originalGetScriptVersion(fileName);
-    if (!isMacroFile(fileName)) {
+    const profile = options.getProfile();
+    if (profile === undefined || !isMacroFile(fileName)) {
       return version;
     }
-    return `${version}|tsifdef:${options.profileVersion}`;
+    return `${version}|tsifdef:${profile.version}`;
   };
 
   return host;

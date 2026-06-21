@@ -4,14 +4,29 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`TSS-002 - Profile version and project invalidation`
+`TSS-003 - TypeScript 5.5.4 language-service integration tests`
 
-Mark projects dirty and refresh the language service when the selected Profile
-changes so tsserver re-projects affected files, building on the TSS-001 host
-wrapper.
+Add language-service integration coverage over the wrapped host for completion,
+definition, references, rename, and quick fix, confirming offsets map back to the
+original document and inactive code never participates.
 
 ## Completed This Session
 
+- Completed `TSS-002`.
+- Converted the host wrapper to read the active Profile through a live
+  `getProfile()` callback on every snapshot/version request, so a Profile change
+  takes effect without recreating the language service; no Profile passes raw
+  snapshots and versions through.
+- Added a `ProfileProjectionController` (`src/tsserver/project-controller.ts`)
+  that re-resolves the Profile on `reload()` and marks the project dirty only
+  when the resolved version changes, including none<->selected transitions.
+- Wired the controller into the plugin: it watches the macros directory, reloads
+  on change, and invalidates the project via `markAsDirty`/`updateGraph`/
+  `refreshDiagnostics`, with `TypeScript: Restart TS Server` as the documented
+  fallback.
+- Added controller unit tests and a TypeScript 5.5.4 integration confirming that
+  switching the Profile flips semantic diagnostics on the same language service
+  (the version change invalidates the cached AST).
 - Completed `TSS-001`.
 - Added `wrapHostWithProjection` (`src/tsserver/host-projection.ts`) that wraps
   `getScriptSnapshot` to read each complete snapshot via `getText(0, getLength())`,
@@ -203,7 +218,7 @@ wrapper.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 81 tests.
+- `npm test`: passed; 84 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
   tsserver plugin, executable bin, source maps, declarations, and package
   metadata.
@@ -245,7 +260,8 @@ wrapper.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-begin `TSS-002`. Build on the TSS-001 wrapper: when the selected Profile changes,
-update the Profile version and mark the project dirty so tsserver re-projects and
-rebuilds affected ASTs, falling back to `TypeScript: Restart TS Server` only if
-cache refresh proves unstable. Keep the Profile external and read-only.
+begin `TSS-003`. Extend the TypeScript 5.5.4 integration coverage over the
+wrapped host to completion, definition, references, rename, and quick fix,
+asserting that positions map back to the original document offsets and that
+inactive-branch code never appears in results. Reuse the existing in-memory host
+helper from the tsserver tests.

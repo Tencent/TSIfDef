@@ -38,8 +38,7 @@ test("wrapped snapshot returns an equal-length whole-file projection", () => {
   const source = "#if HOK\nconst hok = 1;\n#else\nconst other = 2;\n#endif\n";
   const files = new Map([["/a.ts", { text: source, version: "1" }]]);
   const host = wrapHostWithProjection(ts, createMemoryHost(files), {
-    definitions: { HOK: true },
-    profileVersion: "HOK:1",
+    getProfile: () => ({ definitions: { HOK: true }, version: "HOK:1" }),
   });
 
   const snapshot = host.getScriptSnapshot("/a.ts")!;
@@ -58,8 +57,7 @@ test("wrapped version carries the profile and passes non-macro files through", (
     ["/data.json", { text: "{}", version: "3" }],
   ]);
   const host = wrapHostWithProjection(ts, createMemoryHost(files), {
-    definitions: { HOK: true },
-    profileVersion: "HOK:abc",
+    getProfile: () => ({ definitions: { HOK: true }, version: "HOK:abc" }),
   });
 
   assert.equal(host.getScriptVersion("/a.ts"), "7|tsifdef:HOK:abc");
@@ -71,8 +69,7 @@ test("wrapped version carries the profile and passes non-macro files through", (
 test("wrapper uses the in-memory snapshot, including unsaved edits", () => {
   const files = new Map([["/a.ts", { text: "#if HOK\nconst hok = 1;\n#endif\n", version: "1" }]]);
   const host = wrapHostWithProjection(ts, createMemoryHost(files), {
-    definitions: { HOK: false },
-    profileVersion: "DOMESTIC:1",
+    getProfile: () => ({ definitions: { HOK: false }, version: "DOMESTIC:1" }),
   });
   // Edit the in-memory text; the wrapper must project the new content.
   files.set("/a.ts", { text: "#if HOK\nconst edited = 9;\n#endif\n", version: "2" });
@@ -84,8 +81,7 @@ test("wrapper uses the in-memory snapshot, including unsaved edits", () => {
 
 test("missing snapshots pass through as undefined", () => {
   const host = wrapHostWithProjection(ts, createMemoryHost(new Map()), {
-    definitions: { HOK: true },
-    profileVersion: "HOK:1",
+    getProfile: () => ({ definitions: { HOK: true }, version: "HOK:1" }),
   });
   assert.equal(host.getScriptSnapshot("/missing.ts"), undefined);
 });
@@ -104,8 +100,7 @@ test("TypeScript 5.5.4 language service ignores the inactive branch", () => {
   ].join("\n");
   const files = new Map([["/main.ts", { text: source, version: "1" }]]);
   const host = wrapHostWithProjection(ts, createMemoryHost(files), {
-    definitions: { HOK: true },
-    profileVersion: "HOK:1",
+    getProfile: () => ({ definitions: { HOK: true }, version: "HOK:1" }),
   });
   const service = ts.createLanguageService(host, ts.createDocumentRegistry());
 
@@ -139,8 +134,7 @@ test("the same source under the other profile flips the active branch", () => {
   ].join("\n");
   const files = new Map([["/main.ts", { text: source, version: "1" }]]);
   const host = wrapHostWithProjection(ts, createMemoryHost(files), {
-    definitions: { HOK: false },
-    profileVersion: "DOMESTIC:1",
+    getProfile: () => ({ definitions: { HOK: false }, version: "DOMESTIC:1" }),
   });
   const service = ts.createLanguageService(host, ts.createDocumentRegistry());
 

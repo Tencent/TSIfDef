@@ -292,3 +292,22 @@ Reason: SPEC section 7 requires reusing the native language service and
 projecting only what it reads, and D001/D014 require one shared, external,
 immutable macro core. Wrapping the host with an injected `ts` satisfies both and
 keeps the plugin verifiable against the pinned TypeScript 5.5.4 (D003).
+
+## D022 - Profile changes invalidate the project through a version-gated controller
+
+Date: 2026-06-21
+
+The host wrapper reads the active Profile through a live `getProfile()` callback
+on every `getScriptSnapshot`/`getScriptVersion` call rather than capturing it at
+`create`. A `ProfileProjectionController` (`src/tsserver/project-controller.ts`)
+holds the current Profile, and `reload()` re-resolves it but marks the project
+dirty only when the resolved version changes, including transitions to and from
+no Profile. The plugin watches the macros directory and calls `reload()` on
+changes; project invalidation calls `markAsDirty` when present, then
+`updateGraph()` and `refreshDiagnostics()`. The documented fallback when cache
+refresh is unstable is `TypeScript: Restart TS Server`.
+
+Reason: SPEC section 7 requires that switching the Profile not reuse an AST built
+for another Profile, while needless rebuilds on an unchanged Profile must be
+avoided. Gating invalidation on the version keeps reprojection correct and cheap,
+and injected hooks keep it testable without a live tsserver project.
