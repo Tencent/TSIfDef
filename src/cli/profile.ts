@@ -62,7 +62,11 @@ export async function loadProfileFile(path: string): Promise<MacroDefinitions> {
       { cause: error },
     );
   }
+  return parseProfileDefinitions(text, path);
+}
 
+/** Validate already-read UTF-8 JSON profile text into an immutable macro map. */
+export function parseProfileDefinitions(text: string, path: string): MacroDefinitions {
   let value: unknown;
   try {
     value = JSON.parse(text.replace(/^\uFEFF/, "")) as unknown;

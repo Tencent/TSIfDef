@@ -4,14 +4,33 @@ Last updated: 2026-06-21
 
 ## Current Task
 
-`TSS-001 - Whole-file snapshot projection`
+`TSS-002 - Profile version and project invalidation`
 
-Implement the TypeScript Server plugin that wraps `getScriptSnapshot`, analyzes
-each complete current snapshot, and returns one equal-length projected snapshot
-for the externally selected Profile, reusing the shared core projection.
+Mark projects dirty and refresh the language service when the selected Profile
+changes so tsserver re-projects affected files, building on the TSS-001 host
+wrapper.
 
 ## Completed This Session
 
+- Completed `TSS-001`.
+- Added `wrapHostWithProjection` (`src/tsserver/host-projection.ts`) that wraps
+  `getScriptSnapshot` to read each complete snapshot via `getText(0, getLength())`,
+  project it through the shared `projectSource`, and return one equal-length
+  `ScriptSnapshot`; non-macro files and missing snapshots pass through.
+- Appended a Profile version to `getScriptVersion()` for macro files so tsserver
+  never reuses an AST built for a different Profile.
+- Added the tsserver plugin entry (`src/tsserver/plugin.ts`) that resolves one
+  external, read-only Profile via the shared `selectProfile` precedence and
+  loads it with `parseProfileDefinitions`, wraps the host, and returns the
+  native language service unchanged; no Profile selected disables projection.
+- Extracted `parseProfileDefinitions` from `loadProfileFile` so synchronous host
+  code and the async CLI share one profile validator.
+- Injected the `typescript` module into the wrapper so it is unit-testable and
+  the published `dist` keeps no runtime TypeScript dependency.
+- Added unit tests for equal-length projection, version suffixing, non-macro and
+  missing-snapshot passthrough, and unsaved in-memory edits, plus two TypeScript
+  5.5.4 language-service integrations confirming inactive-branch symbols are
+  absent while active-branch types resolve under each Profile.
 - Completed `VSC-003`, finishing milestone M3.
 - Added a `vscode`-free `computeFoldingRanges` reusing `analyzeDocument` inactive
   ranges and emitting only inclusive multi-line line folds, plus a folding
@@ -184,9 +203,10 @@ for the externally selected Profile, reusing the shared core projection.
 - `npm install`: passed; 0 vulnerabilities (`CORE-001`).
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 75 tests.
+- `npm test`: passed; 81 tests.
 - `npm pack --dry-run`: passed; package contains the core, CLI, VSCode shell,
-  executable bin, source maps, declarations, and package metadata.
+  tsserver plugin, executable bin, source maps, declarations, and package
+  metadata.
 - TsScripts original HOK typecheck: passed.
 - TsScripts `check --all`: passed for 2 profiles and 582 source files.
 - TsScripts HOK and Domestic emit: passed; 582 files each.
@@ -225,8 +245,7 @@ for the externally selected Profile, reusing the shared core projection.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md`, inspect the working tree, and
-begin `TSS-001`. Reuse `projectSource` to build the equal-length projected
-snapshot from each complete current snapshot (`getText(0, getLength())`), apply
-one externally selected read-only Profile, and add the Profile version to
-`getScriptVersion()`. Per D003, run the language-service integration against the
-pinned TypeScript 5.5.4. Do not reimplement macro analysis or projection.
+begin `TSS-002`. Build on the TSS-001 wrapper: when the selected Profile changes,
+update the Profile version and mark the project dirty so tsserver re-projects and
+rebuilds affected ASTs, falling back to `TypeScript: Restart TS Server` only if
+cache refresh proves unstable. Keep the Profile external and read-only.

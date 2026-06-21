@@ -248,7 +248,7 @@ Acceptance criteria:
 
 ## M4 - TypeScript Server Plugin
 
-### TSS-001 - Whole-file snapshot projection (`TODO`)
+### TSS-001 - Whole-file snapshot projection (`DONE`)
 
 Acceptance criteria:
 
@@ -259,6 +259,12 @@ Acceptance criteria:
   the file from disk.
 - Apply one externally selected, read-only Profile consistently to every file;
   imports and file order never mutate macro definitions.
+- Append the Profile version to `getScriptVersion()` so tsserver does not reuse
+  an AST built for a different Profile; non-macro files pass through unchanged.
+- The host wrapper is exercised by unit tests and a TypeScript 5.5.4
+  language-service integration that confirms inactive-branch symbols are absent
+  while active-branch symbols resolve.
+- `npm run build`, `npm run typecheck`, and `npm test` pass.
 
 ### TSS-002 - Profile version and project invalidation (`TODO`)
 ### TSS-003 - TypeScript 5.5.4 language-service integration tests (`TODO`)

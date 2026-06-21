@@ -267,3 +267,28 @@ Reason: D001 requires one shared build core; the editor must not fork emit,
 check, or watch behavior. An injected runner keeps command flow testable without
 the extension host or the filesystem, and folding reuses the analysis already
 proven for decorations.
+
+## D021 - The tsserver plugin wraps the host with an injected `ts` module
+
+Date: 2026-06-21
+
+The TypeScript Server plugin (`src/tsserver/plugin.ts`) wraps
+`LanguageServiceHost.getScriptSnapshot` and `getScriptVersion` rather than
+replacing the language service. `getScriptSnapshot` reads the complete current
+snapshot with `getText(0, getLength())`, projects it through the shared
+`projectSource`, and returns one equal-length `ScriptSnapshot`; slice reads are
+served from that projection. `getScriptVersion` appends a Profile version so
+tsserver never reuses an AST built for another Profile. `wrapHostWithProjection`
+receives the `typescript` module by injection (tsserver supplies it through the
+plugin factory), so it is unit-testable and the published `dist` carries no
+runtime dependency on TypeScript.
+
+The plugin loads one externally selected, read-only Profile via the shared
+`selectProfile` precedence and `parseProfileDefinitions` (extracted from
+`loadProfileFile` so synchronous host code and the async CLI share one validator).
+No Profile selected leaves the language service untouched.
+
+Reason: SPEC section 7 requires reusing the native language service and
+projecting only what it reads, and D001/D014 require one shared, external,
+immutable macro core. Wrapping the host with an injected `ts` satisfies both and
+keeps the plugin verifiable against the pinned TypeScript 5.5.4 (D003).
