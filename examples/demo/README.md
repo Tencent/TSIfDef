@@ -42,17 +42,17 @@ commands all work in the Extension Development Host without any extra setup.
 
 ## Try it on the command line
 
-From the repository root, after `npm run build`:
+Build the extension/package once at the repository root, then install and run
+the demo as an ordinary consumer:
 
 ```bash
-# Validate one explicit Profile file (no writes).
 cd examples/demo
-node ../../dist/cli/main.js
-npx tsc -p .tsifdef/Output/tsconfig.json
+npm install
+npm run compile
 ```
 
-Alternatively, from `examples/demo`, run `npm run compile`. npm automatically
-runs the configured `precompile` script first and then invokes stock `tsc`.
+npm automatically runs the configured bare `tsifdef` precompile script first
+and then invokes stock `tsc`.
 
 Precompile uses the TypeScript Compiler API and the original tsconfig, so its
 manifest records the exact roots and imports. The generated project remains in

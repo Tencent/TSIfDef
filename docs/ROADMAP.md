@@ -372,5 +372,4 @@ Acceptance criteria:
 - `npm run build`, `npm run typecheck`, and `npm test` pass, with an integration
   proving that tsconfig roots and transitive imports in the emitted manifest and
   generated project match the TypeScript Program without a TSIfDef source list.
-### INT-003 - CI jobs (`ACTIVE`)
-### REL-001 - Version-matched VSIX and tgz artifacts (`TODO`)
+### REL-001 - Version-matched VSIX and tgz artifacts (`ACTIVE`)

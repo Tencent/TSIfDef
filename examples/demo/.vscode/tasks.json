@@ -4,9 +4,9 @@
     {
       "label": "TSIfDef: Precompile active demo",
       "type": "process",
-      "command": "node",
+      "command": "npx",
       "args": [
-        "${workspaceFolder}/../../dist/cli/main.js",
+        "tsifdef",
         "--project", "tsconfig.json"
       ],
       "options": { "cwd": "${workspaceFolder}" },

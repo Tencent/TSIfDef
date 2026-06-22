@@ -3,7 +3,11 @@
   "private": true,
   "tsifdef": "./profiles/HOK.json",
   "scripts": {
-    "precompile": "node ../../dist/cli/main.js",
+    "precompile": "tsifdef",
     "compile": "tsc -p .tsifdef/Output/tsconfig.json"
+  },
+  "devDependencies": {
+    "tsifdef": "file:../..",
+    "typescript": "5.5.4"
   }
 }

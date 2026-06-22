@@ -4,10 +4,11 @@ Last updated: 2026-06-22
 
 ## Current Task
 
-`INT-003 - CI jobs`
+`REL-001 - Version-matched VSIX and tgz artifacts`
 
-Add repository CI coverage for the conventional no-argument precompile and
-stock-tsc handoff without depending on VSCode or an external HOK workspace.
+Produce self-contained, version-matched VSIX and npm/tgz artifacts from the same
+core and revision. HOK owns CI and downstream pipeline integration; this
+repository does not add or configure HOK CI jobs.
 
 ## Completed This Session
 
@@ -33,6 +34,9 @@ stock-tsc handoff without depending on VSCode or an external HOK workspace.
 - Updated the demo to the final minimal contract:
   `precompile: tsifdef` followed by stock
   `tsc -p .tsifdef/Output/tsconfig.json`. No VSCode Profile setting exists.
+- Made the demo a real local package consumer through
+  `devDependencies.tsifdef: file:../..`; `npm install` creates the `tsifdef`
+  executable link, so no script reaches into the repository's `dist` path.
 - Recorded D029-D031 and updated INT-002 acceptance criteria. HOK-specific
   integration and region inference are explicitly outside TSIfDef ownership.
 - Completed `INT-002`.
@@ -76,8 +80,7 @@ stock-tsc handoff without depending on VSCode or an external HOK workspace.
 ## Handoff
 
 Start by reading the files listed in `AGENTS.md` and inspecting the worktree.
-Continue only `INT-003`: define its acceptance criteria before implementation,
-then add self-contained CI jobs that run package build/typecheck/tests and prove
-the no-argument precompile plus stock-tsc contract. Upload `.tsifdef/Output` on
-failure/success where useful. Do not modify or integrate the external HOK/SVN
-workspace.
+Continue only `REL-001`: define artifact acceptance criteria before
+implementation, then package a self-contained VSIX and npm/tgz with matching
+version and revision metadata. Do not add CI configuration and do not modify or
+integrate the external HOK/SVN workspace.
