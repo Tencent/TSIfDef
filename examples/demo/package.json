@@ -1,7 +1,8 @@
 {
   "name": "tsifdef-demo",
   "private": true,
-  "tsifdef": "./profiles/HOK.json",
+  "type": "module",
+  "tsifdef": "./profiles/TEST_A.json",
   "scripts": {
     "precompile": "tsifdef",
     "compile": "tsc -p .tsifdef/Output/tsconfig.json"

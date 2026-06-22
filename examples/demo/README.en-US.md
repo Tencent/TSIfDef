@@ -1,7 +1,5 @@
 # TSIfDef Demo Workspace
 
-Language files: `README.en-US.md` and `README.zh-CN.md`
-
 This demo shows TSIfDef with neutral sample macros only:
 
 - `TEST_A`

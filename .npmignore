@@ -6,11 +6,10 @@ examples/**
 docs/**
 scripts/**
 node_modules/**
-!node_modules/tsifdef-tsserver/**
 tsconfig*.json
 AGENTS.md
 SPEC.md
+package-lock.json
+release/
 **/*.map
 **/*.ts
-!dist/**/*.d.ts
-release/

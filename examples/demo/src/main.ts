@@ -11,4 +11,8 @@ const result = {
 
 // Put a breakpoint here: the debugger should show a different object shape for
 // each launch configuration while remaining mapped to this original source.
+
+#if defined(TEST_A)
+console.log("TEST_A");
+#endif
 console.log(JSON.stringify(result, null, 2));

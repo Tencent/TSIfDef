@@ -36,7 +36,7 @@ rationale, is archived in
 ## Configuration and Build
 
 - `package.json` has the only active Profile pointer:
-  `"tsifdef": "./Profiles/HOK.json"`. The Profile JSON is an array of enabled
+  `"tsifdef": "./Profiles/TEST_A.json"`. The Profile JSON is an array of enabled
   macro names; absent macros evaluate to `false`. No component infers or stores
   another active Profile. (D027, D029, D031)
 - `tsifdef` performs one precompile operation. `--project <path>` is its only
@@ -52,6 +52,11 @@ rationale, is archived in
 ## Packaging
 
 - Runtime package output is CommonJS and must work on Node.js 18. (D005)
+- The CLI release tarball depends on `typescript` at runtime because
+  `src/cli/precompile.ts` loads the TypeScript Compiler API. That dependency is
+  therefore a production dependency, not a dev-only build aid. VSIX packaging
+  still ships the compiled extension and plugin entry points without bundling
+  the compiler itself.
 - VSIX and npm/tgz are separate, self-contained deliverables produced from the
   same core, package version, and Git revision. This requirement is specified
   in `SPEC.md`; implementation is tracked by `REL-001`.

@@ -22,7 +22,8 @@
         "--noEmit", "false",
         "--outDir", "${workspaceFolder}/Build/.demorun/active",
         "--sourceMap", "true",
-        "--inlineSources", "true"
+        "--inlineSources", "true",
+        "--sourceRoot", "../../../src"
       ],
       "dependsOn": "TSIfDef: Precompile active demo",
       "dependsOrder": "sequence",

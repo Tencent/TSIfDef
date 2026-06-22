@@ -1,8 +1,8 @@
 {
   "name": "tsifdef",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Source-level conditional compilation for TypeScript",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "main": "dist/vscode/extension.js",
   "types": "dist/core/index.d.ts",
   "publisher": "hok",
@@ -22,9 +22,6 @@
       "default": "./dist/core/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
   "engines": {
     "node": ">=18.17",
     "vscode": "^1.85.0"
@@ -43,15 +40,22 @@
     ]
   },
   "scripts": {
+    "sync-version": "node scripts/sync-version.cjs",
     "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist','.test-dist']) fs.rmSync(path,{recursive:true,force:true})\"",
-    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "build": "npm run sync-version && npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
     "test": "npm run build && tsc -p tsconfig.test.json && node scripts/run-tests.cjs",
-    "vscode:prepublish": "npm run build"
+    "vscode:prepublish": "npm run build",
+    "package:tgz": "npm pack --pack-destination release",
+    "package:vsix": "vsce package --out release",
+    "release": "npm run sync-version && node scripts/release.cjs"
   },
   "devDependencies": {
+    "@vscode/vsce": "3.9.2",
     "@types/node": "22.15.3",
-    "tsifdef-tsserver": "file:./tsserver-package",
+    "tsifdef-tsserver": "file:./tsserver-package"
+  },
+  "dependencies": {
     "typescript": "5.5.4"
   }
 }

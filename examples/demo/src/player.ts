@@ -1,21 +1,21 @@
-#if HOK
+#if TEST_A
 import {
-  createHokPlayer,
-  summarizeHokPlayer,
-  type HokPlayerData,
-} from "./profiles/hok-player.js";
+  createTestARecord,
+  summarizeTestARecord,
+  type TestARecord,
+} from "./profiles/test-a-record.js";
 
-export type PlayerData = HokPlayerData;
-export const createPlayer = createHokPlayer;
-export const summarizePlayer = summarizeHokPlayer;
-#elif DOMESTIC
+export type PlayerData = TestARecord;
+export const createPlayer = createTestARecord;
+export const summarizePlayer = summarizeTestARecord;
+#elif TEST_B
 import {
-  createDomesticPlayer,
-  summarizeDomesticPlayer,
-  type DomesticPlayerData,
-} from "./profiles/domestic-player.js";
+  createTestBRecord,
+  summarizeTestBRecord,
+  type TestBRecord,
+} from "./profiles/test-b-record.js";
 
-export type PlayerData = DomesticPlayerData;
-export const createPlayer = createDomesticPlayer;
-export const summarizePlayer = summarizeDomesticPlayer;
+export type PlayerData = TestBRecord;
+export const createPlayer = createTestBRecord;
+export const summarizePlayer = summarizeTestBRecord;
 #endif

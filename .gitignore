@@ -6,3 +6,4 @@ node_modules/
 **/Build/.tsifdef/
 **/.tsifdef/
 **/Build/.demorun/
+release/
