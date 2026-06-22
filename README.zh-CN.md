@@ -2,33 +2,58 @@
 
 TSIfDef 用于 TypeScript 的源码级条件编译。
 
-TSIfDef 的核心宏分析由 CLI、tsserver 插件和 VSCode 扩展共享实现。
-
-交付物：
-
-- `release/tsifdef-1.0.0.vsix`，用于安装到 VSCode。
-- `release/tsifdef-1.0.0.tgz`，用于 npm / CI / 命令行安装。
-- `release/manifest.json`，记录构建这两个产物时使用的版本和 Git 修订。
-
-唯一版本源放在 `src/version.ts`。构建和发布脚本会从这里同步清单版本。
-
-快速开始：
+## 安装
 
 ```bash
 npm install
 npm run build
-npm test
 ```
 
-生成发布产物：
+## 在项目里使用
+
+在 `package.json` 中同时添加 `tsifdef` 指针和预处理/编译脚本，例如：
+
+```json
+{
+  "tsifdef": "./Profiles/TEST_A.json",
+  "scripts": {
+    "precompile": "tsifdef",
+    "compile": "tsc -p .tsifdef/Output/tsconfig.json"
+  }
+}
+```
+
+把对应 Profile 写成启用宏名数组的 JSON 文件。
+
+1. 运行预处理步骤，生成 `.tsifdef/Output`：
+
+```bash
+npm run precompile
+```
+
+2. 编译 `.tsifdef/Output` 中生成后的项目：
+
+```bash
+npm run compile
+```
+
+## 在 VSCode 里使用
+
+1. 安装 VSIX 发布产物。
+2. 打开带有 `package.json` `tsifdef` 指针的工作区。
+3. 状态栏会显示当前 Profile 文件名。
+4. 灰显、折叠、诊断和 tsserver 投影都会跟随该 Profile。
+
+## 发布
 
 ```bash
 npm run release
 ```
 
-包职责：
+会输出：
 
-- VSIX：编辑器体验、状态栏、灰显、折叠和 tsserver 集成。
-- tgz：命令行预处理流程和 CI 打包。
+- `release/tsifdef-1.0.0.vsix`
+- `release/tsifdef-1.0.0.tgz`
+- `release/manifest.json`
 
-仓库中的两个产物保持相同版本和相同 Git revision。
+唯一版本源放在 `src/version.ts`。
