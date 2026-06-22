@@ -235,23 +235,7 @@ tsifdef-1.0.0.tgz
 
 技术上可以把 CLI 只塞入 VSIX，但 CI 解压 VSIX 并寻找内部脚本不稳定，不建议这样部署。产品可以是一个统一插件产品，但运行时必须同时支持 VSCode、tsserver 和独立 CLI 三个环境。
 
-## 11. Babel 与 Bun 的定位
-
-### Babel
-
-`babel-plugin-transform-define` 只能替换常量，不能保证在 `tsc` 前删除未激活分支。当前 Pipeline 是 `tsc -> Babel`，因此它不能单独解决区域接口缺失。
-
-Babel 可以作为后处理优化，用于常量折叠和 dead-code elimination，但正确性仍由 `#if` 预处理器保证。
-
-### Bun
-
-Bun Build 支持 `define`、macro 和 dead-code elimination，但 Bun 不是 TypeScript 类型检查器；VSCode 的静态语义仍由 tsserver 提供。Bun 官方 VSCode 扩展主要提供运行、调试、测试、运行时诊断和 lockfile 支持，不会让 tsserver 理解 Bun Build 的宏结果。
-
-如果引入 Bun，适合用于运行宏 CLI、构建工具和测试提速，不作为条件编译正确性的基础。
-
-VSCode 市场中应只考虑官方 `oven.bun-vscode`。第三方 `Pandy.bun` 仅提供执行当前文件的 `bun run` 命令，不能提供语言服务或宏视图。
-
-## 12. 关键测试
+## 11. 关键测试
 
 必须覆盖：
 
@@ -266,15 +250,6 @@ VSCode 市场中应只考虑官方 `oven.bun-vscode`。第三方 `Pandy.bun` 仅
 - HOK 与 Domestic 两套 `.d.ts` 的独立编译。
 - TypeScript `5.5.4` 集成测试。
 
-## 13. 实施顺序
-
-1. 实现无 VSCode 依赖的 `core` 和黄金用例测试。
-2. 实现约定式 CLI precompile，接入 stock `tsc` 和 CI。
-3. 实现 VSCode 灰显、折叠、Profile 和宏结构诊断。
-4. 实现 tsserver `ScriptSnapshot` Hack，并验证 TypeScript 5.5.4。
-5. 接入现有 `init.mjs -> compile.mjs -> build.mjs` Pipeline。
-6. 发布同版本 VSIX 和 CLI 包，增加版本一致性检查。
-
-## 14. 最终原则
+## 12. 最终原则
 
 源码预处理负责构建正确性，TypeScript Server Plugin 负责编辑器语义一致性，VSCode Extension 负责交互体验，独立 CLI 负责本地构建和服务器 CI。四者共用同一宏核心，任何环境都不得自行解释宏。
