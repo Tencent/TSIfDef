@@ -5,11 +5,11 @@
       "name": "Debug Demo (Active Profile)",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/Build/.demorun/${command:tsifdef.activeProfile}/main.js",
+      "program": "${workspaceFolder}/Build/.demorun/active/main.js",
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "TSIfDef: Compile active demo",
       "sourceMaps": true,
-      "outFiles": ["${workspaceFolder}/Build/.demorun/${command:tsifdef.activeProfile}/**/*.js"],
+      "outFiles": ["${workspaceFolder}/Build/.demorun/active/**/*.js"],
       "skipFiles": ["<node_internals>/**"]
     }
   ]

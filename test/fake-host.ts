@@ -1,5 +1,4 @@
 import {
-  profileConfigurationKey,
   type DecorationType,
   type DiagnosticCollection,
   type Disposable,
@@ -8,15 +7,11 @@ import {
   type DocumentSnapshot,
   type ExtensionHost,
   type FoldingRangeProvider,
-  type QuickPickItem,
   type StatusBarItem,
-  type WorkspaceConfiguration,
 } from "../src/vscode/index.js";
 
 export interface FakeHostOptions {
   readonly root?: string;
-  readonly configuredProfile?: string;
-  readonly pick?: (items: readonly QuickPickItem[]) => QuickPickItem | undefined;
   readonly documents?: readonly DocumentSnapshot[];
 }
 
@@ -29,7 +24,6 @@ export class FakeHost implements ExtensionHost {
   public readonly statusItem: StatusBarItem & { disposed: boolean; shown: boolean };
   public readonly commands = new Map<string, () => unknown | Promise<unknown>>();
   public readonly informationMessages: string[] = [];
-  public quickPickItems: readonly QuickPickItem[] = [];
   public readonly diagnostics = new Map<string, readonly DocumentDiagnostic[]>();
   public readonly decorations = new Map<string, RecordedDecoration>();
   public readonly errorMessages: string[] = [];
@@ -40,17 +34,14 @@ export class FakeHost implements ExtensionHost {
   public foldingProvider: FoldingRangeProvider | undefined;
   public diagnosticsCleared = 0;
   public documents: readonly DocumentSnapshot[];
-  private configured: string | undefined;
+  public projectConfigurationWatcher: (() => void) | undefined;
   private readonly root: string | undefined;
-  private readonly pick: (items: readonly QuickPickItem[]) => QuickPickItem | undefined;
   private diagnosticCollection: (DiagnosticCollection & { disposed: boolean }) | undefined;
   private decorationType: (DecorationType & { disposed: boolean }) | undefined;
   private decorationSequence = 0;
 
   public constructor(options: FakeHostOptions = {}) {
-    this.configured = options.configuredProfile;
     this.root = options.root;
-    this.pick = options.pick ?? ((items) => items[0]);
     this.documents = options.documents ?? [];
     this.statusItem = {
       text: "",
@@ -70,19 +61,6 @@ export class FakeHost implements ExtensionHost {
     };
   }
 
-  public getConfiguration(): WorkspaceConfiguration {
-    return {
-      get: <T,>(key: string) =>
-        (key === profileConfigurationKey ? this.configured : undefined) as T | undefined,
-      update: (key: string, value: unknown) => {
-        if (key === profileConfigurationKey) {
-          this.configured = value as string;
-        }
-        return Promise.resolve();
-      },
-    };
-  }
-
   public createStatusBarItem(): StatusBarItem {
     return this.statusItem;
   }
@@ -90,11 +68,6 @@ export class FakeHost implements ExtensionHost {
   public registerCommand(command: string, handler: () => unknown | Promise<unknown>): Disposable {
     this.commands.set(command, handler);
     return { dispose: () => this.commands.delete(command) };
-  }
-
-  public showQuickPick(items: readonly QuickPickItem[]): Promise<QuickPickItem | undefined> {
-    this.quickPickItems = items;
-    return Promise.resolve(this.pick(items));
   }
 
   public showInformationMessage(message: string): void {
@@ -176,6 +149,11 @@ export class FakeHost implements ExtensionHost {
 
   public get decorationTypeDisposed(): boolean {
     return this.decorationType?.disposed ?? false;
+  }
+
+  public watchProjectConfiguration(onChange: () => void): Disposable {
+    this.projectConfigurationWatcher = onChange;
+    return { dispose: () => { this.projectConfigurationWatcher = undefined; } };
   }
 }
 

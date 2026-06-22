@@ -157,6 +157,9 @@ commands and observed build constraints.
 Reject source files that cannot be decoded as valid UTF-8 before analysis or
 projection.
 
+Historical task: its strict rejection contract is superseded by D030. Current
+source decoding intentionally matches stock TypeScript 5.5.4.
+
 Acceptance criteria:
 
 - Source loading validates UTF-8 bytes without silently replacing malformed
@@ -338,27 +341,36 @@ Acceptance criteria:
   returns `0` for success including skips, `1` for macro or type diagnostics, and
   `2` for configuration or I/O failure.
 - `npm run build`, `npm run typecheck`, and `npm test` pass.
-### INT-002 - Existing build-pipeline integration (`ACTIVE`)
+### INT-002 - Existing build-pipeline integration (`DONE`)
 
 Acceptance criteria:
 
-- The only TSIfDef project configuration is the fixed JSON file `tsifdef` beside
-  `package.json`; it maps Profile names to lists of enabled macros and contains
-  no source, tsconfig, output, include/exclude, or declaration paths.
+- `package.json` owns the only active Profile pointer through a string
+  `tsifdef` field. The referenced JSON file contains only enabled macro names;
+  VSCode displays its file name and full resolved path.
 - Any macro absent from the selected Profile evaluates to `false` in core,
   VSCode, tsserver, CLI, build, and debug flows without an unknown-macro
   diagnostic. `defined(NAME)` still tests explicit membership.
-- The existing build configuration and TypeScript Program determine the complete
-  participating file set. TSIfDef projects every TypeScript-family file actually
-  read by the build and does not maintain a parallel build graph.
-- The existing `init.mjs -> compile.mjs -> build.mjs` flow changes only at the
-  TypeScript invocation boundary; projected input feeds the original tsc output,
-  Babel, PFBS/V8CC, source-map, and distribution stages.
+- `npm run compile` uses `precompile: tsifdef` before the unwrapped, stock
+  `tsc`. With no arguments TSIfDef uses the current package and `tsconfig.json`;
+  `--project` overrides only that tsconfig. The existing build configuration is
+  still the
+  source of truth; TSIfDef parses the same tsconfig through the TypeScript
+  Compiler API instead of independently scanning a source glob.
+- Precompile atomically writes a persistent, equal-length projected project
+  under `.tsifdef/Output`, including a generated tsconfig and a
+  manifest recording the selected Profile, tool version, source project, exact
+  participating file set, and source/projected hashes. CI can upload this whole
+  directory for diagnosis.
+- Stock `tsc` always compiles `.tsifdef/Output/tsconfig.json`. The existing
+  `init.mjs -> compile.mjs -> build.mjs` flow changes only enough to select that
+  generated tsconfig; original tsc output options, Babel, PFBS/V8CC, source-map,
+  and distribution stages remain unchanged.
 - Legacy `Build/macros/*.json` and `Build/macros/pipeline.json` configuration is
   migrated away; build/typecheck orchestration receives build inputs from the
   caller rather than macro configuration.
 - `npm run build`, `npm run typecheck`, and `npm test` pass, with an integration
-  proving files included through tsconfig/imports are projected without a
-  TSIfDef source list.
-### INT-003 - CI jobs (`TODO`)
+  proving that tsconfig roots and transitive imports in the emitted manifest and
+  generated project match the TypeScript Program without a TSIfDef source list.
+### INT-003 - CI jobs (`ACTIVE`)
 ### REL-001 - Version-matched VSIX and tgz artifacts (`TODO`)

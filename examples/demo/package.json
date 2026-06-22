@@ -1,0 +1,9 @@
+{
+  "name": "tsifdef-demo",
+  "private": true,
+  "tsifdef": "./profiles/HOK.json",
+  "scripts": {
+    "precompile": "node ../../dist/cli/main.js",
+    "compile": "tsc -p .tsifdef/Output/tsconfig.json"
+  }
+}

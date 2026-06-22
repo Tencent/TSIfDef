@@ -34,44 +34,13 @@
     "onLanguage:typescriptreact"
   ],
   "contributes": {
-    "commands": [
-      {
-        "command": "tsifdef.switchProfile",
-        "title": "TSIfDef: Switch Profile"
-      },
-      {
-        "command": "tsifdef.emit",
-        "title": "TSIfDef: Emit Projected Sources"
-      },
-      {
-        "command": "tsifdef.check",
-        "title": "TSIfDef: Check Macros"
-      },
-      {
-        "command": "tsifdef.watch",
-        "title": "TSIfDef: Watch and Emit"
-      },
-      {
-        "command": "tsifdef.stopWatch",
-        "title": "TSIfDef: Stop Watch"
-      }
-    ],
+    "commands": [],
     "typescriptServerPlugins": [
       {
         "name": "tsifdef-tsserver",
         "enableForWorkspaceTypeScriptVersions": true
       }
-    ],
-    "configuration": {
-      "title": "TSIfDef",
-      "properties": {
-        "tsifdef.profile": {
-          "type": "string",
-          "default": null,
-          "markdownDescription": "The active Profile from the fixed `tsifdef` file beside `package.json`. The `HOK_TS_PROFILE` environment variable takes precedence over this setting."
-        }
-      }
-    }
+    ]
   },
   "scripts": {
     "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist','.test-dist']) fs.rmSync(path,{recursive:true,force:true})\"",

@@ -423,3 +423,100 @@ their own existing tsc arguments for each selected Profile.
 Reason: wrapping compiler reads covers tsconfig roots and transitive imports
 without a parallel source list or projected source tree, while leaving Babel and
 all downstream consumers attached to the original tsc output contract.
+
+## D029 - Precompile emits an auditable project for stock tsc
+
+Date: 2026-06-22
+
+A Profile is one explicitly selected JSON file whose value is the list of
+enabled macro names. Its identity is the file itself, not a separately declared
+name inside a package-adjacent Profile map. VSCode stores the selected Profile
+file path, displays its file name in the status bar, and shows the resolved full
+path in its tooltip. Absent macros retain D027's `false` semantics.
+
+The npm `precompile` lifecycle invokes TSIfDef before compilation. TSIfDef does
+not wrap or replace the `tsc` executable. It parses the caller's original
+tsconfig with the TypeScript Compiler API, creates a Program using projected
+file reads, and derives the participating project files from that Program rather
+than an independently configured or scanned source glob.
+
+Precompile writes a persistent project under
+`Build/.tsifdef/<profile-file-stem>/`. The directory contains equal-length
+projected source files, a generated tsconfig consumed by stock tsc, and a
+manifest containing at least the resolved Profile path and hash, tool version,
+source and generated project paths, the participating file list, and source and
+projected content hashes. The directory is not deleted after compilation and is
+a supported CI diagnostic artifact. Separate Profile directories prevent HOK
+and Domestic outputs from overwriting each other.
+
+The generated tsconfig is the explicit filesystem handoff between precompile
+and compilation. The existing pipeline changes only enough to select it; tsc's
+compiler/output flags and the downstream Babel, PFBS/V8CC, source-map, and
+distribution stages retain their existing contracts. If an initialization step
+generates the source tsconfig, that initialization must run before precompile.
+
+This decision supersedes D027's fixed package-adjacent multi-Profile file and
+D028's `tsifdef tsc` wrapper. D027's absent-macro behavior remains active. The
+wrapper's watch behavior is not part of INT-002; later watch support, if needed,
+must preserve the same emitted-project contract.
+
+Reason: a durable filesystem boundary keeps precompile and stock tsc separate,
+makes the exact macro output inspectable and uploadable in CI, and guarantees
+source-set agreement by deriving both the projection and generated project from
+the original TypeScript build graph.
+
+## D030 - Source decoding matches stock TypeScript
+
+Date: 2026-06-22
+
+TSIfDef does not impose stricter source-encoding validation than the pinned
+TypeScript compiler. Disk source reads reproduce TypeScript 5.5.4
+`ts.sys.readFile`: recognize UTF-16BE, UTF-16LE, and UTF-8 BOMs; decode every
+other byte stream as non-fatal UTF-8 with replacement characters. TSIfDef does
+not detect GBK/GB2312/GB18030 and does not reject or transcode original files.
+
+Projection operates on exactly the JavaScript string stock tsc would parse and
+writes that projected string as UTF-8 in the generated project. Consequently,
+any replacement characters or mojibake already produced by stock tsc are
+preserved as compiler-visible behavior rather than treated as TSIfDef errors.
+Original source bytes remain untouched.
+
+This decision supersedes D017 and D028's strict UTF-8 requirements.
+
+Reason: conditional compilation must be transparent relative to the existing
+compiler. Encoding correctness belongs to the source project; TSIfDef must not
+block a file that stock tsc accepts or silently introduce a different decoding
+policy.
+
+## D031 - Package-owned Profile pointer and conventional output
+
+Date: 2026-06-22
+
+The project `package.json` contains the single active-Profile pointer as a
+string field, for example `"tsifdef": "./Profiles/HOK.json"`. The Profile file
+contains the enabled macro array. No CLI, VSCode, tsserver, Junction, region
+inference, or secondary configuration owns another active Profile selection.
+External tools such as Unity may switch environments by changing this one
+package field.
+
+TSIfDef exposes one CLI operation with no subcommand. `tsifdef` reads
+`package.json`, the referenced Profile, and `tsconfig.json` from the current
+directory. `tsifdef --project <path>` overrides only the source tsconfig. It
+atomically replaces the fixed `.tsifdef/Output` projected project. Stock tsc
+always consumes `.tsifdef/Output/tsconfig.json`, so changing the Profile pointer
+does not change npm compile configuration. The former emit/check/watch/tsc
+command surface is removed.
+
+The VSCode extension watches package.json and Profile JSON changes. It displays
+the selected file name and full path, refreshes presentation, and sends the
+resolved Profile path to the tsserver plugin, which invalidates affected ASTs.
+VSCode does not persist its own Profile setting or infer a region.
+
+This decision supersedes D010's selection precedence, D026's command-variable
+selection, D029's per-Profile output directories, and all prior CLI emit/check/
+watch product contracts. D029's Program-derived generated project and manifest
+remain active under the fixed output location.
+
+Reason: one externally editable pointer prevents build/editor/tsserver split
+state, while conventional paths reduce the npm integration to `precompile:
+tsifdef` and a stable stock-tsc project path.

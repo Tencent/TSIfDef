@@ -2,15 +2,13 @@ import { readFileSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import type * as ts from "typescript";
 
-import { parseTsIfDefConfig, profileFromConfig, tsIfDefConfigFileName } from "../cli/config.js";
-import { selectProfile } from "../cli/profile.js";
+import { parseProfileFile } from "../cli/config.js";
 import { wrapHostWithProjection, type ActiveProfile } from "./host-projection.js";
 import { ProfileProjectionController } from "./project-controller.js";
 
 /** Plugin configuration accepted from the `tsconfig.json` plugins entry. */
 interface PluginConfig {
-  readonly profile?: string;
-  readonly configPath?: string;
+  readonly profileFile?: string;
 }
 
 /**
@@ -32,11 +30,11 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
     create(info: ts.server.PluginCreateInfo): ts.LanguageService {
       const projectConfig = (info.config ?? {}) as PluginConfig;
       const config = (): PluginConfig => ({ ...projectConfig, ...externalConfig });
-      const configPath = (): string => resolveConfigPath(config(), info);
+      const profilePath = (): string | undefined => resolveProfilePath(config(), info);
       const log = (message: string): void => info.project.projectService.logger.info(message);
 
       const controller = new ProfileProjectionController({
-        resolve: () => resolveProfile(config(), configPath(), log),
+        resolve: () => resolveProfile(profilePath(), log),
         markDirty: () => invalidateProject(info.project),
         log,
       });
@@ -50,7 +48,8 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
       // re-projects without restarting the server. If cache refresh proves
       // unstable in practice, the documented fallback is the
       // `TypeScript: Restart TS Server` command.
-      watchConfigDirectory(info, configPath(), () => controller.reload());
+      const selectedPath = profilePath();
+      if (selectedPath !== undefined) watchConfigDirectory(info, selectedPath, () => controller.reload());
 
       return info.languageService;
     },
@@ -63,41 +62,28 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
   };
 }
 
-function resolveConfigPath(config: PluginConfig, info: ts.server.PluginCreateInfo): string {
+function resolveProfilePath(config: PluginConfig, info: ts.server.PluginCreateInfo): string | undefined {
   const projectName = info.project.getProjectName();
   const projectRoot = projectName ? dirname(projectName) : info.project.getCurrentDirectory();
-  if (config.configPath !== undefined) {
-    return isAbsolute(config.configPath) ? config.configPath : join(projectRoot, config.configPath);
-  }
-  return join(projectRoot, tsIfDefConfigFileName);
+  const selected = config.profileFile;
+  if (selected === undefined || selected.trim() === "") return undefined;
+  return isAbsolute(selected) ? selected : join(projectRoot, selected);
 }
 
 function resolveProfile(
-  config: PluginConfig,
-  configPath: string,
+  profilePath: string | undefined,
   log: (message: string) => void,
 ): ActiveProfile | undefined {
-  let name: string;
+  if (profilePath === undefined) return undefined;
   try {
-    name = selectProfile({
-      ...(config.profile === undefined ? {} : { cliProfile: config.profile }),
-      environment: process.env,
-    }).profile;
-  } catch {
-    return undefined;
-  }
-  try {
-    const text = readFileSync(configPath, "utf8");
-    const definitions = profileFromConfig(
-      parseTsIfDefConfig(text, configPath),
-      name,
-    ).definitions;
+    const text = readFileSync(profilePath, "utf8");
+    const definitions = parseProfileFile(text, profilePath).definitions;
     // The version ties the AST cache to the Profile name and its content, so
     // editing or switching the Profile produces a new version and invalidation.
-    return { definitions, version: `${name}:${text.length}:${hashText(text)}` };
+    return { definitions, version: `${profilePath}:${text.length}:${hashText(text)}` };
   } catch (error) {
     log(
-      `[tsifdef] failed to load profile '${name}' from ${configPath}: ${
+      `[tsifdef] failed to load Profile '${profilePath}': ${
         error instanceof Error ? error.message : String(error)
       }`,
     );

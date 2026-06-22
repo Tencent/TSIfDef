@@ -56,8 +56,8 @@ defined(NAME)
 ()
 ```
 
-不支持源码内 `#define`、文本替换宏和函数宏。宏值全部来自与 `package.json`
-同目录的固定配置文件 `tsifdef` 或构建时选择的 Profile。表达式中的标识符若未列入
+不支持源码内 `#define`、文本替换宏和函数宏。`package.json` 的字符串字段
+`tsifdef` 指向唯一生效的 Profile JSON 文件，该文件只包含启用的宏名数组。表达式中的标识符若未列入
 当前 Profile，值为 `false`；`#if NONE_EXIST_MACRO` 是合法表达式，不产生未知宏诊断。
 
 宏定义是一次检查、投影或语言服务会话的外部全局输入。同一个选定 Profile
@@ -71,29 +71,30 @@ defined(NAME)
 ## 4. Profile 与配置文件
 
 ```json
-// 与 package.json 同目录，固定文件名：tsifdef
+// package.json
 {
-  "HOK": ["HOK", "GLOBAL_GENERAL"],
-  "DOMESTIC": ["DOMESTIC"]
+  "tsifdef": "./Profiles/HOK.json",
+  "scripts": {
+    "precompile": "tsifdef",
+    "compile": "tsc -p ./.tsifdef/Output/tsconfig.json"
+  }
 }
 ```
 
-`tsifdef` 只描述每个 Profile 中启用的宏。未列出的宏全部为 `false`。该文件不得包含
+```json
+// Profiles/HOK.json
+["HOK", "GLOBAL_GENERAL"]
+```
+
+Profile 文件只描述启用的宏。未列出的宏全部为 `false`。该文件不得包含
 `source`、`tsconfig`、`outDir`、include/exclude 或任何构建文件清单。现有
 `build.json`、`package.json` scripts、`tsconfig` 或构建脚本是 build graph 的唯一
 来源；TSIfDef 必须透明处理该 build graph 实际纳入的全部 TypeScript 文件，不能要求
 工程为 TSIfDef 重复配置输入文件。
 
-Profile 来源优先级固定为：
-
-```text
-CLI --profile
-> CI 环境变量 HOK_TS_PROFILE
-> VSCode 本地配置
-> Project/Assets/Plugins Junction 推断
-```
-
-正式构建必须显式传递 Profile，不能依赖 Junction 推断。
+`package.json` 的 `tsifdef` 字段是构建、VSCode 和 tsserver 的唯一当前 Profile
+来源。外部工具可通过修改该字段切换环境；TSIfDef 不从 CLI、环境变量、VSCode
+私有设置、Junction 或工程区域名称推断 Profile。
 
 ## 5. 等长遮盖
 
@@ -118,13 +119,12 @@ CLI --profile
 
 最终产品提供一个 VSCode 扩展，职责包括：
 
-- 状态栏显示当前 `HOK` 或 `DOMESTIC` Profile。
-- 命令切换 Profile。
+- 监听 `package.json` 和当前 Profile 文件，状态栏显示 Profile 文件名，Tooltip 显示完整路径。
 - 使用 `TextEditorDecorationType` 灰显 inactive ranges。
 - 使用 `FoldingRangeProvider` 折叠 inactive ranges。
 - 提供宏结构错误和不配对指令诊断；未配置宏按 `false` 求值，不报未知宏。
 - 通知 TypeScript Server Plugin 当前 Profile。
-- 驱动本地 CLI 的 emit、watch 和 check。
+- 将 package 中解析出的 Profile 完整路径同步给 TypeScript Server Plugin。
 
 灰显和折叠只是视觉能力，不能让 TypeScript Server 忽略代码，因此必须同时提供 tsserver plugin。
 
@@ -174,37 +174,28 @@ tsserver 某一次请求的片段局部判断宏状态：它必须先通过
 
 ```text
 原始 TS
-  -> tsifdef emit --profile <PROFILE>
-  -> Build/.macrobuild/<PROFILE>
-  -> 对应 tsconfig 和 d.ts
-  -> tsc
+  -> npm precompile: tsifdef
+  -> .tsifdef/Output/project + manifest.json + tsconfig.json
+  -> stock tsc -p .tsifdef/Output/tsconfig.json
   -> 现有 CommonJS/Babel
   -> V8CC/PFBS
   -> RawAssets
 ```
 
-建议 CLI：
+CLI 只有一个操作：
 
 ```bash
-tsifdef emit --profile HOK
-tsifdef emit --profile DOMESTIC
-tsifdef watch --profile HOK
-tsifdef check --all
+tsifdef
+tsifdef --project ./custom.tsconfig.json
 ```
 
-增量缓存不是宏正确性的组成部分。无缓存地重新读取完整源文件并投影是基准行为，
-一次性 `emit`/`check` 默认使用这一基准行为，它也用于验证缓存实现。只有在真实工程测量表明 watch
-或重复 emit 的全量投影产生明显延迟时，才启用可选增量缓存。删除缓存、缓存损坏
-或缓存未命中必须安全退化为完整重算，输出结果必须与禁用缓存逐字节一致。
+无参数时读取当前目录的 `package.json`、其 `tsifdef` Profile 指针和
+`tsconfig.json`。`--project` 只覆盖 tsconfig。每次成功运行都原子替换固定
+`.tsifdef/Output`；不提供 emit/check/watch 子命令或增量缓存。
 
-启用缓存时，缓存键至少包含：
-
-```text
-源文件内容
-+ Profile 定义
-+ Preprocessor 版本
-+ 宏配置版本
-```
+磁盘源码解码与固定的 TypeScript 5.5.4 `ts.sys.readFile` 一致：识别 UTF-16BE、
+UTF-16LE 和 UTF-8 BOM，其余字节按非 fatal UTF-8 解码。TSIfDef 不额外检测或拒绝
+GBK 等编码，也不修改原始文件。
 
 ESLint 同样检查预处理后的区域视图，而宏结构检查直接运行在原始源码上。
 
@@ -213,10 +204,8 @@ ESLint 同样检查预处理后的区域视图，而宏结构检查直接运行�
 CI 不依赖 VSCode Extension Host，也不能从开发机插件安装目录寻找 CLI。每次提交至少运行：
 
 ```text
-macro-check-hok
-macro-check-domestic
-typecheck-hok
-typecheck-domestic
+设置 package.json tsifdef -> HOK Profile，运行 npm run compile，上传 .tsifdef/Output
+设置 package.json tsifdef -> Domestic Profile，运行 npm run compile，上传 .tsifdef/Output
 ```
 
 即使国内开发者只查看国内视图，海外视图仍会在提交阶段被预处理并使用海外 `.d.ts` 编译；反向亦然。
@@ -230,7 +219,7 @@ tsifdef/
   core/       宏扫描、表达式求值、range 和等长遮盖
   vscode/     灰显、折叠、Profile、状态栏
   tsserver/   ScriptSnapshot 投影
-  cli/        emit、watch、check、CI
+  cli/        package/tsconfig 解析、Program 投影、固定输出和 CI
 ```
 
 同一次发布产生同版本的两个交付物：
@@ -273,14 +262,14 @@ VSCode 市场中应只考虑官方 `oven.bun-vscode`。第三方 `Pandy.bun` 仅
 - VSCode 未保存文档的 Snapshot。
 - Profile 切换和 tsserver 缓存失效。
 - Completion、Definition、Reference、Rename 和 Quick Fix。
-- VSCode、tsserver、CLI 投影逐字节一致。
+- VSCode、tsserver、CLI 投影文本一致。
 - HOK 与 Domestic 两套 `.d.ts` 的独立编译。
 - TypeScript `5.5.4` 集成测试。
 
 ## 13. 实施顺序
 
 1. 实现无 VSCode 依赖的 `core` 和黄金用例测试。
-2. 实现 CLI emit/check/watch，接入两套 `tsc` 和 CI。
+2. 实现约定式 CLI precompile，接入 stock `tsc` 和 CI。
 3. 实现 VSCode 灰显、折叠、Profile 和宏结构诊断。
 4. 实现 tsserver `ScriptSnapshot` Hack，并验证 TypeScript 5.5.4。
 5. 接入现有 `init.mjs -> compile.mjs -> build.mjs` Pipeline。

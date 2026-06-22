@@ -25,22 +25,6 @@ export interface StatusBarItem extends Disposable {
   hide(): void;
 }
 
-/** Subset of `vscode.WorkspaceConfiguration` for one configuration section. */
-export interface WorkspaceConfiguration {
-  get<T>(key: string): T | undefined;
-  update(key: string, value: unknown): Promise<void>;
-}
-
-/** A quick-pick choice offered when switching Profiles. */
-export interface QuickPickItem {
-  readonly label: string;
-  readonly description?: string;
-}
-
-export interface QuickPickOptions {
-  readonly placeHolder?: string;
-}
-
 /** An open macro document the presentation layer must keep in sync. */
 export interface DocumentSnapshot {
   /** Stable document identity (its URI string in the real host). */
@@ -71,17 +55,10 @@ export type FoldingRangeProvider = (document: DocumentSnapshot) => readonly Fold
  * directly onto a real `vscode` API call in the activation adapter.
  */
 export interface ExtensionHost {
-  /** Read the `tsifdef` configuration section for the active workspace. */
-  getConfiguration(section: string): WorkspaceConfiguration;
   /** Create a left-aligned status-bar item. */
   createStatusBarItem(): StatusBarItem;
   /** Register a command handler, returning its disposable. */
   registerCommand(command: string, handler: () => unknown | Promise<unknown>): Disposable;
-  /** Present a single-selection quick pick, resolving to the chosen item or undefined. */
-  showQuickPick(
-    items: readonly QuickPickItem[],
-    options?: QuickPickOptions,
-  ): Promise<QuickPickItem | undefined>;
   /** Surface a non-blocking informational message. */
   showInformationMessage(message: string): void;
   /** The first workspace folder's filesystem path, if any. */
@@ -100,4 +77,6 @@ export interface ExtensionHost {
   showErrorMessage(message: string): void;
   /** Send live configuration to the contributed TypeScript server plugin. */
   configureTypeScriptPlugin(name: string, configuration: Readonly<Record<string, unknown>>): Promise<void>;
+  /** Watch package.json and Profile JSON files that determine editor semantics. */
+  watchProjectConfiguration(onChange: () => void): Disposable;
 }

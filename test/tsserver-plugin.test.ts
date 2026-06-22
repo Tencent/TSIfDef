@@ -46,16 +46,16 @@ function pluginInfo(
   };
 }
 
-test("plugin resolves the fixed project config and projects", async () => {
+test("plugin resolves the selected Profile file and projects", async () => {
   await withProject(async (root) => {
-    await writeFile(join(root, "tsifdef"), "{\"HOK\":[\"HOK\"]}", "utf8");
+    await writeFile(join(root, "HOK.json"), "[\"HOK\"]", "utf8");
     const file = join(root, "main.ts");
     const source = "#if HOK\nexport const value: number = 1;\n#else\nexport const value: string = 'x';\n#endif\n";
 
     const files = new Map([[file, { text: source, version: "1" }]]);
     const host = createMemoryHost(files);
     const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
-    const info = pluginInfo(root, host, languageService, { profile: "HOK" });
+    const info = pluginInfo(root, host, languageService, { profileFile: "HOK.json" });
 
     const plugin = init({ typescript: ts });
     const wrapped = plugin.create(info);
@@ -74,20 +74,21 @@ test("plugin resolves the fixed project config and projects", async () => {
 
 test("plugin reprojects when VSCode sends a different profile", async () => {
   await withProject(async (root) => {
-    const configPath = join(root, "tsifdef");
-    await writeFile(configPath, "{\"HOK\":[\"HOK\"],\"DOMESTIC\":[]}", "utf8");
+    const hokPath = join(root, "HOK.json");
+    const domesticPath = join(root, "Domestic.json");
+    await writeFile(hokPath, "[\"HOK\"]", "utf8");
+    await writeFile(domesticPath, "[]", "utf8");
     const file = join(root, "main.ts");
     const source = "#if HOK\nconst selected = 'hok';\n#else\nconst selected = 'domestic';\n#endif\n";
     const host = createMemoryHost(new Map([[file, { text: source, version: "1" }]]));
     const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
     const plugin = init({ typescript: ts });
     plugin.create(pluginInfo(root, host, languageService, {
-      profile: "HOK",
-      configPath: "tsifdef",
+      profileFile: hokPath,
     }));
 
     assert.match(host.getScriptSnapshot(file)!.getText(0, source.length), /selected = 'hok'/);
-    plugin.onConfigurationChanged?.({ profile: "DOMESTIC", configPath });
+    plugin.onConfigurationChanged?.({ profileFile: domesticPath });
     const projected = host.getScriptSnapshot(file)!.getText(0, source.length);
     assert.match(projected, /selected = 'domestic'/);
     assert.doesNotMatch(projected, /selected = 'hok'/);

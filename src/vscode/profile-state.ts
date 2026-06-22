@@ -1,145 +1,64 @@
-import { selectProfile, ProfileSelectionError, type ProfileSelectionSource } from "../cli/profile.js";
-import { discoverProfileNames } from "../cli/check.js";
+import { basename } from "node:path";
+
 import type { Disposable, ExtensionHost, StatusBarItem } from "./host.js";
 
-/** Configuration section and command identifiers contributed by the extension. */
-export const configurationSection = "tsifdef" as const;
-export const profileConfigurationKey = "profile" as const;
-export const switchProfileCommand = "tsifdef.switchProfile" as const;
 export const activeProfileCommand = "tsifdef.activeProfile" as const;
-
-/** Human-readable label for each selection source, shown in the status-bar tooltip. */
-const sourceLabels: Readonly<Record<ProfileSelectionSource, string>> = {
-  cli: "CLI",
-  environment: "HOK_TS_PROFILE",
-  vscode: "VSCode setting",
-  junction: "Junction inference",
-};
 
 export interface EffectiveProfile {
   readonly profile: string | undefined;
-  readonly source: ProfileSelectionSource | undefined;
+  readonly source: "package.json" | undefined;
 }
 
-/**
- * Owns the status-bar Profile indicator and the switch-Profile flow.
- *
- * It resolves the effective Profile through the shared core `selectProfile`
- * precedence so the editor, CLI, and CI agree, and never reads the real
- * `vscode` module directly.
- */
+/** Presents the package-selected Profile; package.json remains the only state source. */
 export class ProfileStateController {
   private statusItem: StatusBarItem | undefined;
-  private loadFailure: { readonly profile: string; readonly message: string } | undefined;
+  private profile: string | undefined;
+  private loadError: string | undefined;
   private readonly disposables: Disposable[] = [];
 
-  public constructor(
-    private readonly host: ExtensionHost,
-    private readonly environment: Readonly<Record<string, string | undefined>> = process.env,
-  ) {}
+  public constructor(private readonly host: ExtensionHost) {}
 
-  /** Create the status-bar item, register the switch command, and render once. */
   public activate(): void {
     this.statusItem = this.host.createStatusBarItem();
-    this.statusItem.command = switchProfileCommand;
     this.disposables.push(this.statusItem);
-    this.disposables.push(
-      this.host.registerCommand(switchProfileCommand, () => this.switchProfile()),
-    );
-    this.disposables.push(
-      this.host.registerCommand(activeProfileCommand, () => this.activeProfileName()),
-    );
+    this.disposables.push(this.host.registerCommand(activeProfileCommand, () => this.activeProfilePath()));
     this.refresh();
     this.statusItem.show();
   }
 
-  /** Dispose the status-bar item and the registered command. */
   public dispose(): void {
-    for (const disposable of this.disposables.splice(0).reverse()) {
-      disposable.dispose();
-    }
+    for (const disposable of this.disposables.splice(0).reverse()) disposable.dispose();
     this.statusItem = undefined;
   }
 
-  /** Resolve the effective Profile without throwing when none is selected. */
   public effectiveProfile(): EffectiveProfile {
-    const configured = this.host.getConfiguration(configurationSection).get<string>(profileConfigurationKey);
-    try {
-      const selection = selectProfile({
-        environment: this.environment,
-        ...(configured === undefined ? {} : { vscodeProfile: configured }),
-      });
-      return { profile: selection.profile, source: selection.source };
-    } catch (error) {
-      if (error instanceof ProfileSelectionError) {
-        return { profile: undefined, source: undefined };
-      }
-      throw error;
-    }
+    return { profile: this.profile, source: this.profile === undefined ? undefined : "package.json" };
   }
 
-  /** Recompute and render the status-bar text and tooltip. */
-  public refresh(): void {
-    if (this.statusItem === undefined) {
-      return;
-    }
-    const { profile, source } = this.effectiveProfile();
-    if (profile === undefined) {
+  public setProfile(profile: string | undefined, error?: string): void {
+    this.profile = profile;
+    this.loadError = error;
+    this.refresh();
+  }
+
+  public activeProfilePath(): string {
+    if (this.profile === undefined) throw new Error("No TSIfDef Profile is selected in package.json.");
+    return this.profile;
+  }
+
+  private refresh(): void {
+    if (this.statusItem === undefined) return;
+    if (this.profile === undefined) {
       this.statusItem.text = "$(versions) TSIfDef: none";
-      this.statusItem.tooltip = "No TSIfDef profile selected. Click to choose one.";
+      this.statusItem.tooltip = this.loadError ?? "No package.json TSIfDef Profile is available.";
       return;
     }
-    if (this.loadFailure?.profile === profile) {
-      this.statusItem.text = `$(error) TSIfDef: ${profile} (unavailable)`;
-      this.statusItem.tooltip = this.loadFailure.message;
+    if (this.loadError !== undefined) {
+      this.statusItem.text = `$(error) TSIfDef: ${basename(this.profile)} (unavailable)`;
+      this.statusItem.tooltip = this.loadError;
       return;
     }
-    this.statusItem.text = `$(versions) TSIfDef: ${profile}`;
-    this.statusItem.tooltip = `TSIfDef profile '${profile}' from ${sourceLabels[source ?? "vscode"]}. Click to switch.`;
-  }
-
-  /** Reflect whether the selected Profile definitions were actually loaded. */
-  public reportProfileLoad(profile: string, error?: string): void {
-    this.loadFailure = error === undefined ? undefined : { profile, message: error };
-    this.refresh();
-  }
-
-  /** Canonical Profile name used by task and debug command-variable expansion. */
-  public async activeProfileName(): Promise<string> {
-    const selected = this.effectiveProfile().profile;
-    const root = this.host.workspaceRoot();
-    if (selected === undefined || root === undefined) {
-      throw new Error("No TSIfDef profile is selected for this workspace.");
-    }
-    const canonical = (await discoverProfileNames(root)).find(
-      (name) => name.toLowerCase() === selected.toLowerCase(),
-    );
-    if (canonical === undefined) {
-      throw new Error(`TSIfDef profile '${selected}' does not exist in the project tsifdef file.`);
-    }
-    return canonical;
-  }
-
-  /** Offer discovered profiles and persist the chosen one to VSCode configuration. */
-  public async switchProfile(): Promise<void> {
-    const root = this.host.workspaceRoot();
-    const names = root === undefined ? [] : await discoverProfileNames(root);
-    if (names.length === 0) {
-      this.host.showInformationMessage("No TSIfDef profiles found in the project tsifdef file.");
-      return;
-    }
-    const current = this.effectiveProfile().profile;
-    const picked = await this.host.showQuickPick(
-      names.map((name) => ({
-        label: name,
-        ...(name === current ? { description: "current" } : {}),
-      })),
-      { placeHolder: "Select a TSIfDef profile" },
-    );
-    if (picked === undefined) {
-      return;
-    }
-    await this.host.getConfiguration(configurationSection).update(profileConfigurationKey, picked.label);
-    this.refresh();
+    this.statusItem.text = `$(versions) TSIfDef: ${basename(this.profile)}`;
+    this.statusItem.tooltip = `TSIfDef Profile '${this.profile}' from package.json.`;
   }
 }

@@ -4,34 +4,35 @@ import { join, resolve } from "node:path";
 const sourceExtensionPattern = /(?:\.d)?\.(?:ts|tsx|mts|cts)$/i;
 const ignoredDirectories = new Set([".git", "node_modules"]);
 
-/** A source file whose bytes are not valid UTF-8 and cannot be decoded safely. */
-export class SourceEncodingError extends Error {
-  public readonly code = "source-encoding" as const;
-
-  public constructor(public readonly file: string, public readonly cause: unknown) {
-    super(`Source file '${file}' is not valid UTF-8.`);
-    this.name = "SourceEncodingError";
-  }
+/**
+ * Read source with the pinned TypeScript 5.5.4 `ts.sys.readFile` semantics.
+ * BOM-marked UTF-16/UTF-8 is recognized; every other byte stream is decoded as
+ * non-fatal UTF-8, including the same U+FFFD replacement behavior as stock tsc.
+ */
+export async function readSourceText(file: string, _displayPath = file): Promise<string> {
+  return decodeTypeScriptText(await readFile(file));
 }
 
-// `fatal` rejects malformed byte sequences instead of substituting U+FFFD, and
-// `ignoreBOM` keeps a leading BOM so projection offsets match `readFile(..,"utf8")`.
-const utf8Decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-
-/**
- * Read a source file as strictly validated UTF-8 text.
- *
- * Unlike `readFile(file, "utf8")`, malformed UTF-8 throws a `SourceEncodingError`
- * identifying `displayPath` rather than silently producing U+FFFD replacements.
- * Correctly encoded U+FFFD characters remain valid source.
- */
-export async function readSourceText(file: string, displayPath = file): Promise<string> {
-  const bytes = await readFile(file);
-  try {
-    return utf8Decoder.decode(bytes);
-  } catch (cause) {
-    throw new SourceEncodingError(displayPath, cause);
+export function decodeTypeScriptText(input: Uint8Array): string {
+  const bytes = Buffer.from(input);
+  const length = bytes.length;
+  if (length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    const evenLength = length & ~1;
+    const swapped = Buffer.from(bytes.subarray(0, evenLength));
+    for (let index = 0; index < evenLength; index += 2) {
+      const value = swapped[index]!;
+      swapped[index] = swapped[index + 1]!;
+      swapped[index + 1] = value;
+    }
+    return swapped.toString("utf16le", 2);
   }
+  if (length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return bytes.toString("utf16le", 2);
+  }
+  if (length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return bytes.toString("utf8", 3);
+  }
+  return bytes.toString("utf8");
 }
 
 /** Discover TypeScript-family files in deterministic relative-path order. */

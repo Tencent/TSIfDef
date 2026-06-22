@@ -6,7 +6,8 @@ A small project for trying TSIfDef in VS Code and on the command line.
 
 ```
 examples/demo/
-  tsifdef                       Profile-to-enabled-macro configuration
+  profiles/HOK.json             HOK enabled-macro Profile file
+  profiles/Domestic.json        Domestic enabled-macro Profile file
   src/region.ts                 #if / #elif / #else / #error
   src/player.ts                 profile-specific conditional imports
   src/profiles/hok-player.ts    HOK-only global account data structure
@@ -29,14 +30,12 @@ From the repository root (`E:\TsIfDef`):
 3. Work in the **second** window whose title contains
    `[Extension Development Host]`, not the original repository window.
 4. In the dev host:
-   - The status bar shows `TSIfDef: HOK` (the demo sets `tsifdef.profile` to
-     `HOK` in `.vscode/settings.json`).
+   - The status bar shows `TSIfDef: HOK.json`, selected by the demo
+     `package.json` `tsifdef` field.
    - Open `src/region.ts`: the `#elif DOMESTIC` branch is **grayed** and
      **foldable**; macro structure diagnostics (if any) appear in Problems.
-   - Run **TSIfDef: Switch Profile** from the Command Palette and pick
-     `domestic`: the gray/fold flips to the `#if HOK` branch.
-   - Run **TSIfDef: Check Macros**, **TSIfDef: Emit Projected Sources**, and
-     **TSIfDef: Watch and Emit** / **Stop Watch** to drive the local CLI.
+   - Change `package.json` `tsifdef` to `./profiles/Domestic.json`: the
+     extension and tsserver update automatically and the gray/fold flips.
 
 The status bar, profile switch, graying, folding, diagnostics, and the local
 commands all work in the Extension Development Host without any extra setup.
@@ -46,16 +45,18 @@ commands all work in the Extension Development Host without any extra setup.
 From the repository root, after `npm run build`:
 
 ```bash
-# Validate macro structure for every configured profile (no writes).
-node dist/cli/main.js check --all --root examples/demo --source src
-
-# Compile the exact Program selected by the project's own tsconfig.
-node dist/cli/main.js tsc --profile HOK --root examples/demo -- -p examples/demo/tsconfig.json
+# Validate one explicit Profile file (no writes).
+cd examples/demo
+node ../../dist/cli/main.js
+npx tsc -p .tsifdef/Output/tsconfig.json
 ```
 
-`tsifdef tsc` wraps TypeScript file reads, so tsconfig include/exclude and imports
-remain the only source of participating files. It does not require a second
-source list or generated tsconfig.
+Alternatively, from `examples/demo`, run `npm run compile`. npm automatically
+runs the configured `precompile` script first and then invokes stock `tsc`.
+
+Precompile uses the TypeScript Compiler API and the original tsconfig, so its
+manifest records the exact roots and imports. The generated project remains in
+`.tsifdef/Output` for CI inspection; `tsc` itself is not wrapped.
 
 ## tsserver plugin (editor type-checking ignores inactive code)
 
@@ -68,9 +69,9 @@ duplicate-declaration diagnostics.
 The extension contributes the `tsifdef-tsserver` package to VS Code's TypeScript
 plugin probe path. After `npm install` and `npm run build` at the repository root,
 open `src/region.ts` in the demo: with the `HOK` profile the file type-checks
-cleanly even though the raw text contains `#if` / `#elif` / `#else`. Edit
-the active Profile through **TSIfDef: Switch Profile** to update decorations,
-folding, and the tsserver projection together. **TypeScript: Restart TS Server**
+cleanly even though the raw text contains `#if` / `#elif` / `#else`. Change the
+package.json `tsifdef` pointer to update decorations, folding, and the tsserver
+projection together. **TypeScript: Restart TS Server**
 remains a fallback if the language service cache does not refresh.
 
 > The plugin loads under the **workspace** TypeScript version. In the Extension
@@ -79,8 +80,7 @@ remains a fallback if the language service cache does not refresh.
 > Version** and **TypeScript: Restart TS Server** if a profile change does not
 > take effect. Producing a self-contained VSIX that ships the plugin is REL-001.
 
-The CLI `tsc` wrapper verifies the same property without an editor while using
-the project's original tsconfig and import graph.
+The precompile integration test verifies the same property without an editor.
 
 ## Run and debug both profiles
 

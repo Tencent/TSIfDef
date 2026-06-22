@@ -1,3 +1,4 @@
 {
-  "tsifdef.profile": "HOK"
+  "files.exclude": { ".tsifdef": true },
+  "search.exclude": { ".tsifdef": true }
 }

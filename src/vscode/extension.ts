@@ -1,14 +1,9 @@
 import { createRequire } from "node:module";
 
-import {
-  loadTsIfDefConfig,
-  profileFromConfig,
-  tsIfDefConfigFileName,
-} from "../cli/config.js";
 import type { MacroDefinitions } from "../core/expression.js";
-import { ProfileStateController, configurationSection, profileConfigurationKey } from "./profile-state.js";
+import { ProfileStateController } from "./profile-state.js";
 import { MacroPresentationController } from "./macro-presentation.js";
-import { MacroCommandController } from "./macro-commands.js";
+import { PackageProfileController } from "./package-profile.js";
 import type {
   DecorationType,
   DiagnosticCollection,
@@ -16,10 +11,7 @@ import type {
   DocumentSnapshot,
   ExtensionHost,
   FoldingRangeProvider,
-  QuickPickItem,
-  QuickPickOptions,
   StatusBarItem,
-  WorkspaceConfiguration,
 } from "./host.js";
 import {
   DiagnosticSeverity,
@@ -60,7 +52,6 @@ interface VsEvent<T> {
 interface VsCodeApi {
   readonly StatusBarAlignment: { readonly Left: number };
   readonly DiagnosticSeverity: { readonly Error: number; readonly Warning: number };
-  readonly ConfigurationTarget: { readonly Workspace: number };
   readonly Range: VsRange;
   readonly FoldingRange: VsFoldingRange;
   readonly Uri: VsUri;
@@ -68,26 +59,24 @@ interface VsCodeApi {
   readonly window: {
     createStatusBarItem(alignment: number, priority?: number): StatusBarItem;
     createTextEditorDecorationType(options: unknown): { dispose(): void };
-    showQuickPick(
-      items: readonly QuickPickItem[],
-      options?: QuickPickOptions,
-    ): PromiseLike<QuickPickItem | undefined>;
     showInformationMessage(message: string): PromiseLike<unknown>;
     showErrorMessage(message: string): PromiseLike<unknown>;
     readonly visibleTextEditors: readonly VsTextEditor[];
     readonly onDidChangeVisibleTextEditors: VsEvent<readonly VsTextEditor[]>;
   };
   readonly workspace: {
-    getConfiguration(section: string): {
-      get<T>(key: string): T | undefined;
-      update(key: string, value: unknown, target?: unknown): PromiseLike<void>;
-    };
     readonly workspaceFolders?: ReadonlyArray<{ readonly uri: { readonly fsPath: string } }>;
     readonly textDocuments: readonly VsTextDocument[];
     readonly onDidChangeConfiguration: VsEvent<{ affectsConfiguration(section: string): boolean }>;
     readonly onDidChangeTextDocument: VsEvent<{ readonly document: VsTextDocument }>;
     readonly onDidOpenTextDocument: VsEvent<VsTextDocument>;
     readonly onDidCloseTextDocument: VsEvent<VsTextDocument>;
+    createFileSystemWatcher(glob: string): {
+      onDidChange: VsEvent<unknown>;
+      onDidCreate: VsEvent<unknown>;
+      onDidDelete: VsEvent<unknown>;
+      dispose(): void;
+    };
   };
   readonly languages: {
     createDiagnosticCollection(name: string): {
@@ -156,17 +145,8 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
     return created;
   };
   return {
-    getConfiguration(section: string): WorkspaceConfiguration {
-      const configuration = vscode.workspace.getConfiguration(section);
-      return {
-        get: <T,>(key: string) => configuration.get<T>(key),
-        update: (key, value) =>
-          Promise.resolve(configuration.update(key, value, vscode.ConfigurationTarget.Workspace)),
-      };
-    },
     createStatusBarItem: () => vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100),
     registerCommand: (command, handler) => vscode.commands.registerCommand(command, handler),
-    showQuickPick: (items, options) => Promise.resolve(vscode.window.showQuickPick(items, options)),
     showInformationMessage: (message) => void vscode.window.showInformationMessage(message),
     workspaceRoot: () => vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
     createDiagnosticCollection: (name): DiagnosticCollection => {
@@ -234,13 +214,22 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
       }
       api.configurePlugin(name, configuration);
     },
+    watchProjectConfiguration: (onChange) => {
+      const watcher = vscode.workspace.createFileSystemWatcher("**/{package.json,*.json}");
+      const subscriptions = [
+        watcher.onDidChange(onChange),
+        watcher.onDidCreate(onChange),
+        watcher.onDidDelete(onChange),
+      ];
+      return { dispose: () => { for (const item of subscriptions) item.dispose(); watcher.dispose(); } };
+    },
   };
 }
 
 interface ActiveExtension {
   readonly profileController: ProfileStateController;
   readonly presentation: MacroPresentationController;
-  readonly commands: MacroCommandController;
+  readonly packageProfile: PackageProfileController;
   dispose(): void;
 }
 
@@ -256,60 +245,16 @@ export function activate(context: ExtensionContext): void {
   const profileController = new ProfileStateController(host);
   const presentation = new MacroPresentationController(host, () => definitions);
 
-  const configPathFor = (root: string): string => `${root}/${tsIfDefConfigFileName}`;
-
-  const reloadDefinitions = async (): Promise<void> => {
-    const root = host.workspaceRoot();
-    const { profile } = profileController.effectiveProfile();
-    if (root === undefined || profile === undefined) {
-      definitions = undefined;
-    } else {
-      const configPath = configPathFor(root);
-      try {
-        definitions = profileFromConfig(
-          await loadTsIfDefConfig(root),
-          profile,
-        ).definitions;
-        await host.configureTypeScriptPlugin("tsifdef-tsserver", {
-          profile,
-          configPath,
-        });
-        profileController.reportProfileLoad(profile);
-      } catch (error) {
-        definitions = undefined;
-        const message = `Failed to load TSIfDef profile '${profile}' from ${configPath}: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
-        profileController.reportProfileLoad(profile, message);
-        host.showErrorMessage(message);
-      }
-    }
+  const packageProfile = new PackageProfileController(host, profileController, (next) => {
+    definitions = next;
     presentation.refresh();
-  };
-
-  const commands = new MacroCommandController(host, () => {
-    const root = host.workspaceRoot();
-    const { profile } = profileController.effectiveProfile();
-    return {
-      projectRoot: root,
-      profileName: profile,
-      configPath: root !== undefined && profile !== undefined ? configPathFor(root) : undefined,
-      definitions,
-    };
   });
 
   profileController.activate();
   presentation.activate();
-  commands.activate();
-  void reloadDefinitions();
+  packageProfile.activate();
 
   const subscriptions: Disposable[] = [
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration(`${configurationSection}.${profileConfigurationKey}`)) {
-        profileController.refresh();
-        void reloadDefinitions();
-      }
-    }),
     vscode.workspace.onDidChangeTextDocument((event) =>
       presentation.refreshDocument(toSnapshot(event.document)),
     ),
@@ -325,13 +270,13 @@ export function activate(context: ExtensionContext): void {
   active = {
     profileController,
     presentation,
-    commands,
+    packageProfile,
     dispose: () => {
       for (const subscription of subscriptions) {
         subscription.dispose();
       }
-      commands.dispose();
       presentation.dispose();
+      packageProfile.dispose();
       profileController.dispose();
     },
   };
