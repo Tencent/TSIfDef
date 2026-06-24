@@ -30,6 +30,9 @@ npm run compile
 `npm run precompile` 会先生成 `.tsifdef/Output`，`npm run compile` 再用
 stock `tsc` 编译 `.tsifdef/Output/tsconfig.json`。
 
+当前工程自己的 `files`、`include` 和 `exclude` 都属于预处理合同的一
+部分。独立子工程保留自己的 `tsifdef` 配置，不会被父工程隐式重写。
+
 ## 关注点
 
 - 当前 Profile 来自 `package.json`。

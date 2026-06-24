@@ -157,28 +157,43 @@ function projectedPathOptions(
   sourceProject: string,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  const mapTarget = (path: string): string => {
+  const mapProjectTarget = (path: string): string => {
     const absolute = resolve(path);
     return isInside(projectRoot, absolute)
       ? resolve(outputRoot, "project", relative(projectRoot, absolute))
       : absolute;
   };
-  const mapAbsolute = (path: string): string => {
-    const mapped = mapTarget(path);
+  const mapOutputTarget = (path: string): string => {
+    const absolute = resolve(path);
+    return isInside(projectRoot, absolute)
+      ? resolve(outputRoot, relative(projectRoot, absolute))
+      : absolute;
+  };
+  const mapProjectAbsolute = (path: string): string => {
+    const mapped = mapProjectTarget(path);
     let value = relative(outputRoot, mapped).replaceAll("\\", "/");
     if (!value.startsWith(".")) value = `./${value}`;
     return value;
   };
-  if (options.baseUrl !== undefined) result.baseUrl = mapAbsolute(options.baseUrl);
-  if (options.rootDir !== undefined) result.rootDir = mapAbsolute(options.rootDir);
-  if (options.rootDirs !== undefined) result.rootDirs = options.rootDirs.map(mapAbsolute);
-  if (options.typeRoots !== undefined) result.typeRoots = options.typeRoots.map(mapAbsolute);
+  const mapOutputAbsolute = (path: string): string => {
+    const mapped = mapOutputTarget(path);
+    let value = relative(outputRoot, mapped).replaceAll("\\", "/");
+    if (!value.startsWith(".")) value = `./${value}`;
+    return value;
+  };
+  if (options.baseUrl !== undefined) result.baseUrl = mapProjectAbsolute(options.baseUrl);
+  if (options.rootDir !== undefined) result.rootDir = mapProjectAbsolute(options.rootDir);
+  if (options.rootDirs !== undefined) result.rootDirs = options.rootDirs.map(mapProjectAbsolute);
+  if (options.typeRoots !== undefined) result.typeRoots = options.typeRoots.map(mapProjectAbsolute);
+  if (options.mapRoot !== undefined) result.mapRoot = "./";
+  if (options.tsBuildInfoFile !== undefined) result.tsBuildInfoFile = mapOutputAbsolute(options.tsBuildInfoFile);
+  else if (options.incremental === true || options.composite === true) result.tsBuildInfoFile = "./tsconfig.tsbuildinfo";
   if (options.paths !== undefined) {
     const base = options.baseUrl ?? dirname(sourceProject);
-    const mappedBase = mapTarget(base);
+    const mappedBase = mapProjectTarget(base);
     result.paths = Object.fromEntries(Object.entries(options.paths).map(([key, values]) => [
       key,
-      values.map((value) => relative(mappedBase, mapTarget(resolve(base, value))).replaceAll("\\", "/")),
+      values.map((value) => relative(mappedBase, mapProjectTarget(resolve(base, value))).replaceAll("\\", "/")),
     ]));
   }
   return result;

@@ -30,6 +30,10 @@ Demo `package.json`:
 `npm run precompile` generates `.tsifdef/Output`, and `npm run compile` runs
 stock `tsc` against `.tsifdef/Output/tsconfig.json`.
 
+Current-project `files`, `include`, and `exclude` are part of the precompile
+contract. Separate subprojects keep their own `tsifdef` configuration and are
+not rewritten implicitly.
+
 ## What to look for
 
 - The active Profile comes from `package.json`.

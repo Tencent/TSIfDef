@@ -37,6 +37,9 @@ npm run precompile
 npm run compile
 ```
 
+当前工程自己的 `files`、`include` 和 `exclude` 都属于预处理合同的一
+部分。独立子工程保留自己的 `tsifdef` 配置，不会被父工程隐式重写。
+
 ## 在 VSCode 里使用
 
 1. 安装 VSIX 发布产物。

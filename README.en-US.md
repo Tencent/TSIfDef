@@ -38,6 +38,10 @@ npm run precompile
 npm run compile
 ```
 
+Current-project `files`, `include`, and `exclude` are part of the precompile
+contract. Separate subprojects keep their own `tsifdef` configuration and are
+not rewritten implicitly.
+
 ## Use in VSCode
 
 1. Install the VSIX release artifact.

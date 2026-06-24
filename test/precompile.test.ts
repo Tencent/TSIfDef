@@ -45,6 +45,158 @@ test("precompile derives roots and imports from the original TypeScript Program"
   }
 });
 
+test("precompile honors include and exclude patterns for the current project", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-precompile-include-"));
+  try {
+    await mkdir(join(root, "src", "nested"), { recursive: true });
+    await mkdir(join(root, "types"), { recursive: true });
+    await writeFile(join(root, "Profile.json"), "[\"TEST_A\"]", "utf8");
+    await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+      compilerOptions: {
+        strict: true,
+        noEmit: true,
+      },
+      include: ["src/**/*.ts", "types/**/*.d.ts"],
+      exclude: ["src/skip.ts"],
+    }), "utf8");
+    await writeFile(join(root, "src", "main.ts"), "export const main = 1;\n", "utf8");
+    await writeFile(join(root, "src", "nested", "helper.ts"), "export const helper = 2;\n", "utf8");
+    await writeFile(join(root, "src", "skip.ts"), "export const skip = 3;\n", "utf8");
+    await writeFile(
+      join(root, "types", "public.d.ts"),
+      "#if TEST_A\nexport interface PublicApi { readonly value: string; }\n#else\nexport interface PublicApi { readonly value: number; }\n#endif\n",
+      "utf8",
+    );
+    await writeFile(join(root, "outside.ts"), "export const outside = 4;\n", "utf8");
+
+    const result = await precompileProject({
+      projectRoot: root,
+      project: "tsconfig.json",
+      profile: await loadProfileFile(join(root, "Profile.json")),
+    });
+
+    assert.deepEqual(result.manifest.files.map((file) => file.source), [
+      "src/main.ts",
+      "src/nested/helper.ts",
+      "types/public.d.ts",
+    ]);
+    const projected = await readFile(join(root, ".tsifdef", "Output", "project", "types", "public.d.ts"), "utf8");
+    assert.equal(projected.length, (await readFile(join(root, "types", "public.d.ts"), "utf8")).length);
+    await assert.rejects(readFile(join(root, ".tsifdef", "Output", "project", "src", "skip.ts"), "utf8"));
+    await assert.rejects(readFile(join(root, ".tsifdef", "Output", "project", "outside.ts"), "utf8"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("precompile honors files lists and keeps transitive imports from the current project", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-precompile-files-"));
+  try {
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "Profile.json"), "[\"TEST_A\"]", "utf8");
+    await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+      compilerOptions: {
+        strict: true,
+        noEmit: true,
+      },
+      files: ["src/entry.ts"],
+    }), "utf8");
+    await writeFile(join(root, "src", "entry.ts"), "import { value } from './dep.js';\nexport const entry = value;\n", "utf8");
+    await writeFile(join(root, "src", "dep.ts"), "#if TEST_A\nexport const value = 1;\n#else\nexport const value = 2;\n#endif\n", "utf8");
+    await writeFile(join(root, "src", "ignored.ts"), "export const ignored = 3;\n", "utf8");
+
+    const result = await precompileProject({
+      projectRoot: root,
+      project: "tsconfig.json",
+      profile: await loadProfileFile(join(root, "Profile.json")),
+    });
+
+    assert.deepEqual(result.manifest.files.map((file) => file.source), ["src/dep.ts", "src/entry.ts"]);
+    await assert.rejects(readFile(join(root, ".tsifdef", "Output", "project", "src", "ignored.ts"), "utf8"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("precompile preserves source-map source paths and relocates tsBuildInfoFile into Output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-precompile-sourcemap-"));
+  try {
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "Profile.json"), "[]", "utf8");
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profile.json" }), "utf8");
+    await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+      compilerOptions: {
+        target: "es2020",
+        module: "commonjs",
+        incremental: true,
+        sourceMap: true,
+        sourceRoot: "./src",
+        tsBuildInfoFile: "./cache/build.tsbuildinfo",
+        outDir: "./dist",
+      },
+      include: ["src/**/*.ts"],
+    }), "utf8");
+    await writeFile(join(root, "src", "main.ts"), "export const value = 1;\n", "utf8");
+
+    const result = await precompileProject({
+      projectRoot: root,
+      project: "tsconfig.json",
+      profile: await loadProfileFile(join(root, "Profile.json")),
+    });
+
+    const tsc = join(process.cwd(), "node_modules", "typescript", "bin", "tsc");
+    const run = spawnSync(process.execPath, [tsc, "-p", result.projectPath], { cwd: root, encoding: "utf8" });
+    assert.equal(run.status, 0, run.stderr);
+
+    const map = JSON.parse(await readFile(join(root, "dist", "main.js.map"), "utf8")) as {
+      sourceRoot?: string;
+      sources?: readonly string[];
+    };
+    const output = await readFile(join(root, "dist", "main.js"), "utf8");
+    assert.equal(map.sourceRoot, "./src/");
+    assert.deepEqual(map.sources, ["main.ts"]);
+    assert.match(output, /sourceMappingURL=main\.js\.map/);
+    assert.doesNotMatch(output, /\.tsifdef\/Output/);
+    await assert.rejects(readFile(join(root, "cache", "build.tsbuildinfo"), "utf8"));
+    assert.ok((await readFile(join(root, ".tsifdef", "Output", "cache", "build.tsbuildinfo"), "utf8")).length > 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("precompile places implicit incremental build info inside Output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-precompile-buildinfo-"));
+  try {
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "Profile.json"), "[]", "utf8");
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profile.json" }), "utf8");
+    await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+      compilerOptions: {
+        target: "es2020",
+        module: "commonjs",
+        incremental: true,
+        outDir: "./dist",
+      },
+      include: ["src/**/*.ts"],
+    }), "utf8");
+    await writeFile(join(root, "src", "main.ts"), "export const value = 1;\n", "utf8");
+
+    const result = await precompileProject({
+      projectRoot: root,
+      project: "tsconfig.json",
+      profile: await loadProfileFile(join(root, "Profile.json")),
+    });
+
+    const tsc = join(process.cwd(), "node_modules", "typescript", "bin", "tsc");
+    const run = spawnSync(process.execPath, [tsc, "-p", result.projectPath], { cwd: root, encoding: "utf8" });
+    assert.equal(run.status, 0, run.stderr);
+    assert.ok((await readFile(join(root, ".tsifdef", "Output", "tsconfig.tsbuildinfo"), "utf8")).length > 0);
+    await assert.rejects(readFile(join(root, "dist", "tsconfig.tsbuildinfo"), "utf8"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("packaged no-argument CLI uses package.json and conventional paths", async () => {
   const root = await mkdtemp(join(tmpdir(), "tsifdef-precompile-cli-"));
   try {

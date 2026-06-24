@@ -45,6 +45,17 @@ rationale, is archived in
 - Precompile atomically replaces `.tsifdef/Output` with equal-length projected
   sources, a generated stock-tsc config, and an auditable manifest. Stock `tsc`
   consumes `.tsifdef/Output/tsconfig.json`. (D029, D031)
+- The current project’s own `include`, `files`, and `exclude` are part of the
+  precompile contract and must be covered by tests. Subprojects with their own
+  `tsconfig.json` are independent packages and are not implicitly rewritten by
+  the parent project’s `tsifdef` run.
+- Source-bearing compiler paths are rewritten into `.tsifdef/Output/project`,
+  while `tsBuildInfoFile` is relocated into `.tsifdef/Output` and implicit
+  incremental build info is pinned there as `tsconfig.tsbuildinfo` so caches
+  do not escape the generated tree. Sourcemaps are emitted from the projected
+  files, `mapRoot` is normalized back to a local relative root, and their
+  source paths keep the original project-relative semantics instead of
+  exposing `Output`.
 - VSCode presentation reuses core analysis and exists independently from
   language-service projection. Decorations alone never define TypeScript
   semantics. (D019, D021)
