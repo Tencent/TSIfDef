@@ -1,239 +1,135 @@
-# HOK Trunk TSIfDef Integration Notes
+# Integrating TSIfDef into a Project
 
 Language file: [`INTEGRATION.zh-CN.md`](./INTEGRATION.zh-CN.md)
 
-These are local notes for applying TSIfDef to `E:\HOK_Trunk`. They are
-deliberately not a product roadmap task and should not be committed unless the
-integration is later formalized.
+This guide explains how to adopt TSIfDef in a TypeScript project: build,
+editor experience, and linting. TSIfDef is generic — it only needs a Profile
+that lists the enabled macros. How that Profile is produced (by hand, by a
+script, or by another toolchain) is up to your project.
 
-## Guiding Rule
+## 1. Concepts
 
-HOK must not maintain a separate TypeScript macro configuration.
+- A **macro** is a plain identifier such as `BROWSER` or `EXPERIMENTAL`.
+- A **Profile** is a JSON array of the macro names that are enabled, e.g.
+  `["BROWSER", "EXPERIMENTAL"]`. Any name not listed evaluates to `false`;
+  unknown names are not an error.
+- `package.json` holds the single pointer to the active Profile via the
+  `tsifdef` field. Build, VSCode, tsserver, and ESLint all read it.
 
-The generated TSIfDef profile must be derived from the same C# macro state that
-produced the `.d.ts` files the TypeScript consumes.
-
-```text
-Project/Assets/csc.rsp
-  -> Unity C# compilation
-  -> generated .d.ts
-  -> generated TSIfDef profile JSON
-  -> TSIfDef / tsc
-```
-
-If the JSON is missing or stale, TypeScript compilation must fail before running
-TSIfDef or `tsc`. Committing a fallback profile would mask an incorrect macro
-state, so it is not allowed.
-
-## Profile File
-
-The real HOK profile path stays stable in `package.json`, but the file it points
-at is a generated artifact:
-
-```json
+```jsonc
+// package.json
 {
-  "tsifdef": "./.tscbuild/tsifdef/defines.json"
+  "tsifdef": "./Profiles/browser.json",
+  "scripts": {
+    "compile": "tsifdef build"
+  }
 }
 ```
 
-`Program/TsScripts/.tscbuild` must be SVN-ignored. At minimum the following
-generated file must not be committed:
-
-```text
-Program/TsScripts/.tscbuild/tsifdef/defines.json
+```jsonc
+// Profiles/browser.json
+["BROWSER", "EXPERIMENTAL"]
 ```
 
-TSIfDef's own projection output is also a generated build artifact and stays out
-of source control.
+The Profile file is an input to the build. If it is a generated artifact, keep
+it out of source control and make the build fail when it is missing rather than
+committing a fallback — a stale or wrong Profile silently produces wrong output.
 
-## Editor Development Mode
+## 2. Build
 
-When a developer opens the Unity Editor normally, the correct TS profile is the
-editor compilation profile.
+Install the CLI package and compile with `tsifdef build` instead of `tsc`:
 
-Use:
-
-```csharp
-EditorUserBuildSettings.activeScriptCompilationDefines
+```bash
+npm install -D tsifdef
 ```
 
-This profile is expected to contain editor-only symbols such as `UNITY_EDITOR`
-and `UNITY_EDITOR_WIN`. That is correct for editor development, because the
-`.d.ts` and C# view being edited also come from the editor compilation.
-
-Recommended trigger:
-
-```text
-Unity script reload / compile callback
-  -> read activeScriptCompilationDefines
-  -> optionally union Project/Assets/csc.rsp -define values
-  -> write Program/TsScripts/.tscbuild/tsifdef/defines.json
+```jsonc
+"scripts": {
+  "compile": "tsifdef build",
+  "watch": "tsifdef build --watch"
+}
 ```
 
-A menu item can call the same generator for a manual refresh.
+`tsifdef build` reads `package.json`'s `tsifdef` pointer and the project
+`tsconfig.json`, applies equal-length masking to inactive `#if` branches, and
+drives the TypeScript compiler itself. Because the compiler sees the original
+file names, emitted `.js.map` `sources`, `.d.ts`, and error paths point at your
+original sources — no post-processing, no shadow source tree to ignore. See
+`SPEC.md` §8 for the full pipeline and `-p` / options behavior.
 
-## CI / Player Mode
+Switching Profiles (editing `package.json`'s `tsifdef` pointer or the Profile
+file) triggers a full rebuild automatically.
 
-For the final player target, do not use
-`EditorUserBuildSettings.activeScriptCompilationDefines` as the macro source. It
-is the editor compilation view and contains `UNITY_EDITOR`.
+## 3. Editor experience (VSCode)
 
-Use Unity's player assembly API:
+Two pieces make `#if` gray out and stop erroring in the editor:
 
-```csharp
-CompilationPipeline.GetAssemblies(AssembliesType.Player, group, target)
+1. **VSCode extension** — install the TSIfDef VSIX. It grays out and folds
+   inactive branches, shows the active Profile in the status bar, and pushes the
+   resolved Profile to the tsserver plugin.
+2. **tsserver plugin** — makes the language service see only the projected
+   (masked) source, so inactive code does not produce type errors and unknown
+   macros are not flagged. It loads through the workspace TypeScript version.
+
+Configure the workspace to use its local TypeScript so the plugin loads:
+
+```jsonc
+// .vscode/settings.json  (or the *.code-workspace settings)
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}
 ```
 
-Merge the returned assemblies' `defines`, optionally unioned with the `-define:`
-values in `Project/Assets/csc.rsp` as a safety check. The target must be the
-final player `BuildTarget`, not merely the editor's currently active target.
+After installing the extension and setting the tsdk, run
+`TypeScript: Restart TS Server`. Then `#if`/`#else` blocks gray out, inactive
+code does not error, and `#if UNKNOWN_MACRO` is treated as `false` rather than
+"unknown macro".
 
-Observed from local probing:
+## 4. ESLint
 
-```text
-StandaloneWindows64:
-  has UNITY_STANDALONE, UNITY_STANDALONE_WIN, PLATFORM_STANDALONE,
-      PLATFORM_STANDALONE_WIN, ENABLE_MONO, UNITY_64
-  no UNITY_EDITOR
+If the project uses ESLint, raw `#if` lines would otherwise be reported as parse
+errors. TSIfDef ships an ESLint processor that lints the equal-length projection
+instead of the raw text (positions are unchanged, so diagnostics map back
+directly). Enable it in the project's ESLint config:
 
-Android:
-  has UNITY_ANDROID, UNITY_ANDROID_API, PLATFORM_ANDROID, ENABLE_IL2CPP
-  no UNITY_EDITOR, no ENABLE_MONO
-
-iOS:
-  has UNITY_IOS, UNITY_IPHONE, UNITY_IPHONE_API, PLATFORM_IOS, ENABLE_IL2CPP
-  no UNITY_EDITOR, no ENABLE_MONO
-
-StandaloneLinux64:
-  has UNITY_STANDALONE, UNITY_STANDALONE_LINUX,
-      UNITY_STANDALONE_LINUX_API, PLATFORM_STANDALONE,
-      PLATFORM_STANDALONE_LINUX, ENABLE_MONO, UNITY_64
-  no UNITY_EDITOR, no UNITY_STANDALONE_WIN
+```jsonc
+// .eslintrc.json
+{
+  "plugins": ["tsifdef"],
+  "overrides": [
+    {
+      "files": ["*.ts", "*.mts", "*.cts", "*.tsx"],
+      "processor": "tsifdef/macros"
+    }
+  ]
+}
 ```
 
-Linux is an especially useful proof: the local editor active target is still
-`StandaloneWindows64`, yet querying
-`GetAssemblies(Player, ..., StandaloneLinux64)` returns Linux player symbols. So
-CI only needs to pass the intended target.
+The processor resolves the Profile the same way the CLI does (the `tsifdef`
+pointer in the nearest `package.json`). Installing `tsifdef` sets up the
+`eslint-plugin-tsifdef` shim automatically, so a project only needs the plugin
+line above.
 
-> Verified correction (see `HOK-Integration-Checklist.md`): do NOT use Unity's
-> built-in `-buildTarget` pointing at a non-active platform — the engine switches
-> the active platform and triggers asset conversion before `-executeMethod` runs,
-> which reliably hangs headless. Use a custom flag `-TsIfDefBuildTarget <target>`
-> with `-executeMethod`, and resolve the target inside the code via
-> `GetAssemblies(Player, group, target)` so the active platform never changes.
-> Also verified: `-earlyQuitAfterCompile` does not run `-executeMethod`.
+### Prettier
 
-## Lightweight Unity Command
+Equal-length masking replaces inactive branches with spaces, which can surface
+trailing-whitespace warnings from `eslint-plugin-prettier` on masked lines. If
+that is noisy, disable the Prettier rule:
 
-The originally-envisioned lightweight probe was an `InitializeOnLoad` entry
-guarded by a custom command-line flag, combined with Unity's regular
-`-buildTarget`:
-
-```text
-Unity.exe
-  -projectPath E:\HOK_Trunk\Project
-  -batchmode
-  -nographics
-  -quit
-  -buildTarget iOS
-  -tsifdefGenerateDefinesAndExit
+```jsonc
+// .eslintrc.json  (rules)
+"prettier/prettier": "off"
 ```
 
-In the static constructor:
+## 5. Separation of concerns
 
-```text
-if command line has -tsifdefGenerateDefinesAndExit:
-  target = parse -buildTarget
-  defines = union CompilationPipeline.GetAssemblies(Player, group, target)
-  defines += csc.rsp -define values if needed
-  write defines.json
-  exit Unity
-```
+The build path (`tsifdef build`) and the editor/lint paths are independent. Each
+reads the same Profile but does its own masking:
 
-Do not rely on `-earlyQuitAfterCompile` to run this generation step. Local
-testing shows script-only early quit compiles code and exits, but it cannot
-reliably run callbacks or `-executeMethod`.
+- The build masks inactive code before emit, so output JavaScript never contains
+  inactive branches.
+- The tsserver plugin and ESLint processor mask what the editor and linter see,
+  so tooling never reports inactive code.
 
-> Form actually adopted: `-executeMethod TSIfDef.TsIfDefPlayerDefines.Generate`
-> `-TsIfDefBuildTarget <target>` (a custom flag Unity does not recognize and does
-> not switch platform on).
-
-## HOK CI Flow
-
-### Node 1: Compile GameScript
-
-The script calls:
-
-```text
-Project/Build_new/Build.py
-  --IsBuildGameScript True
-  --IsBuildRes False
-  --IsBuildGameCore False
-  --IsBuildApp False
-  --MacroFile %DEFAULT_MACRO_FILE%
-  --rsp_override_par ...
-```
-
-This stage establishes `Project/Assets/csc.rsp`, compiles C#, and generates the
-`.d.ts` files. It is the right place to generate the TSIfDef player profile for
-CI.
-
-The missing piece is an explicit final `BuildTarget`. For player correctness,
-this stage must pass the final player platform to the TSIfDef profile generator
-(via the custom `-TsIfDefBuildTarget` flag), or otherwise hand the same target
-to the generator before the TS compile stage runs.
-
-### Node 2: Compile TS
-
-The script runs:
-
-```text
-cd Program/TsScripts
-npm run compile:devops_pipeline
-```
-
-Before running TSIfDef or `tsc`, it should verify that:
-
-```text
-Program/TsScripts/.tscbuild/tsifdef/defines.json
-```
-
-exists and was generated from the current Unity/C# macro snapshot. A missing
-JSON must block the build.
-
-### Node 3: Compile Resources and App
-
-This stage runs `Build.py` again to produce resources and the app. In the
-observed CI order, TS is already compiled by this point, so writing a macro
-profile again afterward does not affect the TS result.
-
-If a path that goes straight to Node 3 also needs TS output, then Node 3 must
-perform the same profile generation before triggering any TS compile.
-
-## Implementation Shape
-
-The Unity helper can stay simple:
-
-```text
-one compile/reload callback for editor development:
-  if not batchmode:
-    generate editor defines from activeScriptCompilationDefines
-
-one menu item:
-  generate the same editor profile manually
-
-one -executeMethod entry for CI/player:
-  parse -TsIfDefBuildTarget
-  generate player defines from CompilationPipeline.GetAssemblies(Player, group, target)
-```
-
-The invariants are:
-
-```text
-Editor TS profile = csc.rsp + Unity editor compile defines
-Player TS profile = csc.rsp + Unity player compile defines for final BuildTarget
-```
-
-TSIfDef stays generic. HOK owns the Unity adapter that writes the generated
-macro JSON.
+They do not depend on each other; adopt only the pieces you need.
