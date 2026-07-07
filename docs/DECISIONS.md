@@ -39,23 +39,29 @@ rationale, is archived in
   `"tsifdef": "./Profiles/TEST_A.json"`. The Profile JSON is an array of enabled
   macro names; absent macros evaluate to `false`. No component infers or stores
   another active Profile. (D027, D029, D031)
-- `tsifdef` performs one precompile operation. `--project <path>` is its only
-  override. It derives participating files from the TypeScript Program rather
-  than a separate source list. (D029, D031)
-- Precompile atomically replaces `.tsifdef/Output` with equal-length projected
-  sources, a generated stock-tsc config, and an auditable manifest. Stock `tsc`
-  consumes `.tsifdef/Output/tsconfig.json`. (D029, D031)
-- The current project’s own `include`, `files`, and `exclude` are part of the
-  precompile contract and must be covered by tests. Subprojects with their own
+- `tsifdef build` compiles the project by projected compilation: it hijacks the
+  TypeScript CompilerHost's file reads, feeds equal-length masked text under the
+  **original file names**, and drives `program.emit()` itself. `--project <path>`
+  overrides the tsconfig. Participating files are derived from the TypeScript
+  Program, not a separate source list. (D029, D031)
+- Because the compiler sees original file names, emitted `.js.map` `sources`,
+  `.d.ts`, and diagnostic paths point at the original sources natively — relative
+  and portable, with no post-processing, no absolute paths, and no on-disk shadow
+  tree requiring ignores. Rationale and the measured comparison against on-disk
+  projection are in `SPEC.md` §13.
+- Incremental builds use `.tsbuildinfo`; because masked text differs from disk
+  when the Profile changes, `tsifdef build` compares a `tsifdef.profilehash` and
+  does a full rebuild whenever the Profile changes. (SPEC §8.1)
+- Watch uses `createWatchCompilerHost` with the same masking; the Profile file is
+  watched separately and a change rebuilds the WatchProgram in full. (SPEC §8.2)
+- The current project's own `include`, `files`, and `exclude` are part of the
+  build contract and must be covered by tests. Subprojects with their own
   `tsconfig.json` are independent packages and are not implicitly rewritten by
-  the parent project’s `tsifdef` run.
-- Source-bearing compiler paths are rewritten into `.tsifdef/Output/project`,
-  while `tsBuildInfoFile` is relocated into `.tsifdef/Output` and implicit
-  incremental build info is pinned there as `tsconfig.tsbuildinfo` so caches
-  do not escape the generated tree. Sourcemaps are emitted from the projected
-  files, `mapRoot` is normalized back to a local relative root, and their
-  source paths keep the original project-relative semantics instead of
-  exposing `Output`.
+  the parent project's `tsifdef` run.
+- `outFile` and `tsc -b` multi-project composite references are not supported and
+  must fail with a clear message; per-file masking is incompatible with them.
+- Optional `--emit-projection <dir>` may dump the masked projection for auditing;
+  it is a debug artifact only and is off by default.
 - VSCode presentation reuses core analysis and exists independently from
   language-service projection. Decorations alone never define TypeScript
   semantics. (D019, D021)
@@ -63,11 +69,11 @@ rationale, is archived in
 ## Packaging
 
 - Runtime package output is CommonJS and must work on Node.js 18. (D005)
-- The CLI release tarball depends on `typescript` at runtime because
-  `src/cli/precompile.ts` loads the TypeScript Compiler API. That dependency is
-  therefore a production dependency, not a dev-only build aid. VSIX packaging
-  still ships the compiled extension and plugin entry points without bundling
-  the compiler itself.
+- The CLI release tarball depends on `typescript` at runtime because the CLI
+  build path loads the TypeScript Compiler API (`ts.createProgram` /
+  `program.emit`). That dependency is therefore a production dependency, not a
+  dev-only build aid. VSIX packaging still ships the compiled extension and
+  plugin entry points without bundling the compiler itself.
 - VSIX and npm/tgz are separate, self-contained deliverables produced from the
   same core, package version, and Git revision. This requirement is specified
   in `SPEC.md`; implementation is tracked by `REL-001`.

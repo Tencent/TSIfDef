@@ -7,6 +7,45 @@ acceptance criteria are archived in
 Task states are `TODO`, `ACTIVE`, `DONE`, and `BLOCKED`. Only one task may be
 `ACTIVE`.
 
+## M6 - Projected Compilation (`tsifdef build`)
+
+Replace on-disk projection + stock `tsc` with projected compilation: hijack the
+CompilerHost, feed equal-length masked text under original file names, and drive
+`program.emit()`. This makes SourceMap `sources`, `.d.ts`, and error paths point
+at original sources natively. Full design and staged plan:
+[`projected-compilation-plan.md`](projected-compilation-plan.md). SPEC §8, §8.1–8.3,
+§11, §13.
+
+Every stage's definition of done includes passing automated tests
+(`node:test`).
+
+### PC-001 - One-shot `tsifdef build` prototype (`TODO`)
+
+Host hijack + emit + diagnostics + exit code (no incremental, no watch). Verify
+`.map` sources / error paths / column stability on a multi-file, multi-depth
+project. Plan stage 1.
+
+### PC-002 - Incremental and Profile invalidation (`TODO`)
+
+`createIncrementalProgram` + `tsifdef.profilehash`. Core regression: switching
+Profile with unchanged sources must not reuse the previous Profile's output.
+Plan stage 2.
+
+### PC-003 - Watch (`TODO`)
+
+`createWatchCompilerHost` + Profile watcher + rebuild on Profile change. Plan
+stage 3.
+
+### PC-004 - Option matrix (`TODO`)
+
+Cover the "special-cased / unsupported" rows of the SPEC §8 option table with
+tests. Plan stage 4.
+
+### PC-005 - Optional audit dump and docs (`TODO`)
+
+`--emit-projection <dir>`; update README / CHANGELOG / INTEGRATION to
+`tsifdef build`. Plan stage 5.
+
 ## M5 - Product Integration and Release
 
 ### REL-001 - Version-matched VSIX and tgz artifacts (`DONE`)
