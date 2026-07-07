@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
 
+import {
+  buildProject,
+  BuildMacroDiagnosticsError,
+  BuildUnsupportedError,
+} from "./build.js";
 import { loadProfileFile, loadProjectConfiguration } from "./config.js";
 import { precompileProject, PrecompileDiagnosticsError } from "./precompile.js";
 
@@ -10,10 +15,55 @@ export const CliExitCode = {
   failure: 2,
 } as const;
 
-/** Run the single TSIfDef product operation: create the conventional projected project. */
+/** Run the TSIfDef CLI: `build` for projected compilation, else legacy precompile. */
 export async function runCli(args: readonly string[], cwd = process.cwd()): Promise<number> {
+  if (args[0] === "build") {
+    return runBuild(args.slice(1), cwd);
+  }
+  return runPrecompile(args, cwd);
+}
+
+/** `tsifdef build [-p|--project <tsconfig>]`: projected compilation via hijacked host. */
+async function runBuild(args: readonly string[], cwd: string): Promise<number> {
   try {
-    const project = parseProjectOption(args);
+    const project = parseProjectOption(args, "Usage: tsifdef build [-p <tsconfig>]");
+    const projectRoot = resolve(cwd);
+    const configuration = await loadProjectConfiguration(projectRoot);
+    const profile = await loadProfileFile(configuration.profilePath);
+    const result = await buildProject({
+      projectRoot,
+      project: project ?? "tsconfig.json",
+      profile,
+    });
+    if (result.hasErrors) {
+      return CliExitCode.diagnostics;
+    }
+    process.stdout.write(
+      `Built ${result.outputFiles.length} file(s) with ${profile.fileName}.\n`,
+    );
+    return CliExitCode.success;
+  } catch (error) {
+    if (error instanceof BuildMacroDiagnosticsError) {
+      for (const file of error.files) {
+        for (const diagnostic of file.diagnostics) {
+          process.stderr.write(`${file.file}:${diagnostic.range.start}: ${diagnostic.message}\n`);
+        }
+      }
+      return CliExitCode.diagnostics;
+    }
+    if (error instanceof BuildUnsupportedError) {
+      process.stderr.write(`${error.message}\n`);
+      return CliExitCode.failure;
+    }
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return CliExitCode.failure;
+  }
+}
+
+/** Legacy `tsifdef [--project <tsconfig>]`: emit the auditable projected project. */
+async function runPrecompile(args: readonly string[], cwd: string): Promise<number> {
+  try {
+    const project = parseProjectOption(args, "Usage: tsifdef [--project <tsconfig>]");
     const projectRoot = resolve(cwd);
     const configuration = await loadProjectConfiguration(projectRoot);
     const profile = await loadProfileFile(configuration.profilePath);
@@ -40,12 +90,18 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
   }
 }
 
-function parseProjectOption(args: readonly string[]): string | undefined {
+/** Accept both `--project <path>` and `-p <path>`; otherwise no override. */
+function parseProjectOption(args: readonly string[], usage: string): string | undefined {
   if (args.length === 0) return undefined;
-  if (args.length === 2 && args[0] === "--project" && args[1] !== undefined && args[1].trim() !== "") {
+  if (
+    args.length === 2 &&
+    (args[0] === "--project" || args[0] === "-p") &&
+    args[1] !== undefined &&
+    args[1].trim() !== ""
+  ) {
     return args[1];
   }
-  throw new Error("Usage: tsifdef [--project <tsconfig>]");
+  throw new Error(usage);
 }
 
 if (require.main === module) {

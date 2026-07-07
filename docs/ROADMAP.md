@@ -19,13 +19,13 @@ at original sources natively. Full design and staged plan:
 Every stage's definition of done includes passing automated tests
 (`node:test`).
 
-### PC-001 - One-shot `tsifdef build` prototype (`TODO`)
+### PC-001 - One-shot `tsifdef build` prototype (`DONE`)
 
 Host hijack + emit + diagnostics + exit code (no incremental, no watch). Verify
 `.map` sources / error paths / column stability on a multi-file, multi-depth
 project. Plan stage 1.
 
-### PC-002 - Incremental and Profile invalidation (`TODO`)
+### PC-002 - Incremental and Profile invalidation (`ACTIVE`)
 
 `createIncrementalProgram` + `tsifdef.profilehash`. Core regression: switching
 Profile with unchanged sources must not reuse the previous Profile's output.

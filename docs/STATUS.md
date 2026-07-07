@@ -4,30 +4,31 @@ Last updated: 2026-07-07
 
 ## Current Task
 
-No active implementation task. Planning for M6 (Projected Compilation) is
-complete; `PC-001` is the next task to start.
+`PC-002 - Incremental and Profile invalidation`. See
+`docs/projected-compilation-plan.md` stage 2.
 
 ## Completed This Session
 
-- Decided to replace on-disk projection + stock `tsc` with **projected
-  compilation**: hijack the CompilerHost, feed equal-length masked text under the
-  original file names, and drive `program.emit()`. Verified by controlled
-  experiment that this is the only approach giving relative, portable `.map`
-  sources pointing at original sources (absolute `sourceRoot` bakes in absolute
-  paths; relative `sourceRoot` misaligns across `.map` depths).
-- Decided Profile invalidation is a **full rebuild on any Profile change**
-  (`tsifdef.profilehash`), not per-file invalidation.
-- Rewrote `SPEC.md` (§2, §4, §8 + §8.1–8.3, §9, §10, §11, §13) to the projected
-  compilation design and generalized it to an open-source, non-HOK audience.
-- Added the staged development plan `docs/projected-compilation-plan.md` and
-  M6 tasks (`PC-001..005`) to `docs/ROADMAP.md`.
-- Updated `docs/DECISIONS.md` Configuration/Build/Packaging sections to the new
-  design.
-- Archived the two superseded integration plans to `docs/History/`.
+- **PC-001 done**: implemented one-shot projected compilation `tsifdef build`.
+  - `src/cli/build.ts`: `buildProject` hijacks `CompilerHost.readFile` /
+    `getSourceFile` to feed equal-length masked text under original file names,
+    reuses `parseJsonConfigFileContent` options verbatim, runs
+    `getPreEmitDiagnostics`, respects `noEmit` / `noEmitOnError`, drives
+    `program.emit()`, and formats diagnostics with exit codes.
+  - Rejects `outFile` and project references (`tsc -b`) as unsupported.
+  - `inlineSources`: rewrites embedded `sourcesContent` back to disk originals
+    (external `.map` and inline base64 data URIs).
+  - `src/cli/main.ts`: `runCli` dispatches the `build` subcommand (accepts
+    `-p` / `--project`); legacy precompile behavior preserved.
+  - `test/build.test.ts`: 11 cases covering SPEC §11.3 (JS equivalence, relative
+    portable map sources, multi-depth, column stability, inlineSources,
+    declaration/declarationMap, error paths, noEmitOnError, noEmit, macro
+    structure errors, outFile unsupported).
 
 ## Verification
 
-- No code changed this session; documentation only.
+- `npm run typecheck`: passed.
+- `npm test`: passed; 85 tests (was 74; +11 for build).
 
 ## Known Issues
 
@@ -37,5 +38,6 @@ complete; `PC-001` is the next task to start.
 
 ## Next Task
 
-`PC-001 - One-shot tsifdef build prototype`. See
-`docs/projected-compilation-plan.md` stage 1 for scope and test cases.
+`PC-002 - Incremental and Profile invalidation`: `createIncrementalProgram` +
+`tsifdef.profilehash`. Core regression: switching Profile with unchanged sources
+must not reuse the previous Profile's output. See dev plan stage 2 / SPEC §8.1.
