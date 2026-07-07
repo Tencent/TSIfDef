@@ -37,12 +37,12 @@ Plan stage 2.
 stage 3. Covers SPEC §11.5 cases 1-5; the "rapid successive edits" case is
 deferred (timing-dependent, low value as a stable assertion).
 
-### PC-004 - Option matrix (`ACTIVE`)
+### PC-004 - Option matrix (`DONE`)
 
 Cover the "special-cased / unsupported" rows of the SPEC §8 option table with
 tests. Plan stage 4.
 
-### PC-005 - Optional audit dump and docs (`TODO`)
+### PC-005 - Optional audit dump and docs (`ACTIVE`)
 
 `--emit-projection <dir>`; update README / CHANGELOG / INTEGRATION to
 `tsifdef build`. Plan stage 5.
