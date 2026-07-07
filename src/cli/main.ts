@@ -24,12 +24,28 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
   return runPrecompile(args, cwd);
 }
 
-/** `tsifdef build [--watch] [-p|--project <tsconfig>]`: projected compilation. */
+/** `tsifdef build [--watch] [--emit-projection <dir>] [-p|--project <tsconfig>]`. */
 async function runBuild(args: readonly string[], cwd: string): Promise<number> {
   const watch = args.includes("--watch");
-  const rest = args.filter((arg) => arg !== "--watch");
+  let emitProjectionDir: string | undefined;
+  const rest: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]!;
+    if (arg === "--watch") continue;
+    if (arg === "--emit-projection") {
+      const value = args[index + 1];
+      if (value === undefined || value.trim() === "") {
+        process.stderr.write("Usage: tsifdef build [--emit-projection <dir>]\n");
+        return CliExitCode.failure;
+      }
+      emitProjectionDir = resolve(cwd, value);
+      index += 1;
+      continue;
+    }
+    rest.push(arg);
+  }
   try {
-    const project = parseProjectOption(rest, "Usage: tsifdef build [--watch] [-p <tsconfig>]");
+    const project = parseProjectOption(rest, "Usage: tsifdef build [--watch] [--emit-projection <dir>] [-p <tsconfig>]");
     const projectRoot = resolve(cwd);
     const configuration = await loadProjectConfiguration(projectRoot);
     const profile = await loadProfileFile(configuration.profilePath);
@@ -56,6 +72,7 @@ async function runBuild(args: readonly string[], cwd: string): Promise<number> {
       projectRoot,
       project: project ?? "tsconfig.json",
       profile,
+      ...(emitProjectionDir === undefined ? {} : { emitProjectionDir }),
     });
     if (result.hasErrors) {
       return CliExitCode.diagnostics;

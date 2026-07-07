@@ -4,24 +4,29 @@ Last updated: 2026-07-07
 
 ## Current Task
 
-`PC-005 - Optional audit dump and docs`. See
-`docs/projected-compilation-plan.md` stage 5.
+No active task in this repository. The projected-compilation milestone (M6,
+`PC-001..005`) is complete. `PC-006` (HOK end-to-end wiring) lives in the HOK
+repository and is tracked in `HOK-Integration-Checklist.md`.
 
 ## Completed This Session
 
-- **PC-001 done**: one-shot projected compilation `tsifdef build`.
-- **PC-002 done**: incremental compilation + Profile invalidation.
-- **PC-003 done**: watch mode.
-- **PC-004 done**: option-matrix tests. `test/build-options.test.ts`: 8 cases
-  (module commonjs/esnext, paths+baseUrl aliases under projection, emitBOM,
-  newLine crlf, emitDeclarationOnly, outFile + project-reference unsupported
-  messages). No code changes needed — projected compilation handled the whole
-  matrix correctly.
+- **PC-001..004 done**: one-shot `tsifdef build`, incremental + Profile
+  invalidation, watch mode, and option-matrix tests.
+- **PC-005 done**: optional audit dump and docs.
+  - `build.ts` gains `emitProjectionDir`; `tsifdef build --emit-projection <dir>`
+    writes the equal-length masked projection under `<dir>` at each file's
+    original relative path. Debug artifact only; never fed to the compiler.
+  - `test/build-options.test.ts`: added an emit-projection case (dump is
+    equal-length masked text; normal emit still happens).
+  - README / README.zh-CN rewritten to `tsifdef build` (build/watch/incremental/
+    emit-projection; dropped precompile + `tsc -p .tsifdef/Output`).
+  - CHANGELOG / CHANGELOG.zh-CN Unreleased section documents projected
+    compilation. (The historical v1.0.0 entry keeps its original wording.)
 
 ## Verification
 
 - `npm run typecheck`: passed.
-- `npm test`: passed; 102 tests (was 94; +8 for options).
+- `npm test`: passed; 103 tests.
 
 ## Known Issues
 
@@ -31,6 +36,5 @@ Last updated: 2026-07-07
 
 ## Next Task
 
-`PC-005 - Optional audit dump and docs`: add `--emit-projection <dir>` (debug
-dump of the masked projection, off by default) and update README / CHANGELOG /
-INTEGRATION to `tsifdef build`. See dev plan stage 5.
+None in this repository. When ready, cut a release (`npm run release`) to ship
+projected compilation, and do the HOK-side `PC-006` wiring in that repo.

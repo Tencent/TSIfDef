@@ -42,10 +42,17 @@ deferred (timing-dependent, low value as a stable assertion).
 Cover the "special-cased / unsupported" rows of the SPEC §8 option table with
 tests. Plan stage 4.
 
-### PC-005 - Optional audit dump and docs (`ACTIVE`)
+### PC-005 - Optional audit dump and docs (`DONE`)
 
 `--emit-projection <dir>`; update README / CHANGELOG / INTEGRATION to
 `tsifdef build`. Plan stage 5.
+
+### PC-006 - HOK end-to-end wiring (`BLOCKED`)
+
+Wire `tsifdef build` into the downstream HOK build (`compile.mjs`) and verify the
+babel → remap → sourcemap chain points at original sources. Lives in the HOK
+repository (not this one); tracked in `HOK-Integration-Checklist.md`. Blocked on
+that repo, not on further work here.
 
 ## M5 - Product Integration and Release
 

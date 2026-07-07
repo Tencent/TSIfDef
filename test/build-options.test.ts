@@ -180,6 +180,32 @@ test("outFile is rejected with a stable unsupported message", async () => {
   }
 });
 
+test("emitProjection dumps equal-length masked text at the original relative path", async () => {
+  const source = "#if BROWSER\nexport const only = 'x';\n#else\nexport const only = 'y';\n#endif\n";
+  const root = await setup({
+    compilerOptions: { strict: true, outDir: "dist", module: "commonjs", target: "ES2020" },
+    files: { "src/main.ts": source },
+    profile: ["BROWSER"],
+  });
+  try {
+    await buildProject({
+      projectRoot: root,
+      project: "tsconfig.json",
+      profile: await loadProfileFile(join(root, "Profile.json")),
+      emitProjectionDir: join(root, ".projection"),
+    });
+    const dumped = await readFile(join(root, ".projection", "src", "main.ts"), "utf8");
+    // Equal length to the original, inactive branch masked to spaces.
+    assert.equal(dumped.length, source.length);
+    assert.match(dumped, /only = 'x'/);
+    assert.doesNotMatch(dumped, /only = 'y'/);
+    // The dump is not fed to the compiler; normal emit still happened.
+    assert.equal(await exists(join(root, "dist", "main.js")), true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("project references are rejected with a stable unsupported message", async () => {
   const root = await mkdtemp(join(tmpdir(), "tsifdef-opts-refs-"));
   try {

@@ -15,36 +15,41 @@ npm run build
 
 ## Use in a project
 
-Add a `tsifdef` pointer plus the precompile/compile scripts to `package.json`,
+Add a `tsifdef` pointer and a `tsifdef build` compile script to `package.json`,
 for example:
 
 ```json
 {
   "tsifdef": "./Profiles/TEST_A.json",
   "scripts": {
-    "precompile": "tsifdef",
-    "compile": "tsc -p .tsifdef/Output/tsconfig.json"
+    "compile": "tsifdef build",
+    "watch": "tsifdef build --watch"
   }
 }
 ```
 
 Create the selected Profile as a JSON array of enabled macro names.
 
-1. Run the precompile step to generate `.tsifdef/Output`:
-
-```bash
-npm run precompile
-```
-
-2. Compile the generated project from `.tsifdef/Output`:
+Compile with projected compilation:
 
 ```bash
 npm run compile
 ```
 
-Current-project `files`, `include`, and `exclude` are part of the precompile
-contract. Separate subprojects keep their own `tsifdef` configuration and are
-not rewritten implicitly.
+`tsifdef build` hijacks the TypeScript CompilerHost to feed equal-length masked
+text under the original file names and drives `program.emit()` itself. Because
+the compiler sees the original paths, emitted `.js.map` sources, `.d.ts`, and
+error messages point at the original sources — no post-processing and no shadow
+source tree to ignore. Incremental builds and `--watch` are supported; switching
+the Profile forces a full rebuild.
+
+Current-project `files`, `include`, and `exclude` are honored. Separate
+subprojects keep their own `tsifdef` configuration and are not rewritten
+implicitly. `outFile` and project references (`tsc -b`) are not supported.
+
+For auditing, `tsifdef build --emit-projection <dir>` also writes the masked
+projection under `<dir>` at each file's original relative path; the dump is a
+debug artifact and is never fed to the compiler.
 
 ## Use in VSCode
 

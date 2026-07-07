@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import { projectSource, type MacroDiagnostic } from "../core/index.js";
 import type { ProfileFile } from "./config.js";
@@ -10,6 +10,12 @@ export interface BuildOptions {
   readonly projectRoot: string;
   readonly project: string;
   readonly profile: ProfileFile;
+  /**
+   * Optional debug dump: when set, each macro file's equal-length projection is
+   * written under this directory at its original project-relative path. This is
+   * an auditing artifact only — it is never fed to the compiler.
+   */
+  readonly emitProjectionDir?: string;
 }
 
 export interface BuildResult {
@@ -51,6 +57,12 @@ const macroFilePattern = /(?:\.d)?\.(?:ts|tsx|mts|cts)$/i;
 function hashProfile(profile: ProfileFile): string {
   const names = Object.keys(profile.definitions).sort();
   return createHash("sha256").update(JSON.stringify(names)).digest("hex");
+}
+
+/** True when `path` is at or below `root` (never escapes via `..`). */
+function isInsideRoot(root: string, path: string): boolean {
+  const value = relative(root, path);
+  return value !== ".." && !value.startsWith(`..${sep}`) && !isAbsolute(value);
 }
 
 /**
@@ -113,6 +125,15 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
       failures.push({ file: relative(projectRoot, absolute), diagnostics: result.diagnostics });
     }
     projected.set(absolute, result.projectedText);
+    if (options.emitProjectionDir !== undefined && isInsideRoot(projectRoot, absolute)) {
+      const dumpPath = resolve(options.emitProjectionDir, relative(projectRoot, absolute));
+      try {
+        mkdirSync(dirname(dumpPath), { recursive: true });
+        writeFileSync(dumpPath, result.projectedText, "utf8");
+      } catch {
+        // The dump is best-effort auditing; never fail the build over it.
+      }
+    }
     return result.projectedText;
   };
 

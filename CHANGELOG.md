@@ -4,6 +4,17 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+- Projected compilation `tsifdef build`: hijacks the TypeScript CompilerHost to
+  feed equal-length masked text under the original file names and drives
+  `program.emit()`, so emitted `.js.map` sources, `.d.ts`, and error paths point
+  at the original sources with no post-processing and no on-disk shadow tree.
+- Incremental builds (`createIncrementalProgram`) with a `tsifdef.profilehash`
+  sidecar that forces a full rebuild when the Profile changes.
+- Watch mode (`tsifdef build --watch`) via `createWatchCompilerHost`, with a
+  separate Profile-file watcher that rebuilds in full on Profile change.
+- `inlineSources` restores embedded `sourcesContent` to disk originals; `outFile`
+  and project references (`tsc -b`) report a clear unsupported error.
+- Optional `--emit-projection <dir>` debug dump of the masked projection.
 - ESLint processor (`tsifdef/macros`): projects macro files with equal-length
   masking before ESLint parses them, so `#if` no longer causes
   `Parsing error`. Exported as `tsifdef/eslint-plugin`.

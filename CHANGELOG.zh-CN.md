@@ -4,6 +4,16 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+- 投影编译 `tsifdef build`：劫持 TypeScript CompilerHost，以原始文件名把等长遮盖
+  文本喂给编译器并驱动 `program.emit()`，因此 emit 出的 `.js.map` sources、`.d.ts`
+  和报错路径都指向原始源，无需后处理、也没有落盘的影子源码树。
+- 增量编译（`createIncrementalProgram`）+ `tsifdef.profilehash` sidecar：Profile
+  变化时强制全量重编。
+- Watch 模式（`tsifdef build --watch`）基于 `createWatchCompilerHost`，并对 Profile
+  文件单独监视，切换即全量重建。
+- `inlineSources` 会把嵌入的 `sourcesContent` 换回磁盘原文；`outFile` 和 project
+  references（`tsc -b`）会明确报不支持。
+- 可选 `--emit-projection <dir>`：dump 遮盖后的投影，供调试审计。
 - ESLint processor（`tsifdef/macros`）：在 ESLint 解析前对宏文件做等长遮盖投影，
   `#if` 不再触发 `Parsing error`。以 `tsifdef/eslint-plugin` 导出。
 - `postinstall` 会在宿主工程自动生成 `node_modules/eslint-plugin-tsifdef` 转发包，

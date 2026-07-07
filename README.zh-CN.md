@@ -14,34 +14,34 @@ npm run build
 
 ## 在项目里使用
 
-在 `package.json` 中同时添加 `tsifdef` 指针和预处理/编译脚本，例如：
+在 `package.json` 中添加 `tsifdef` 指针和 `tsifdef build` 编译脚本，例如：
 
 ```json
 {
   "tsifdef": "./Profiles/TEST_A.json",
   "scripts": {
-    "precompile": "tsifdef",
-    "compile": "tsc -p .tsifdef/Output/tsconfig.json"
+    "compile": "tsifdef build",
+    "watch": "tsifdef build --watch"
   }
 }
 ```
 
-把对应 Profile 写成启用宏名数组的 JSON 文件。
-
-1. 运行预处理步骤，生成 `.tsifdef/Output`：
-
-```bash
-npm run precompile
-```
-
-2. 编译 `.tsifdef/Output` 下生成的项目：
+把对应 Profile 写成启用宏名数组的 JSON 文件。用投影编译进行编译：
 
 ```bash
 npm run compile
 ```
 
-当前项目的 `files`、`include`、`exclude` 是预处理契约的一部分。独立的子项目保留
-各自的 `tsifdef` 配置，不会被隐式改写。
+`tsifdef build` 劫持 TypeScript CompilerHost，以**原始文件名**把等长遮盖文本喂给
+编译器，并自行驱动 `program.emit()`。因为编译器看到的是原始路径，emit 出的
+`.js.map` sources、`.d.ts` 和报错信息都指向原始源——无需后处理，也没有需要忽略的
+影子源码树。支持增量与 `--watch`；切换 Profile 会触发全量重编。
+
+当前项目的 `files`、`include`、`exclude` 都会被遵循。独立的子项目保留各自的
+`tsifdef` 配置，不会被隐式改写。不支持 `outFile` 和 project references（`tsc -b`）。
+
+用于审计时，`tsifdef build --emit-projection <dir>` 会把遮盖后的投影按各文件的
+原始相对路径写到 `<dir>`；该 dump 只是调试产物，不会喂给编译器。
 
 ## 在 VSCode 里使用
 
