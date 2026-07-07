@@ -5,6 +5,7 @@ import {
   buildProject,
   BuildMacroDiagnosticsError,
   BuildUnsupportedError,
+  parseTscOverride,
 } from "./build.js";
 import { loadProfileFile, loadProjectConfiguration } from "./config.js";
 import { precompileProject, PrecompileDiagnosticsError } from "./precompile.js";
@@ -24,16 +25,24 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
   return runPrecompile(args, cwd);
 }
 
-/** `tsifdef build [--watch] [--emit-projection <dir>] [-p|--project <tsconfig>]`. */
+/**
+ * `tsifdef build [--watch] [--emit-projection <dir>] [-p <tsconfig>] [-- <tsc flags>]`.
+ * Flags after `--` are parsed as tsc compiler-option overrides (e.g.
+ * `-- --module commonjs --outDir dist`), mirroring how a build pipeline would
+ * pass per-invocation options to `tsc`.
+ */
 async function runBuild(args: readonly string[], cwd: string): Promise<number> {
-  const watch = args.includes("--watch");
+  const separatorIndex = args.indexOf("--");
+  const ownArgs = separatorIndex >= 0 ? args.slice(0, separatorIndex) : args;
+  const overrideArgs = separatorIndex >= 0 ? args.slice(separatorIndex + 1) : [];
+  const watch = ownArgs.includes("--watch");
   let emitProjectionDir: string | undefined;
   const rest: string[] = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index]!;
+  for (let index = 0; index < ownArgs.length; index += 1) {
+    const arg = ownArgs[index]!;
     if (arg === "--watch") continue;
     if (arg === "--emit-projection") {
-      const value = args[index + 1];
+      const value = ownArgs[index + 1];
       if (value === undefined || value.trim() === "") {
         process.stderr.write("Usage: tsifdef build [--emit-projection <dir>]\n");
         return CliExitCode.failure;
@@ -45,7 +54,8 @@ async function runBuild(args: readonly string[], cwd: string): Promise<number> {
     rest.push(arg);
   }
   try {
-    const project = parseProjectOption(rest, "Usage: tsifdef build [--watch] [--emit-projection <dir>] [-p <tsconfig>]");
+    const project = parseProjectOption(rest, "Usage: tsifdef build [--watch] [--emit-projection <dir>] [-p <tsconfig>] [-- <tsc flags>]");
+    const compilerOptionsOverride = await parseTscOverride(overrideArgs);
     const projectRoot = resolve(cwd);
     const configuration = await loadProjectConfiguration(projectRoot);
     const profile = await loadProfileFile(configuration.profilePath);
@@ -54,6 +64,7 @@ async function runBuild(args: readonly string[], cwd: string): Promise<number> {
         projectRoot,
         project: project ?? "tsconfig.json",
         profilePath: configuration.profilePath,
+        compilerOptionsOverride,
         onBuild: (info) => {
           process.stdout.write(
             info.hasErrors
@@ -72,6 +83,7 @@ async function runBuild(args: readonly string[], cwd: string): Promise<number> {
       projectRoot,
       project: project ?? "tsconfig.json",
       profile,
+      compilerOptionsOverride,
       ...(emitProjectionDir === undefined ? {} : { emitProjectionDir }),
     });
     if (result.hasErrors) {

@@ -16,6 +16,12 @@ export interface BuildOptions {
    * an auditing artifact only — it is never fed to the compiler.
    */
   readonly emitProjectionDir?: string;
+  /**
+   * Compiler options that override the tsconfig, e.g. `{ module, outDir,
+   * tsBuildInfoFile }`. Parse these from tsc-style flags with `parseTscOverride`
+   * so the CLI never reimplements tsc option parsing.
+   */
+  readonly compilerOptionsOverride?: import("typescript").CompilerOptions;
 }
 
 export interface BuildResult {
@@ -82,6 +88,9 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
   const parsed = ts.parseJsonConfigFileContent(configFile.config, ts.sys, dirname(configPath), undefined, configPath);
   if (parsed.errors.length > 0) {
     throw new Error(parsed.errors.map((item) => formatConfigDiagnostic(ts, item)).join("\n"));
+  }
+  if (options.compilerOptionsOverride !== undefined) {
+    Object.assign(parsed.options, options.compilerOptionsOverride);
   }
 
   assertSupported(parsed.options, parsed.projectReferences);
@@ -300,4 +309,24 @@ function formatConfigDiagnostic(
   diagnostic: import("typescript").Diagnostic,
 ): string {
   return `TS${diagnostic.code}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`;
+}
+
+/**
+ * Parse tsc-style flags (e.g. `--module commonjs --outDir dist`) into a
+ * `CompilerOptions` override using TypeScript's own command-line parser, so the
+ * CLI never reimplements option parsing. Only compiler options are honored;
+ * file names in the flags are ignored.
+ */
+export async function parseTscOverride(
+  args: readonly string[],
+): Promise<import("typescript").CompilerOptions> {
+  if (args.length === 0) return {};
+  const ts = (await import("typescript")).default;
+  const parsed = ts.parseCommandLine([...args]);
+  if (parsed.errors.length > 0) {
+    throw new BuildUnsupportedError(
+      parsed.errors.map((error) => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"),
+    );
+  }
+  return parsed.options;
 }

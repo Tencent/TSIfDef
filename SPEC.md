@@ -201,7 +201,12 @@ CLI 提供一个构建操作：
 tsifdef build
 tsifdef build -p ./custom.tsconfig.json
 tsifdef build --watch
+tsifdef build -p ./tsconfig.json -- --module commonjs --outDir dist
 ```
+
+`--` 之后的参数按 tsc 命令行标志解析（复用 `ts.parseCommandLine`），作为覆盖合并到
+tsconfig 之上——便于构建管线按每次调用传入不同的 `module` / `outDir` /
+`tsBuildInfoFile` 等，而无需为每种组合准备一个 tsconfig。TSIfDef 不自行解析这些标志。
 
 无参数时读取当前目录 `package.json` 的 `tsifdef` Profile 指针和 `tsconfig.json`。
 `-p` / `--project` 覆盖 tsconfig。TSIfDef 不解析 tsc 的 132 个编译选项，而是通过

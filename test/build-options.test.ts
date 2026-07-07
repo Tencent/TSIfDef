@@ -206,6 +206,28 @@ test("emitProjection dumps equal-length masked text at the original relative pat
   }
 });
 
+test("compilerOptionsOverride overrides tsconfig (module + outDir)", async () => {
+  const root = await setup({
+    // tsconfig says esnext + dist; the override should win.
+    compilerOptions: { strict: true, outDir: "dist", module: "esnext", target: "ES2020" },
+    files: { "src/main.ts": "export const value = 1;\n" },
+  });
+  try {
+    await buildProject({
+      projectRoot: root,
+      project: "tsconfig.json",
+      profile: await loadProfileFile(join(root, "Profile.json")),
+      compilerOptionsOverride: { module: 1 /* CommonJS */, outDir: join(root, "out-cjs") },
+    });
+    assert.equal(await exists(join(root, "out-cjs", "main.js")), true);
+    assert.equal(await exists(join(root, "dist", "main.js")), false);
+    const js = await readFile(join(root, "out-cjs", "main.js"), "utf8");
+    assert.match(js, /exports\.value|Object\.defineProperty\(exports/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("project references are rejected with a stable unsupported message", async () => {
   const root = await mkdtemp(join(tmpdir(), "tsifdef-opts-refs-"));
   try {

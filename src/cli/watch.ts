@@ -23,6 +23,8 @@ export interface WatchOptions {
   readonly onBuild?: (info: WatchBuildInfo) => void;
   /** Called after the Profile file changes and the WatchProgram is rebuilt. */
   readonly onProfileReload?: (profile: ProfileFile) => void;
+  /** Compiler options that override the tsconfig (parsed via `parseTscOverride`). */
+  readonly compilerOptionsOverride?: import("typescript").CompilerOptions;
 }
 
 export interface WatchHandle {
@@ -67,7 +69,7 @@ export async function watchProject(options: WatchOptions): Promise<WatchHandle> 
 
     const host = ts.createWatchCompilerHost(
       configPath,
-      undefined,
+      options.compilerOptionsOverride ?? undefined,
       ts.sys,
       ts.createEmitAndSemanticDiagnosticsBuilderProgram,
       (diagnostic) => {
