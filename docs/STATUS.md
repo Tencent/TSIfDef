@@ -4,31 +4,28 @@ Last updated: 2026-07-07
 
 ## Current Task
 
-`PC-002 - Incremental and Profile invalidation`. See
-`docs/projected-compilation-plan.md` stage 2.
+`PC-003 - Watch`. See `docs/projected-compilation-plan.md` stage 3.
 
 ## Completed This Session
 
-- **PC-001 done**: implemented one-shot projected compilation `tsifdef build`.
-  - `src/cli/build.ts`: `buildProject` hijacks `CompilerHost.readFile` /
-    `getSourceFile` to feed equal-length masked text under original file names,
-    reuses `parseJsonConfigFileContent` options verbatim, runs
-    `getPreEmitDiagnostics`, respects `noEmit` / `noEmitOnError`, drives
-    `program.emit()`, and formats diagnostics with exit codes.
-  - Rejects `outFile` and project references (`tsc -b`) as unsupported.
-  - `inlineSources`: rewrites embedded `sourcesContent` back to disk originals
-    (external `.map` and inline base64 data URIs).
-  - `src/cli/main.ts`: `runCli` dispatches the `build` subcommand (accepts
-    `-p` / `--project`); legacy precompile behavior preserved.
-  - `test/build.test.ts`: 11 cases covering SPEC §11.3 (JS equivalence, relative
-    portable map sources, multi-depth, column stability, inlineSources,
-    declaration/declarationMap, error paths, noEmitOnError, noEmit, macro
-    structure errors, outFile unsupported).
+- **PC-001 done**: one-shot projected compilation `tsifdef build`
+  (`src/cli/build.ts`, `src/cli/main.ts`, `test/build.test.ts`, 11 cases).
+- **PC-002 done**: incremental compilation + Profile invalidation.
+  - `build.ts` uses `createIncrementalProgram` when `incremental`/`composite`
+    is set, via `createIncrementalCompilerHost`.
+  - Each projected SourceFile gets a `version` = hash of its projected text, so
+    a Profile switch (same disk bytes, different masking) is detected as a change
+    by the builder.
+  - A `tsifdef.profilehash` sidecar next to `.tsbuildinfo` records the Profile
+    hash; a mismatch/absence discards `.tsbuildinfo` and forces a full rebuild
+    (SPEC §8.1, second line of defense).
+  - `test/build-incremental.test.ts`: 4 cases including the CORE REGRESSION
+    (switch Profile, unchanged sources → new-Profile output, not stale reuse).
 
 ## Verification
 
 - `npm run typecheck`: passed.
-- `npm test`: passed; 85 tests (was 74; +11 for build).
+- `npm test`: passed; 89 tests (was 85; +4 for incremental).
 
 ## Known Issues
 
@@ -38,6 +35,6 @@ Last updated: 2026-07-07
 
 ## Next Task
 
-`PC-002 - Incremental and Profile invalidation`: `createIncrementalProgram` +
-`tsifdef.profilehash`. Core regression: switching Profile with unchanged sources
-must not reuse the previous Profile's output. See dev plan stage 2 / SPEC §8.1.
+`PC-003 - Watch`: `tsifdef build --watch` via `createWatchCompilerHost` with the
+same masking, plus a Profile-file watcher that rebuilds the WatchProgram in full
+on Profile change (SPEC §8.2). See dev plan stage 3 for the test matrix.

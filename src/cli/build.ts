@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 
 import { projectSource, type MacroDiagnostic } from "../core/index.js";
@@ -46,6 +47,12 @@ export class BuildUnsupportedError extends Error {
 
 const macroFilePattern = /(?:\.d)?\.(?:ts|tsx|mts|cts)$/i;
 
+/** Stable hash of the enabled macro set; changes exactly when the Profile does. */
+function hashProfile(profile: ProfileFile): string {
+  const names = Object.keys(profile.definitions).sort();
+  return createHash("sha256").update(JSON.stringify(names)).digest("hex");
+}
+
 /**
  * Compile the project by projected compilation: hijack the CompilerHost so the
  * TypeScript compiler reads equal-length masked text under the ORIGINAL file
@@ -66,6 +73,25 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
   }
 
   assertSupported(parsed.options, parsed.projectReferences);
+
+  // Incremental builds key their .tsbuildinfo off disk file versions, which do
+  // not change when only the Profile changes. Compare a sidecar profile hash and
+  // discard stale build info so a Profile switch forces a full rebuild (§8.1).
+  const useIncremental = parsed.options.incremental === true || parsed.options.composite === true;
+  const buildInfoPath = useIncremental ? ts.getTsBuildInfoEmitOutputFilePath(parsed.options) : undefined;
+  const profileHash = hashProfile(options.profile);
+  const profileHashPath = buildInfoPath === undefined ? undefined : `${buildInfoPath}.profilehash`;
+  if (buildInfoPath !== undefined && profileHashPath !== undefined) {
+    let stored: string | undefined;
+    try {
+      stored = readFileSync(profileHashPath, "utf8");
+    } catch {
+      stored = undefined;
+    }
+    if (stored !== profileHash) {
+      rmSync(buildInfoPath, { force: true });
+    }
+  }
 
   // Cache projected text and collect macro diagnostics per file. The compiler
   // may read a file more than once; project it only on the first read.
@@ -90,7 +116,9 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
     return result.projectedText;
   };
 
-  const host = ts.createCompilerHost(parsed.options, true);
+  const host = useIncremental
+    ? ts.createIncrementalCompilerHost(parsed.options)
+    : ts.createCompilerHost(parsed.options, true);
   host.readFile = readProjected;
   host.getSourceFile = (fileName, languageVersionOrOptions, onError) => {
     const text = readProjected(fileName);
@@ -98,20 +126,42 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
       onError?.(`Cannot read '${fileName}'.`);
       return undefined;
     }
-    return ts.createSourceFile(fileName, text, languageVersionOrOptions, true);
+    const sourceFile = ts.createSourceFile(fileName, text, languageVersionOrOptions, true);
+    // The incremental builder keys change detection off SourceFile.version.
+    // Base it on the projected text so a Profile switch (same disk bytes,
+    // different masking) is seen as a change.
+    (sourceFile as { version?: string }).version = createHash("sha256").update(text).digest("hex");
+    return sourceFile;
   };
 
-  const program = ts.createProgram({
-    rootNames: parsed.fileNames,
-    options: parsed.options,
-    host,
-    ...(parsed.projectReferences === undefined ? {} : { projectReferences: parsed.projectReferences }),
-  });
+  const programReferences =
+    parsed.projectReferences === undefined ? {} : { projectReferences: parsed.projectReferences };
+  let programForDiagnostics: import("typescript").Program;
+  let emit: import("typescript").Program["emit"];
+  if (useIncremental) {
+    const builder = ts.createIncrementalProgram({
+      rootNames: parsed.fileNames,
+      options: parsed.options,
+      host,
+      ...programReferences,
+    });
+    programForDiagnostics = builder.getProgram();
+    emit = builder.emit.bind(builder);
+  } else {
+    const program = ts.createProgram({
+      rootNames: parsed.fileNames,
+      options: parsed.options,
+      host,
+      ...programReferences,
+    });
+    programForDiagnostics = program;
+    emit = program.emit.bind(program);
+  }
 
   // Macro-structure diagnostics are surfaced from projection; block emit.
   if (failures.length > 0) throw new BuildMacroDiagnosticsError(failures);
 
-  const preEmit = ts.getPreEmitDiagnostics(program);
+  const preEmit = ts.getPreEmitDiagnostics(programForDiagnostics);
   const hasErrors = preEmit.some((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
   if (preEmit.length > 0) {
     process.stderr.write(ts.formatDiagnosticsWithColorAndContext(preEmit, diagnosticHost(ts, projectRoot)));
@@ -125,7 +175,7 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
 
   const outputFiles: string[] = [];
   const restoreSources = parsed.options.inlineSources === true;
-  const emitResult = program.emit(undefined, (fileName, text, writeByteOrderMark) => {
+  const emitResult = emit(undefined, (fileName, text, writeByteOrderMark) => {
     const output = restoreSources ? restoreInlineSources(fileName, text) : text;
     ts.sys.writeFile(fileName, output, writeByteOrderMark);
     outputFiles.push(resolve(fileName));
@@ -135,6 +185,16 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
   );
   if (emitResult.diagnostics.length > 0) {
     process.stderr.write(ts.formatDiagnosticsWithColorAndContext(emitResult.diagnostics, diagnosticHost(ts, projectRoot)));
+  }
+
+  // Record the Profile hash next to the build info so the next run detects a
+  // Profile switch and forces a full rebuild.
+  if (profileHashPath !== undefined && !emitResult.emitSkipped) {
+    try {
+      writeFileSync(profileHashPath, profileHash, "utf8");
+    } catch {
+      // A missing hash sidecar simply forces a full rebuild next time.
+    }
   }
 
   outputFiles.sort((left, right) => left.localeCompare(right, "en"));

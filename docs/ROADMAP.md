@@ -25,13 +25,13 @@ Host hijack + emit + diagnostics + exit code (no incremental, no watch). Verify
 `.map` sources / error paths / column stability on a multi-file, multi-depth
 project. Plan stage 1.
 
-### PC-002 - Incremental and Profile invalidation (`ACTIVE`)
+### PC-002 - Incremental and Profile invalidation (`DONE`)
 
 `createIncrementalProgram` + `tsifdef.profilehash`. Core regression: switching
 Profile with unchanged sources must not reuse the previous Profile's output.
 Plan stage 2.
 
-### PC-003 - Watch (`TODO`)
+### PC-003 - Watch (`ACTIVE`)
 
 `createWatchCompilerHost` + Profile watcher + rebuild on Profile change. Plan
 stage 3.
