@@ -176,7 +176,7 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
   const outputFiles: string[] = [];
   const restoreSources = parsed.options.inlineSources === true;
   const emitResult = emit(undefined, (fileName, text, writeByteOrderMark) => {
-    const output = restoreSources ? restoreInlineSources(fileName, text) : text;
+    const output = restoreSources ? restoreInlineSourcesFor(fileName, text) : text;
     ts.sys.writeFile(fileName, output, writeByteOrderMark);
     outputFiles.push(resolve(fileName));
   });
@@ -212,7 +212,7 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
  * equal-length projection everywhere else. Handles both external `.map` files
  * and inline base64 `sourceMappingURL` data URIs.
  */
-function restoreInlineSources(fileName: string, text: string): string {
+export function restoreInlineSourcesFor(fileName: string, text: string): string {
   if (/\.map$/i.test(fileName)) {
     return rewriteMapSourcesContent(fileName, text);
   }

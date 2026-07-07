@@ -8,6 +8,7 @@ import {
 } from "./build.js";
 import { loadProfileFile, loadProjectConfiguration } from "./config.js";
 import { precompileProject, PrecompileDiagnosticsError } from "./precompile.js";
+import { watchProject } from "./watch.js";
 
 export const CliExitCode = {
   success: 0,
@@ -23,13 +24,34 @@ export async function runCli(args: readonly string[], cwd = process.cwd()): Prom
   return runPrecompile(args, cwd);
 }
 
-/** `tsifdef build [-p|--project <tsconfig>]`: projected compilation via hijacked host. */
+/** `tsifdef build [--watch] [-p|--project <tsconfig>]`: projected compilation. */
 async function runBuild(args: readonly string[], cwd: string): Promise<number> {
+  const watch = args.includes("--watch");
+  const rest = args.filter((arg) => arg !== "--watch");
   try {
-    const project = parseProjectOption(args, "Usage: tsifdef build [-p <tsconfig>]");
+    const project = parseProjectOption(rest, "Usage: tsifdef build [--watch] [-p <tsconfig>]");
     const projectRoot = resolve(cwd);
     const configuration = await loadProjectConfiguration(projectRoot);
     const profile = await loadProfileFile(configuration.profilePath);
+    if (watch) {
+      await watchProject({
+        projectRoot,
+        project: project ?? "tsconfig.json",
+        profilePath: configuration.profilePath,
+        onBuild: (info) => {
+          process.stdout.write(
+            info.hasErrors
+              ? `Rebuilt with errors (${info.macroDiagnostics.size} macro issue(s)).\n`
+              : `Rebuilt ${info.outputFiles.length} file(s).\n`,
+          );
+        },
+        onProfileReload: (reloaded) => {
+          process.stdout.write(`Profile changed to ${reloaded.fileName}; rebuilding.\n`);
+        },
+      });
+      // Watch mode runs until the process is terminated.
+      return await new Promise<number>(() => {});
+    }
     const result = await buildProject({
       projectRoot,
       project: project ?? "tsconfig.json",

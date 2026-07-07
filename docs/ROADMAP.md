@@ -31,12 +31,13 @@ project. Plan stage 1.
 Profile with unchanged sources must not reuse the previous Profile's output.
 Plan stage 2.
 
-### PC-003 - Watch (`ACTIVE`)
+### PC-003 - Watch (`DONE`)
 
 `createWatchCompilerHost` + Profile watcher + rebuild on Profile change. Plan
-stage 3.
+stage 3. Covers SPEC §11.5 cases 1-5; the "rapid successive edits" case is
+deferred (timing-dependent, low value as a stable assertion).
 
-### PC-004 - Option matrix (`TODO`)
+### PC-004 - Option matrix (`ACTIVE`)
 
 Cover the "special-cased / unsupported" rows of the SPEC §8 option table with
 tests. Plan stage 4.
