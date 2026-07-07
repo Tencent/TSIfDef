@@ -146,28 +146,21 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
     return result.projectedText;
   };
 
+  // Override only readFile for masking, and let the host's own getSourceFile run:
+  // it reads through our masked readFile and sets SourceFile.version the way
+  // TypeScript persists it in .tsbuildinfo, so cross-process incremental reuse
+  // works. (A custom version here breaks that reuse.) A Profile switch changes
+  // the masked text, hence the version, and the profilehash sidecar forces a
+  // full rebuild regardless.
   const host = useIncremental
     ? ts.createIncrementalCompilerHost(parsed.options)
     : ts.createCompilerHost(parsed.options, true);
   host.readFile = readProjected;
-  host.getSourceFile = (fileName, languageVersionOrOptions, onError) => {
-    const text = readProjected(fileName);
-    if (text === undefined) {
-      onError?.(`Cannot read '${fileName}'.`);
-      return undefined;
-    }
-    const sourceFile = ts.createSourceFile(fileName, text, languageVersionOrOptions, true);
-    // The incremental builder keys change detection off SourceFile.version.
-    // Base it on the projected text so a Profile switch (same disk bytes,
-    // different masking) is seen as a change.
-    (sourceFile as { version?: string }).version = createHash("sha256").update(text).digest("hex");
-    return sourceFile;
-  };
 
   const programReferences =
     parsed.projectReferences === undefined ? {} : { projectReferences: parsed.projectReferences };
-  let programForDiagnostics: import("typescript").Program;
   let emit: import("typescript").Program["emit"];
+  let collectDiagnostics: () => readonly import("typescript").Diagnostic[];
   if (useIncremental) {
     const builder = ts.createIncrementalProgram({
       rootNames: parsed.fileNames,
@@ -175,8 +168,16 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
       host,
       ...programReferences,
     });
-    programForDiagnostics = builder.getProgram();
     emit = builder.emit.bind(builder);
+    // Use the builder's incremental diagnostics: semantic results are cached
+    // per file in .tsbuildinfo and reused across processes for unchanged files.
+    collectDiagnostics = () => [
+      ...builder.getConfigFileParsingDiagnostics(),
+      ...builder.getOptionsDiagnostics(),
+      ...builder.getGlobalDiagnostics(),
+      ...builder.getSyntacticDiagnostics(),
+      ...builder.getSemanticDiagnostics(),
+    ];
   } else {
     const program = ts.createProgram({
       rootNames: parsed.fileNames,
@@ -184,14 +185,14 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
       host,
       ...programReferences,
     });
-    programForDiagnostics = program;
     emit = program.emit.bind(program);
+    collectDiagnostics = () => ts.getPreEmitDiagnostics(program);
   }
 
   // Macro-structure diagnostics are surfaced from projection; block emit.
   if (failures.length > 0) throw new BuildMacroDiagnosticsError(failures);
 
-  const preEmit = ts.getPreEmitDiagnostics(programForDiagnostics);
+  const preEmit = collectDiagnostics();
   const hasErrors = preEmit.some((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
   if (preEmit.length > 0) {
     process.stderr.write(ts.formatDiagnosticsWithColorAndContext(preEmit, diagnosticHost(ts, projectRoot)));
@@ -316,9 +317,15 @@ function formatConfigDiagnostic(
  * `CompilerOptions` override using TypeScript's own command-line parser, so the
  * CLI never reimplements option parsing. Only compiler options are honored;
  * file names in the flags are ignored.
+ *
+ * Path-valued options are resolved to absolute paths against `cwd`. This is
+ * required for cross-run incremental correctness: `.tsbuildinfo` stores output
+ * paths, and a relative `outDir` / `tsBuildInfoFile` resolves against a
+ * different base on the next run, defeating the up-to-date check.
  */
 export async function parseTscOverride(
   args: readonly string[],
+  cwd: string = process.cwd(),
 ): Promise<import("typescript").CompilerOptions> {
   if (args.length === 0) return {};
   const ts = (await import("typescript")).default;
@@ -328,5 +335,12 @@ export async function parseTscOverride(
       parsed.errors.map((error) => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"),
     );
   }
-  return parsed.options;
+  const options = parsed.options;
+  for (const key of ["outDir", "outFile", "tsBuildInfoFile", "declarationDir", "rootDir"] as const) {
+    const value = options[key];
+    if (typeof value === "string" && value !== "" && !isAbsolute(value)) {
+      options[key] = resolve(cwd, value);
+    }
+  }
+  return options;
 }
