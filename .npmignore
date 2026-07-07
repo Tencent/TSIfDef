@@ -5,6 +5,7 @@ test/**
 examples/**
 docs/**
 scripts/**
+!scripts/postinstall.cjs
 node_modules/**
 tsconfig*.json
 AGENTS.md

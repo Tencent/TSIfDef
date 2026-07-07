@@ -1,5 +1,7 @@
 # HOK 主干 TSIfDef 集成说明
 
+Language file: [`INTEGRATION.md`](./INTEGRATION.md)
+
 这是将 TSIfDef 应用于 `E:\HOK_Trunk` 的本地集成说明。
 它有意不作为产品路线图任务；除非后续将集成方案正式化，否则不应提交。
 
@@ -108,9 +110,15 @@ Linux 作为证明尤其有用：本地编辑器 active target 仍然是
 `GetAssemblies(Player, ..., StandaloneLinux64)` 会返回 Linux player 符号。
 因此 CI 只需要传入预期 target。
 
+> 实测更正（见 `HOK-Integration-Checklist.md`）：不要用 Unity 内建 `-buildTarget`
+> 指向非活跃平台——引擎会在 `-executeMethod` 之前抢先切换平台并触发资产转换，
+> headless 下稳定卡死。改用自定义参数 `-TsIfDefBuildTarget <平台>` + `-executeMethod`，
+> 代码内用 `GetAssemblies(Player, group, target)` 按目标取宏，活跃平台保持不变。
+> 同时实测确认 `-earlyQuitAfterCompile` 不会执行 `-executeMethod`。
+
 ## 轻量 Unity 命令
 
-可靠的轻量探测形态是：一个受自定义命令行标志保护的 `InitializeOnLoad`
+原始设想的轻量探测形态是：一个受自定义命令行标志保护的 `InitializeOnLoad`
 入口，再配合 Unity 常规的 `-buildTarget`：
 
 ```text
@@ -138,6 +146,9 @@ if command line has -tsifdefGenerateDefinesAndExit:
 仅脚本的 early quit 可以编译代码并退出，但它不能可靠执行 callback 或
 `-executeMethod`。
 
+> 实测采用的形态：`-executeMethod TSIfDef.TsIfDefPlayerDefines.Generate`
+> `-TsIfDefBuildTarget <平台>`（自定义参数，Unity 不识别、不切平台）。
+
 ## HOK CI 流程
 
 ### 节点 1：编译 GameScript
@@ -158,8 +169,8 @@ Project/Build_new/Build.py
 这是为 CI 生成 TSIfDef player profile 的正确位置。
 
 缺失的一环是显式的最终 `BuildTarget`。为保证 player 正确性，这个阶段必须
-向 Unity 传入 `-buildTarget <target>`，或者在 TS 编译阶段运行前，以其他方式
-把同一个 target 传给 TSIfDef profile 生成器。
+把最终 player 平台传给 TSIfDef profile 生成器（通过自定义参数
+`-TsIfDefBuildTarget`），或在 TS 编译阶段运行前以其他方式传入同一个 target。
 
 ### 节点 2：编译 TS
 
@@ -198,11 +209,9 @@ one compile/reload callback for editor development:
 one menu item:
   generate the same editor profile manually
 
-one InitializeOnLoad command-line flag for CI/player:
-  if -tsifdefGenerateDefinesAndExit:
-    parse -buildTarget
-    generate player defines from CompilationPipeline.GetAssemblies(Player,...)
-    exit
+one -executeMethod entry for CI/player:
+  parse -TsIfDefBuildTarget
+  generate player defines from CompilationPipeline.GetAssemblies(Player, group, target)
 ```
 
 不变量是：

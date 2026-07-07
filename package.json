@@ -20,6 +20,11 @@
       "types": "./dist/core/index.d.ts",
       "require": "./dist/core/index.js",
       "default": "./dist/core/index.js"
+    },
+    "./eslint-plugin": {
+      "types": "./dist/eslint/plugin.d.ts",
+      "require": "./dist/eslint/plugin.js",
+      "default": "./dist/eslint/plugin.js"
     }
   },
   "engines": {
@@ -41,6 +46,7 @@
   },
   "scripts": {
     "sync-version": "node scripts/sync-version.cjs",
+    "postinstall": "node scripts/postinstall.cjs",
     "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist','.test-dist']) fs.rmSync(path,{recursive:true,force:true})\"",
     "build": "npm run sync-version && npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

@@ -253,3 +253,25 @@ tsifdef-1.0.0.tgz
 ## 12. 最终原则
 
 源码预处理负责构建正确性，TypeScript Server Plugin 负责编辑器语义一致性，VSCode Extension 负责交互体验，独立 CLI 负责本地构建和服务器 CI。四者共用同一宏核心，任何环境都不得自行解释宏。
+
+## 13. 后续攻坚：SourceMap 与报错路径回映射
+
+投影后 `tsc` 编译的是 `.tsifdef/Output/project/...` 下的投影树，因此：
+
+- 生成的 `.map` 里 `sources` 指向 `.tsifdef/Output/project/...`，而不是原始
+  `src/...`。等长遮盖保证行列/行号准确，但源文件**路径**变了。
+- `tsc` 的编译报错也以投影路径给出（如
+  `.tsifdef/Output/project/SystemScripts/src/...`），在终端里不可点击跳转，也不便
+  定位回原始源文件。
+
+需要攻坚的目标：让下游消费者看到的始终是**原始源路径**，同时保持等长遮盖带来的
+行列不偏移。可选方向（择一或组合）：
+
+- 用 `tsc` 的 `sourceRoot` / `mapRoot`，或对生成的 `.map` 做一次 `sources` 路径
+  回写，把 `.tsifdef/Output/project/<rel>` 映射回原始 `<rel>`。
+- 对 `tsc` 的报错输出做包装，把投影路径替换回原始源路径，恢复可点击跳转。
+- 验证 V8CC / CrashSight 堆栈还原在回映射后仍然正确。
+
+约束：任何回映射都不得破坏等长遮盖的行列一致性；投影产物本身仍是构建产物，
+不进源码控制。
+
