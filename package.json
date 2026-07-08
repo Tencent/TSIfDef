@@ -49,11 +49,12 @@
     "postinstall": "node scripts/postinstall.cjs",
     "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist','.test-dist']) fs.rmSync(path,{recursive:true,force:true})\"",
     "build": "npm run sync-version && npm run clean && tsc -p tsconfig.build.json",
+    "prepare-tsserver-plugin": "node scripts/prepare-tsserver-plugin.cjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "npm run build && tsc -p tsconfig.test.json && node scripts/run-tests.cjs",
-    "vscode:prepublish": "npm run build",
+    "vscode:prepublish": "npm run build && npm run prepare-tsserver-plugin",
     "package:tgz": "npm pack --pack-destination release",
-    "package:vsix": "vsce package --out release",
+    "package:vsix": "npm run prepare-tsserver-plugin && vsce package --out release",
     "release": "npm run sync-version && node scripts/release.cjs"
   },
   "devDependencies": {
