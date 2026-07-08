@@ -27,17 +27,25 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     await controller.reload();
     assert.equal(host.statusItem.text, "$(versions) TSIfDef: HOK.json");
     assert.equal(definitions?.HOK, true);
-    assert.deepEqual(host.typeScriptPluginConfigurations.at(-1), {
-      name: "tsifdef-tsserver",
-      configuration: { profileFile: hok },
-    });
+    const hokConfig = host.typeScriptPluginConfigurations.at(-1);
+    assert.equal(hokConfig?.name, "tsifdef-tsserver");
+    assert.equal((hokConfig?.configuration as { profileFile?: string }).profileFile, hok);
+    const hokToken = (hokConfig?.configuration as { profileToken?: string }).profileToken;
+    assert.equal(typeof hokToken, "string");
 
     await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profiles/Domestic.json" }), "utf8");
     await controller.reload();
     assert.equal(host.statusItem.text, "$(versions) TSIfDef: Domestic.json");
     assert.equal(definitions?.DOMESTIC, true);
     assert.equal(definitions?.HOK, undefined);
-    assert.deepEqual(host.typeScriptPluginConfigurations.at(-1)?.configuration, { profileFile: domestic });
+    const domesticConfig = host.typeScriptPluginConfigurations.at(-1)?.configuration as {
+      profileFile?: string;
+      profileToken?: string;
+    };
+    assert.equal(domesticConfig.profileFile, domestic);
+    // The token must change with the enabled macro set so the TypeScript
+    // extension always forwards the new config to the plugin.
+    assert.notEqual(domesticConfig.profileToken, hokToken);
     controller.dispose();
     state.dispose();
   } finally {

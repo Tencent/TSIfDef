@@ -47,12 +47,20 @@ test("loads one explicitly selected Profile file without a configured name", asy
   }
 });
 
-test("single Profile files reject maps, invalid macro names, and duplicates", () => {
+test("single Profile files reject maps and invalid macro names", () => {
   for (const text of [
     JSON.stringify({ HOK: ["HOK"] }),
     JSON.stringify(["NOT-VALID"]),
-    JSON.stringify(["HOK", "HOK"]),
   ]) {
     assert.throws(() => parseProfileFile(text, "HOK.json"), /Profile|macro/);
   }
+});
+
+test("a repeated macro name is tolerated and de-duplicated", () => {
+  // A generated Profile with an accidental duplicate must not collapse the whole
+  // Profile; enabling a macro twice means the same as enabling it once.
+  const profile = parseProfileFile(JSON.stringify(["HOK", "HOK", "DOMESTIC"]), "HOK.json");
+  assert.equal(profile.definitions.HOK, true);
+  assert.equal(profile.definitions.DOMESTIC, true);
+  assert.equal(Object.keys(profile.definitions).length, 2);
 });

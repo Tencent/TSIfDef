@@ -1,12 +1,24 @@
 import type { ActiveProfile } from "./host-projection.js";
 
+/** Outcome of resolving the Profile: a value, none configured, or a transient failure. */
+export type ProfileResolution =
+  | { readonly kind: "profile"; readonly profile: ActiveProfile }
+  | { readonly kind: "none" }
+  | { readonly kind: "unavailable" };
+
 /**
  * Hooks the controller depends on. Injecting them keeps Profile reload and
  * project invalidation testable without a live tsserver project.
  */
 export interface ProjectControllerHooks {
-  /** Re-resolve the active Profile (load + version), or `undefined` if none. */
-  resolve: () => ActiveProfile | undefined;
+  /**
+   * Re-resolve the active Profile. Return `{kind:"profile"}` with the loaded
+   * Profile, `{kind:"none"}` when no Profile is configured, or
+   * `{kind:"unavailable"}` when the file could not be read this instant (an
+   * atomic write may briefly hide it). On `unavailable` the controller keeps the
+   * current Profile rather than flapping to none.
+   */
+  resolve: () => ProfileResolution;
   /** Mark the project dirty so tsserver re-projects and rebuilds affected ASTs. */
   markDirty: () => void;
   /** Optional progress/diagnostic logging. */
@@ -26,7 +38,8 @@ export class ProfileProjectionController {
   private current: ActiveProfile | undefined;
 
   public constructor(private readonly hooks: ProjectControllerHooks) {
-    this.current = hooks.resolve();
+    const initial = hooks.resolve();
+    this.current = initial.kind === "profile" ? initial.profile : undefined;
     this.hooks.log?.(`[tsifdef] initial profile ${describe(this.current)}.`);
   }
 
@@ -37,10 +50,16 @@ export class ProfileProjectionController {
 
   /**
    * Re-resolve the Profile. If its version (or its presence) changed, swap it in
-   * and mark the project dirty. Returns whether anything changed.
+   * and mark the project dirty. A transient read failure keeps the current
+   * Profile so a momentary miss during an atomic write does not flap the state.
+   * Returns whether anything changed.
    */
   public reload(): boolean {
-    const next = this.hooks.resolve();
+    const resolution = this.hooks.resolve();
+    if (resolution.kind === "unavailable") {
+      return false;
+    }
+    const next = resolution.kind === "profile" ? resolution.profile : undefined;
     if (sameProfile(this.current, next)) {
       return false;
     }

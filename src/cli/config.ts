@@ -104,12 +104,10 @@ export function parseProfileFile(text: string, path: string): ProfileFile {
         `TSIfDef Profile '${path}' contains invalid macro name '${String(macro)}'.`,
       );
     }
-    if (Object.hasOwn(definitions, macro)) {
-      throw new TsIfDefConfigError(
-        "config-invalid-shape",
-        `TSIfDef Profile '${path}' lists macro '${macro}' more than once.`,
-      );
-    }
+    // A repeated macro name is semantically harmless (enabling X twice is
+    // enabling X). Tolerate it by de-duplicating rather than rejecting the whole
+    // Profile — a generated Profile with an accidental duplicate must not
+    // collapse projection and break every editor diagnostic.
     definitions[macro] = true;
   }
   const resolvedPath = resolve(path);

@@ -1,4 +1,6 @@
 import { createRequire } from "node:module";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import type { MacroDefinitions } from "../core/expression.js";
 import { ProfileStateController } from "./profile-state.js";
@@ -89,6 +91,7 @@ interface VsCodeApi {
   };
   readonly commands: {
     registerCommand(command: string, handler: () => unknown | Promise<unknown>): Disposable;
+    executeCommand(command: string, ...args: readonly unknown[]): PromiseLike<unknown>;
   };
   readonly extensions: {
     getExtension(id: string):
@@ -214,6 +217,12 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
       }
       api.configurePlugin(name, configuration);
     },
+    restartTypeScriptServer: async () => {
+      await vscode.commands.executeCommand("typescript.restartTsServer");
+    },
+    reloadTypeScriptProjects: async () => {
+      await vscode.commands.executeCommand("typescript.reloadProjects");
+    },
     watchProjectConfiguration: (onChange) => {
       const watcher = vscode.workspace.createFileSystemWatcher("**/{package.json,*.json}");
       const subscriptions = [
@@ -235,10 +244,44 @@ interface ActiveExtension {
 
 let active: ActiveExtension | undefined;
 
+/**
+ * Ensure the tsserver plugin is resolvable as `node_modules/tsifdef-tsserver`.
+ *
+ * tsserver loads a workspace plugin by resolving the module named in
+ * `typescriptServerPlugins` from the extension directory. vsce does not ship a
+ * `node_modules/` tree, so the compiled plugin would otherwise be unreachable
+ * and every `#if` would reach the parser as a syntax error. Recreate the tiny
+ * forwarder on activation so a fresh install (or a `--force` reinstall that
+ * wiped a previous shim) self-heals without manual steps.
+ */
+function ensureTsserverPluginModule(): void {
+  try {
+    // Compiled to `<ext>/dist/vscode/extension.js`; the extension root is two up.
+    const extensionRoot = dirname(dirname(__dirname));
+    const moduleDir = join(extensionRoot, "node_modules", "tsifdef-tsserver");
+    const manifest = join(moduleDir, "package.json");
+    if (existsSync(manifest)) return;
+    mkdirSync(moduleDir, { recursive: true });
+    writeFileSync(
+      manifest,
+      `${JSON.stringify(
+        { name: "tsifdef-tsserver", version: "0.1.0", private: true, main: "../../dist/tsserver/plugin.js" },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+  } catch {
+    // Best-effort: if the directory is read-only, a reinstall applies. Never
+    // block activation over it.
+  }
+}
+
 /** VSCode entry point. Binds the live API to the host and starts the shell. */
 export function activate(context: ExtensionContext): void {
   // Resolve `vscode` lazily so the package builds and tests without it present.
   const vscode = createRequire(__filename)("vscode") as VsCodeApi;
+  ensureTsserverPluginModule();
   const host = createHost(vscode);
 
   let definitions: MacroDefinitions | undefined;

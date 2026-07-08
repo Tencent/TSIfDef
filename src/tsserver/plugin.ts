@@ -3,8 +3,8 @@ import { dirname, isAbsolute, join } from "node:path";
 import type * as ts from "typescript";
 
 import { parseProfileFile } from "../cli/config.js";
-import { wrapHostWithProjection, type ActiveProfile } from "./host-projection.js";
-import { ProfileProjectionController } from "./project-controller.js";
+import { wrapHostWithProjection } from "./host-projection.js";
+import { ProfileProjectionController, type ProfileResolution } from "./project-controller.js";
 
 /** Plugin configuration accepted from the `tsconfig.json` plugins entry. */
 interface PluginConfig {
@@ -38,7 +38,10 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
         markDirty: () => invalidateProject(info.project),
         log,
       });
-      reloaders.add(() => controller.reload());
+      const reloader = (): void => {
+        controller.reload();
+      };
+      reloaders.add(reloader);
 
       wrapHostWithProjection(typescript, info.languageServiceHost, {
         getProfile: () => controller.getProfile(),
@@ -47,11 +50,21 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
       // Reload the Profile when its directory changes so a switch or edit
       // re-projects without restarting the server. If cache refresh proves
       // unstable in practice, the documented fallback is the
-      // `TypeScript: Restart TS Server` command.
+      // `TypeScript: Restart TS Server` command (the extension triggers it
+      // automatically when the Profile content changes).
       const selectedPath = profilePath();
-      if (selectedPath !== undefined) watchConfigDirectory(info, selectedPath, () => controller.reload());
+      if (selectedPath !== undefined) watchConfigDirectory(info, selectedPath, reloader);
 
-      return info.languageService;
+      // Drop this project's reloader when its language service is disposed so
+      // stale controllers do not accumulate and reload on every change.
+      const languageService = info.languageService;
+      const originalDispose = languageService.dispose.bind(languageService);
+      languageService.dispose = (): void => {
+        reloaders.delete(reloader);
+        originalDispose();
+      };
+
+      return languageService;
     },
     onConfigurationChanged(config: PluginConfig): void {
       externalConfig = config ?? {};
@@ -73,28 +86,53 @@ function resolveProfilePath(config: PluginConfig, info: ts.server.PluginCreateIn
 function resolveProfile(
   profilePath: string | undefined,
   log: (message: string) => void,
-): ActiveProfile | undefined {
-  if (profilePath === undefined) return undefined;
+): ProfileResolution {
+  if (profilePath === undefined) return { kind: "none" };
+  let text: string;
   try {
-    const text = readFileSync(profilePath, "utf8");
+    text = readFileSync(profilePath, "utf8");
+  } catch {
+    // The file could not be read this instant. An atomic writer (temp + rename)
+    // briefly hides it; treat this as transient so the controller keeps the
+    // current Profile instead of flapping to none and triggering a reload storm.
+    return { kind: "unavailable" };
+  }
+  try {
     const definitions = parseProfileFile(text, profilePath).definitions;
     // The version ties the AST cache to the Profile name and its content, so
     // editing or switching the Profile produces a new version and invalidation.
-    return { definitions, version: `${profilePath}:${text.length}:${hashText(text)}` };
+    return { kind: "profile", profile: { definitions, version: `${profilePath}:${text.length}:${hashText(text)}` } };
   } catch (error) {
+    // A parse failure during an external rewrite is almost always a half-written
+    // file (the writer has not finished / renamed yet). Treat it as transient and
+    // keep the current Profile rather than flapping to none; the next watcher
+    // event re-reads the completed file. A genuinely malformed Profile simply
+    // keeps the last good one until it is fixed, which is the safe behavior.
     log(
-      `[tsifdef] failed to load Profile '${profilePath}': ${
+      `[tsifdef] Profile '${profilePath}' not parseable this read (likely mid-write); keeping current: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
-    return undefined;
+    return { kind: "unavailable" };
   }
 }
 
 /** Best-effort project invalidation across tsserver versions. */
 function invalidateProject(project: ts.server.Project): void {
-  const dirtyable = project as ts.server.Project & { markAsDirty?: () => void };
+  const dirtyable = project as ts.server.Project & {
+    markAsDirty?: () => void;
+    getScriptInfos?: () => ReadonlyArray<{ path: string }>;
+    markFileAsDirty?: (path: unknown) => void;
+  };
   dirtyable.markAsDirty?.();
+  // Mark every file in the project dirty so the AST built for the previous
+  // Profile is discarded and diagnostics are recomputed for open files.
+  const scriptInfos = dirtyable.getScriptInfos?.();
+  if (scriptInfos !== undefined && typeof dirtyable.markFileAsDirty === "function") {
+    for (const info of scriptInfos) {
+      dirtyable.markFileAsDirty(info.path);
+    }
+  }
   project.updateGraph();
   project.refreshDiagnostics();
 }

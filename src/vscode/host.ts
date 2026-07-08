@@ -77,6 +77,17 @@ export interface ExtensionHost {
   showErrorMessage(message: string): void;
   /** Send live configuration to the contributed TypeScript server plugin. */
   configureTypeScriptPlugin(name: string, configuration: Readonly<Record<string, unknown>>): Promise<void>;
+  /**
+   * Restart the TypeScript server. The heaviest, most reliable refresh; used
+   * only as a fallback.
+   */
+  restartTypeScriptServer(): Promise<void>;
+  /**
+   * Reload TypeScript projects and re-pull diagnostics without killing the
+   * server. Lighter than a restart and enough to make open files re-diagnose
+   * after a Profile change.
+   */
+  reloadTypeScriptProjects(): Promise<void>;
   /** Watch package.json and Profile JSON files that determine editor semantics. */
   watchProjectConfiguration(onChange: () => void): Disposable;
 }

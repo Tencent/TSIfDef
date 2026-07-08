@@ -3,9 +3,18 @@ import type { MacroDefinitions } from "../core/expression.js";
 import type { Disposable, ExtensionHost } from "./host.js";
 import { ProfileStateController } from "./profile-state.js";
 
+/** Coalesce watcher bursts (atomic writes fire several events) into one reload. */
+const RELOAD_DEBOUNCE_MS = 150;
+/** Retries for a transient read miss while an atomic write swaps the file in. */
+const READ_RETRIES = 5;
+const READ_RETRY_DELAY_MS = 60;
+
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 /** Watches the package-owned Profile pointer and synchronizes all editor consumers. */
 export class PackageProfileController implements Disposable {
   private watcher: Disposable | undefined;
+  private debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   public constructor(
     private readonly host: ExtensionHost,
@@ -14,13 +23,25 @@ export class PackageProfileController implements Disposable {
   ) {}
 
   public activate(): void {
-    this.watcher = this.host.watchProjectConfiguration(() => void this.reload());
+    // Debounce watcher events: an atomic write (temp file + rename) emits a
+    // burst, and reacting to each one caused a reload/refresh storm.
+    this.watcher = this.host.watchProjectConfiguration(() => this.scheduleReload());
     void this.reload();
   }
 
   public dispose(): void {
+    if (this.debounceTimer !== undefined) clearTimeout(this.debounceTimer);
+    this.debounceTimer = undefined;
     this.watcher?.dispose();
     this.watcher = undefined;
+  }
+
+  private scheduleReload(): void {
+    if (this.debounceTimer !== undefined) clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => {
+      this.debounceTimer = undefined;
+      void this.reload();
+    }, RELOAD_DEBOUNCE_MS);
   }
 
   public async reload(): Promise<void> {
@@ -34,10 +55,18 @@ export class PackageProfileController implements Disposable {
     let profilePath: string | undefined;
     try {
       profilePath = (await loadProjectConfiguration(root)).profilePath;
-      const definitions = (await loadProfileFile(profilePath)).definitions;
-      this.onDefinitions(definitions);
+      const profile = await this.loadProfileWithRetry(profilePath);
+      this.onDefinitions(profile.definitions);
       this.state.setProfile(profilePath);
-      await this.host.configureTypeScriptPlugin("tsifdef-tsserver", { profileFile: profilePath });
+      // A token that changes with the Profile's content. The pointer path is
+      // stable across edits, so without it the TypeScript extension may treat
+      // successive configurePlugin calls as identical and never forward them to
+      // the plugin. The plugin re-reads and re-versions on every such call, so
+      // the projection follows the Profile; open files refresh on next focus.
+      await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {
+        profileFile: profilePath,
+        profileToken: profileToken(profile.definitions),
+      });
     } catch (error) {
       this.onDefinitions(undefined);
       const message = `Failed to load TSIfDef project configuration${profilePath === undefined ? "" : ` '${profilePath}'`}: ${
@@ -48,4 +77,34 @@ export class PackageProfileController implements Disposable {
       this.host.showErrorMessage(message);
     }
   }
+
+  /**
+   * Load the Profile, retrying a few times on a transient failure. An atomic
+   * writer (temp file + rename) briefly leaves the path missing; reacting to
+   * that momentary miss made the Profile flap to "none" and back, restarting
+   * the server in a loop.
+   */
+  private async loadProfileWithRetry(profilePath: string): Promise<{ definitions: MacroDefinitions }> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= READ_RETRIES; attempt += 1) {
+      try {
+        return await loadProfileFile(profilePath);
+      } catch (error) {
+        lastError = error;
+        if (attempt < READ_RETRIES) await delay(READ_RETRY_DELAY_MS);
+      }
+    }
+    throw lastError;
+  }
+}
+
+/** A stable token that changes whenever the enabled macro set changes. */
+function profileToken(definitions: MacroDefinitions): string {
+  const names = Object.keys(definitions).sort().join(",");
+  let hash = 2166136261;
+  for (let index = 0; index < names.length; index += 1) {
+    hash ^= names.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
 }
