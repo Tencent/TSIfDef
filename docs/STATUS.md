@@ -8,17 +8,20 @@ No active task in this repository.
 
 ## Completed This Session
 
-- **OS-001 done**: completed Apache-2.0 licensing for open-source publication.
-  - Filled the Apache license appendix with `Copyright 2026 Tencent`.
-  - Added the complete Apache-2.0 file notice to 57 maintained TypeScript and
-    CommonJS source, test, script, and example files.
-  - Kept the CLI shebang as the first line and excluded formats that do not
-    support comments.
+- **VS-001 done**: ordinary TypeScript workspaces no longer produce a TSIfDef
+  configuration error merely because the extension is installed.
+  - Added optional VSCode configuration discovery for workspaces with no
+    package.json or no `tsifdef` property.
+  - Kept explicit malformed `tsifdef` values and invalid Profiles visible as
+    errors.
+  - Hidden the TSIfDef status item while the workspace is not opted in and
+    cleared the tsserver plugin configuration.
+  - Preserved strict missing-configuration failures for CLI builds.
 
 ## Verification
 
 - `npm run typecheck`: passed.
-- `npm test`: passed; 106 tests.
+- `npm test`: passed; 109 tests.
 
 ## Known Issues
 

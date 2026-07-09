@@ -66,3 +66,50 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("ordinary TypeScript project without tsifdef is silently disabled", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-ordinary-"));
+  try {
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "ordinary-ts-project" }), "utf8");
+    const host = new FakeHost({ root });
+    const state = new ProfileStateController(host);
+    let definitions: MacroDefinitions | undefined = { STALE: true };
+    const controller = new PackageProfileController(host, state, (next) => { definitions = next; });
+    state.activate();
+
+    await controller.reload();
+
+    assert.equal(definitions, undefined);
+    assert.deepEqual(host.errorMessages, []);
+    assert.equal(host.statusItem.shown, false);
+    assert.deepEqual(host.typeScriptPluginConfigurations.at(-1), {
+      name: "tsifdef-tsserver",
+      configuration: {},
+    });
+    controller.dispose();
+    state.dispose();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("explicit invalid tsifdef configuration still reports an error", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-invalid-"));
+  try {
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "" }), "utf8");
+    const host = new FakeHost({ root });
+    const state = new ProfileStateController(host);
+    const controller = new PackageProfileController(host, state, () => undefined);
+    state.activate();
+
+    await controller.reload();
+
+    assert.equal(host.errorMessages.length, 1);
+    assert.match(host.errorMessages[0] ?? "", /non-empty string 'tsifdef'/);
+    assert.equal(host.statusItem.shown, true);
+    controller.dispose();
+    state.dispose();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

@@ -65,6 +65,10 @@ rationale, is archived in
 - VSCode presentation reuses core analysis and exists independently from
   language-service projection. Decorations alone never define TypeScript
   semantics. (D019, D021)
+- Installing the VSCode extension does not opt every TypeScript workspace into
+  TSIfDef. A missing package.json or absent `tsifdef` property silently disables
+  the VSCode adapter and tsserver plugin; an explicitly present but malformed
+  pointer remains an error. CLI builds retain strict configuration validation.
 
 ## Packaging
 

@@ -50,9 +50,41 @@ const namePattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 /** Load the single Profile pointer from the current project's package.json. */
 export async function loadProjectConfiguration(projectRoot: string): Promise<ProjectConfiguration> {
   const packagePath = resolve(projectRoot, "package.json");
+  const value = await readPackageJson(packagePath);
+  return parseProjectConfiguration(value, packagePath);
+}
+
+/**
+ * Discover an optional VSCode project configuration.
+ *
+ * An ordinary TypeScript project without a package.json or `tsifdef` property
+ * has not opted into TSIfDef. Explicit but malformed TSIfDef configuration
+ * remains an error so configuration mistakes are visible.
+ */
+export async function discoverProjectConfiguration(
+  projectRoot: string,
+): Promise<ProjectConfiguration | undefined> {
+  const packagePath = resolve(projectRoot, "package.json");
   let value: unknown;
   try {
-    value = JSON.parse((await readFile(packagePath, "utf8")).replace(/^\uFEFF/, "")) as unknown;
+    value = await readPackageJson(packagePath);
+  } catch (error) {
+    if (isMissingFileError(error)) return undefined;
+    throw error;
+  }
+  if (
+    value !== null
+    && typeof value === "object"
+    && !Object.prototype.hasOwnProperty.call(value, "tsifdef")
+  ) {
+    return undefined;
+  }
+  return parseProjectConfiguration(value, packagePath);
+}
+
+async function readPackageJson(packagePath: string): Promise<unknown> {
+  try {
+    return JSON.parse((await readFile(packagePath, "utf8")).replace(/^\uFEFF/, "")) as unknown;
   } catch (error) {
     throw new TsIfDefConfigError(
       "config-invalid-json",
@@ -60,6 +92,9 @@ export async function loadProjectConfiguration(projectRoot: string): Promise<Pro
       { cause: error },
     );
   }
+}
+
+function parseProjectConfiguration(value: unknown, packagePath: string): ProjectConfiguration {
   const pointer = value !== null && typeof value === "object"
     ? (value as Record<string, unknown>).tsifdef
     : undefined;
@@ -73,6 +108,17 @@ export async function loadProjectConfiguration(projectRoot: string): Promise<Pro
     packagePath,
     profilePath: resolve(dirname(packagePath), pointer),
   });
+}
+
+function isMissingFileError(error: unknown): boolean {
+  if (!(error instanceof TsIfDefConfigError)) return false;
+  const cause = error.cause;
+  return (
+    cause !== null
+    && typeof cause === "object"
+    && "code" in cause
+    && (cause as { code?: unknown }).code === "ENOENT"
+  );
 }
 
 /** Load one explicitly selected Profile file containing enabled macro names. */

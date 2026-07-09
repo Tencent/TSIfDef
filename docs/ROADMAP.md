@@ -14,6 +14,14 @@ Task states are `TODO`, `ACTIVE`, `DONE`, and `BLOCKED`. Only one task may be
 Add the Apache License 2.0 with Tencent ownership information and apply the
 corresponding notice to maintained source-code files.
 
+## VSCode Reliability
+
+### VS-001 - Silent opt-out for ordinary TypeScript projects (`DONE`)
+
+Treat a workspace without a `tsifdef` package.json property as not opted in:
+hide TSIfDef UI, clear the tsserver plugin configuration, and do not report an
+error. Continue reporting explicit malformed TSIfDef configuration.
+
 ## M6 - Projected Compilation (`tsifdef build`)
 
 Replace on-disk projection + stock `tsc` with projected compilation: hijack the

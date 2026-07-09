@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { loadProfileFile, loadProjectConfiguration } from "../cli/config.js";
+import { discoverProjectConfiguration, loadProfileFile } from "../cli/config.js";
 import type { MacroDefinitions } from "../core/expression.js";
 import type { Disposable, ExtensionHost } from "./host.js";
 import { ProfileStateController } from "./profile-state.js";
@@ -68,7 +68,14 @@ export class PackageProfileController implements Disposable {
     }
     let profilePath: string | undefined;
     try {
-      profilePath = (await loadProjectConfiguration(root)).profilePath;
+      const configuration = await discoverProjectConfiguration(root);
+      if (configuration === undefined) {
+        this.onDefinitions(undefined);
+        this.state.setProfile(undefined);
+        await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {});
+        return;
+      }
+      profilePath = configuration.profilePath;
       const profile = await this.loadProfileWithRetry(profilePath);
       this.onDefinitions(profile.definitions);
       this.state.setProfile(profilePath);

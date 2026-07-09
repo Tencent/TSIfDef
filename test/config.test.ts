@@ -21,6 +21,7 @@ import test from "node:test";
 import {
   loadProfileFile,
   loadProjectConfiguration,
+  discoverProjectConfiguration,
   parseProfileFile,
 } from "../src/cli/index.js";
 
@@ -41,6 +42,19 @@ test("rejects a missing or non-string package.json Profile pointer", async () =>
   try {
     await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: { profile: "HOK" } }), "utf8");
     await assert.rejects(loadProjectConfiguration(root), /non-empty string 'tsifdef'/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("optional project discovery treats an absent TSIfDef opt-in as disabled", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-config-optional-"));
+  try {
+    assert.equal(await discoverProjectConfiguration(root), undefined);
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "ordinary-ts-project" }), "utf8");
+    assert.equal(await discoverProjectConfiguration(root), undefined);
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "" }), "utf8");
+    await assert.rejects(discoverProjectConfiguration(root), /non-empty string 'tsifdef'/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

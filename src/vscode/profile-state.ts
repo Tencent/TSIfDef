@@ -37,7 +37,6 @@ export class ProfileStateController {
     this.disposables.push(this.statusItem);
     this.disposables.push(this.host.registerCommand(activeProfileCommand, () => this.activeProfilePath()));
     this.refresh();
-    this.statusItem.show();
   }
 
   public dispose(): void {
@@ -65,8 +64,14 @@ export class ProfileStateController {
     if (this.profile === undefined) {
       this.statusItem.text = "$(versions) TSIfDef: none";
       this.statusItem.tooltip = this.loadError ?? "No package.json TSIfDef Profile is available.";
+      if (this.loadError === undefined) {
+        this.statusItem.hide();
+      } else {
+        this.statusItem.show();
+      }
       return;
     }
+    this.statusItem.show();
     if (this.loadError !== undefined) {
       this.statusItem.text = `$(error) TSIfDef: ${basename(this.profile)} (unavailable)`;
       this.statusItem.tooltip = this.loadError;
