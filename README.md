@@ -1,6 +1,6 @@
 # TSIfDef
 
-Language file: [`README.zh-CN.md`](./README.zh-CN.md)
+中文文档：[README.zh-CN.md](https://github.com/Tencent/TsIfDef/blob/main/README.zh-CN.md)
 
 TSIfDef is source-level conditional compilation for TypeScript. The core macro
 analysis is shared across the CLI, tsserver plugin, VSCode extension, and ESLint

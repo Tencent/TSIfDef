@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Source-level conditional compilation for TypeScript",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tencent/TsIfDef.git"
+  },
   "main": "dist/vscode/extension.js",
   "types": "dist/core/index.d.ts",
   "publisher": "hok",

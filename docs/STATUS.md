@@ -8,24 +8,22 @@ No active task in this repository.
 
 ## Completed This Session
 
-- **VS-001 done**: ordinary TypeScript workspaces no longer produce a TSIfDef
-  configuration error merely because the extension is installed.
-  - Added optional VSCode configuration discovery for workspaces with no
-    package.json or no `tsifdef` property.
-  - Kept explicit malformed `tsifdef` values and invalid Profiles visible as
-    errors.
-  - Hidden the TSIfDef status item while the workspace is not opted in and
-    cleared the tsserver plugin configuration.
-  - Preserved strict missing-configuration failures for CLI builds.
+- **OS-002 done**: added the public GitHub repository metadata required by
+  `vsce`.
+  - Set `repository` to `https://github.com/Tencent/TsIfDef.git`.
+  - Changed the Chinese README entry to an absolute GitHub URL so Marketplace
+    rendering does not depend on relative-link inference.
 
 ## Verification
 
+- `npm run release`: passed.
+  - Produced and installed `tsifdef-1.0.0.vsix`.
+  - Produced, installed, and invoked `tsifdef-1.0.0.tgz`.
 - `npm run typecheck`: passed.
 - `npm test`: passed; 109 tests.
 
 ## Known Issues
 
-- `vsce` still warns that `package.json` lacks `repository` metadata.
 - Raw macro source is intentionally invalid TypeScript; parser and lint tooling
   consume the equal-length projection.
 

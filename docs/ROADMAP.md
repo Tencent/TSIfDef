@@ -14,6 +14,12 @@ Task states are `TODO`, `ACTIVE`, `DONE`, and `BLOCKED`. Only one task may be
 Add the Apache License 2.0 with Tencent ownership information and apply the
 corresponding notice to maintained source-code files.
 
+### OS-002 - Public repository metadata (`DONE`)
+
+Declare the public GitHub repository and use an absolute public URL for the
+Chinese README so `vsce` can package Marketplace content without broken-link
+validation failures.
+
 ## VSCode Reliability
 
 ### VS-001 - Silent opt-out for ordinary TypeScript projects (`DONE`)
