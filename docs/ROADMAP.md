@@ -7,6 +7,13 @@ acceptance criteria are archived in
 Task states are `TODO`, `ACTIVE`, `DONE`, and `BLOCKED`. Only one task may be
 `ACTIVE`.
 
+## Open Source Readiness
+
+### OS-001 - Apache-2.0 licensing (`DONE`)
+
+Add the Apache License 2.0 with Tencent ownership information and apply the
+corresponding notice to maintained source-code files.
+
 ## M6 - Projected Compilation (`tsifdef build`)
 
 Replace on-disk projection + stock `tsc` with projected compilation: hijack the

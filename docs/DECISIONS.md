@@ -78,6 +78,12 @@ rationale, is archived in
   same core, package version, and Git revision. This requirement is specified
   in `SPEC.md`; implementation is tracked by `REL-001`.
 
+## Licensing
+
+- Maintained TypeScript and CommonJS code carries the Tencent Apache-2.0 file
+  notice. New code files in these categories must retain the same notice;
+  shebangs remain on the first line.
+
 ## History Policy
 
 Add a decision here only when it constrains future implementation. When a new

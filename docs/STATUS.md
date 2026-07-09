@@ -1,32 +1,24 @@
 # Development Status
 
-Last updated: 2026-07-07
+Last updated: 2026-07-09
 
 ## Current Task
 
-No active task in this repository. The projected-compilation milestone (M6,
-`PC-001..005`) is complete. `PC-006` (HOK end-to-end wiring) lives in the HOK
-repository and is tracked in `HOK-Integration-Checklist.md`.
+No active task in this repository.
 
 ## Completed This Session
 
-- **PC-001..004 done**: one-shot `tsifdef build`, incremental + Profile
-  invalidation, watch mode, and option-matrix tests.
-- **PC-005 done**: optional audit dump and docs.
-  - `build.ts` gains `emitProjectionDir`; `tsifdef build --emit-projection <dir>`
-    writes the equal-length masked projection under `<dir>` at each file's
-    original relative path. Debug artifact only; never fed to the compiler.
-  - `test/build-options.test.ts`: added an emit-projection case (dump is
-    equal-length masked text; normal emit still happens).
-  - README / README.zh-CN rewritten to `tsifdef build` (build/watch/incremental/
-    emit-projection; dropped precompile + `tsc -p .tsifdef/Output`).
-  - CHANGELOG / CHANGELOG.zh-CN Unreleased section documents projected
-    compilation. (The historical v1.0.0 entry keeps its original wording.)
+- **OS-001 done**: completed Apache-2.0 licensing for open-source publication.
+  - Filled the Apache license appendix with `Copyright 2026 Tencent`.
+  - Added the complete Apache-2.0 file notice to 57 maintained TypeScript and
+    CommonJS source, test, script, and example files.
+  - Kept the CLI shebang as the first line and excluded formats that do not
+    support comments.
 
 ## Verification
 
 - `npm run typecheck`: passed.
-- `npm test`: passed; 103 tests.
+- `npm test`: passed; 106 tests.
 
 ## Known Issues
 
@@ -36,5 +28,4 @@ repository and is tracked in `HOK-Integration-Checklist.md`.
 
 ## Next Task
 
-None in this repository. When ready, cut a release (`npm run release`) to ship
-projected compilation, and do the HOK-side `PC-006` wiring in that repo.
+None in this repository. When ready, cut an open-source release.
