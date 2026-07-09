@@ -86,6 +86,16 @@ function assertExists(path, label) {
   }
 }
 
+function assertPackageVersion(path, expectedVersion, label) {
+  assertExists(path, label);
+  const manifest = parseJson(readFileSync(path, "utf8"), path);
+  if (manifest.version !== expectedVersion) {
+    throw new Error(
+      `${label} version '${String(manifest.version)}' does not match '${expectedVersion}'.`,
+    );
+  }
+}
+
 function verifyInstalledVsix(vsixPath, packageJson) {
   const tempRoot = mkdtempSync(join(os.tmpdir(), "tsifdef-vsix-"));
   const extensionsDir = join(tempRoot, "extensions");
@@ -111,7 +121,11 @@ function verifyInstalledVsix(vsixPath, packageJson) {
   }
   assertExists(join(installedRoot, "dist", "vscode", "extension.js"), "VSIX extension entry");
   assertExists(join(installedRoot, "dist", "tsserver", "plugin.js"), "VSIX tsserver plugin");
-  assertExists(join(installedRoot, "tsserver-package", "package.json"), "VSIX tsserver-package manifest");
+  assertPackageVersion(
+    join(installedRoot, "tsserver-package", "package.json"),
+    packageJson.version,
+    "VSIX tsserver-package manifest",
+  );
 }
 
 function verifyInstalledTgz(tgzPath, packageJson) {
@@ -144,10 +158,18 @@ function verifyInstalledTgz(tgzPath, packageJson) {
 
   assertExists(join(projectRoot, ".tsifdef", "Output", "tsconfig.json"), "precompile output");
   assertExists(join(projectRoot, "node_modules", packageJson.name, "dist", "cli", "main.js"), "installed CLI entry");
+  assertPackageVersion(
+    join(projectRoot, "node_modules", "eslint-plugin-tsifdef", "package.json"),
+    packageJson.version,
+    "installed ESLint helper manifest",
+  );
 }
 
 function main() {
-  rmSync(releaseDir, { recursive: true, force: true });
+  // Explorer, antivirus, and extension installers can briefly retain handles
+  // after inspecting a VSIX. Let Node retry transient Windows EPERM/EBUSY
+  // failures instead of making an otherwise valid release flaky.
+  rmSync(releaseDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   mkdirSync(releaseDir, { recursive: true });
 
   if (npmCli === undefined) {

@@ -17,6 +17,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import type { MacroDefinitions } from "../core/expression.js";
+import { VERSION } from "../version.js";
 import { ProfileStateController } from "./profile-state.js";
 import { MacroPresentationController } from "./macro-presentation.js";
 import { PackageProfileController } from "./package-profile.js";
@@ -279,7 +280,7 @@ function ensureTsserverPluginModule(): void {
     writeFileSync(
       manifest,
       `${JSON.stringify(
-        { name: "tsifdef-tsserver", version: "0.1.0", private: true, main: "../../dist/tsserver/plugin.js" },
+        { name: "tsifdef-tsserver", version: VERSION, private: true, main: "../../dist/tsserver/plugin.js" },
         null,
         2,
       )}\n`,

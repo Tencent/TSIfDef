@@ -20,6 +20,12 @@ Declare the public GitHub repository and use an absolute public URL for the
 Chinese README so `vsce` can package Marketplace content without broken-link
 validation failures.
 
+### OS-003 - Single-source release versioning (`DONE`)
+
+Use root `package.json.version` as the only manually configured product version.
+Build and release derive compiled version constants, lockfile root metadata,
+helper-package versions, manifests, and artifact names from it.
+
 ## VSCode Reliability
 
 ### VS-001 - Silent opt-out for ordinary TypeScript projects (`DONE`)

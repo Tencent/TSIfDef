@@ -8,19 +8,24 @@ No active task in this repository.
 
 ## Completed This Session
 
-- **OS-002 done**: added the public GitHub repository metadata required by
-  `vsce`.
-  - Set `repository` to `https://github.com/Tencent/TsIfDef.git`.
-  - Changed the Chinese README entry to an absolute GitHub URL so Marketplace
-    rendering does not depend on relative-link inference.
+- **OS-003 done**: made root `package.json.version` the only manually configured
+  product version.
+  - Reversed version synchronization so build/release derive generated source,
+    lockfile root metadata, and helper manifests from the root package.
+  - Runtime-created ESLint and tsserver shims now inherit the product version.
+  - Documented `npm version ... --no-git-tag-version` as the version bump
+    workflow and made artifact examples version-independent.
+  - Added an automated version-consistency regression test.
 
 ## Verification
 
-- `npm run release`: passed.
-  - Produced and installed `tsifdef-1.0.0.vsix`.
-  - Produced, installed, and invoked `tsifdef-1.0.0.tgz`.
 - `npm run typecheck`: passed.
-- `npm test`: passed; 109 tests.
+- `npm test`: passed; 110 tests.
+- `npm run release`: passed.
+  - Produced and installed the version-named VSIX.
+  - Produced, installed, and invoked the version-named tgz.
+  - Verified compiled, tsserver helper, and ESLint helper versions match root
+    `package.json.version`.
 
 ## Known Issues
 

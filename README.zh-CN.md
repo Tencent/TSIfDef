@@ -86,13 +86,17 @@ ESLint 用自己的 parser 直接解析原始源码，因此不接入时，`#if`
 生成同版本产物：
 
 ```bash
+# 只设置一次新版本；npm 同时刷新 package-lock.json。
+npm version <patch|minor|major|x.y.z> --no-git-tag-version
 npm run release
 ```
 
 会输出：
 
-- `release/tsifdef-1.0.0.vsix`
-- `release/tsifdef-1.0.0.tgz`
+- `release/tsifdef-<version>.vsix`
+- `release/tsifdef-<version>.tgz`
 - `release/manifest.json`
 
-唯一版本源放在 `src/version.ts`。
+唯一需要人工配置的版本是 `package.json` 的 `version`。构建和发布会在编译前从该
+字段同步生成的源码与辅助包元数据；不要通过修改 `src/version.ts`、
+`package-lock.json` 或辅助 manifest 来变更产品版本。

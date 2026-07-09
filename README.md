@@ -97,13 +97,18 @@ project's `.eslintrc`:
 To produce the version-matched artifacts:
 
 ```bash
+# Set the next version once; npm also refreshes package-lock.json.
+npm version <patch|minor|major|x.y.z> --no-git-tag-version
 npm run release
 ```
 
 That emits:
 
-- `release/tsifdef-1.0.0.vsix`
-- `release/tsifdef-1.0.0.tgz`
+- `release/tsifdef-<version>.vsix`
+- `release/tsifdef-<version>.tgz`
 - `release/manifest.json`
 
-The canonical version is stored in `src/version.ts`.
+The only manually configured version is `package.json` `version`. Build and
+release synchronize generated source and helper-package metadata from it before
+compilation; do not edit `src/version.ts`, `package-lock.json`, or helper
+manifests to change the product version.

@@ -17,6 +17,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import { projectSource, type MacroDiagnostic } from "../core/index.js";
+import { VERSION } from "../version.js";
 import type { ProfileFile } from "./config.js";
 import { decodeTypeScriptText } from "./source-files.js";
 
@@ -120,7 +121,7 @@ function ensureEslintPluginShim(): void {
       `${JSON.stringify(
         {
           name: "eslint-plugin-tsifdef",
-          version: "1.0.0",
+          version: VERSION,
           private: true,
           main: "index.js",
           description: "Auto-generated forwarder to tsifdef/eslint-plugin (do not edit).",

@@ -73,6 +73,9 @@ rationale, is archived in
 ## Packaging
 
 - Runtime package output is CommonJS and must work on Node.js 18. (D005)
+- Root `package.json.version` is the sole manually configured product version.
+  Build and release synchronize generated runtime and helper-package metadata
+  from it; release artifact names and the release manifest use the same value.
 - The CLI release tarball depends on `typescript` at runtime because the CLI
   build path loads the TypeScript Compiler API (`ts.createProgram` /
   `program.emit`). That dependency is therefore a production dependency, not a

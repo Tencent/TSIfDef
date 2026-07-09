@@ -32,6 +32,9 @@ try {
   // 目标转发包位于 <install>/node_modules/eslint-plugin-tsifdef
   const tsifdefPkgDir = path.resolve(__dirname, "..");
   const nodeModulesDir = path.resolve(tsifdefPkgDir, "..");
+  const tsifdefVersion = JSON.parse(
+    fs.readFileSync(path.join(tsifdefPkgDir, "package.json"), "utf8"),
+  ).version;
 
   // 仅当确实处于某个 node_modules 下（真实安装场景）才铺设，
   // 避免在 tsifdef 仓库自身开发时误建。
@@ -47,7 +50,7 @@ try {
     JSON.stringify(
       {
         name: "eslint-plugin-tsifdef",
-        version: "1.0.0",
+        version: tsifdefVersion,
         private: true,
         main: "index.js",
         description: "Auto-generated forwarder to tsifdef/eslint-plugin (do not edit).",
