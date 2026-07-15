@@ -44,6 +44,9 @@ rationale, is archived in
   **original file names**, and drives `program.emit()` itself. `--project <path>`
   overrides the tsconfig. Participating files are derived from the TypeScript
   Program, not a separate source list. (D029, D031)
+- CLI TypeScript diagnostics preserve machine-readable `error TSxxxx` text when
+  stderr is piped or redirected. Interactive TTY output may use colored context,
+  but CI logs and redirected files must remain grep/findstr friendly.
 - Because the compiler sees original file names, emitted `.js.map` `sources`,
   `.d.ts`, and diagnostic paths point at the original sources natively — relative
   and portable, with no post-processing, no absolute paths, and no on-disk shadow

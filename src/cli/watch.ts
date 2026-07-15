@@ -18,6 +18,7 @@ import { resolve } from "node:path";
 import { projectSource, type MacroDiagnostic } from "../core/index.js";
 import { restoreInlineSourcesFor } from "./build.js";
 import { loadProfileFile, type ProfileFile } from "./config.js";
+import { formatCliDiagnostics } from "./diagnostics.js";
 import { decodeTypeScriptText } from "./source-files.js";
 
 export interface WatchBuildInfo {
@@ -110,7 +111,7 @@ export async function watchProject(options: WatchOptions): Promise<WatchHandle> 
       const preEmit = ts.getPreEmitDiagnostics(builderProgram.getProgram());
       const hasTypeErrors = preEmit.some((d) => d.category === ts.DiagnosticCategory.Error);
       for (const diagnostic of preEmit) {
-        process.stderr.write(ts.formatDiagnosticsWithColorAndContext([diagnostic], diagnosticHost(ts, projectRoot)));
+        process.stderr.write(formatCliDiagnostics(ts, [diagnostic], projectRoot));
       }
       for (const [file, diagnostics] of macroDiagnostics) {
         for (const diagnostic of diagnostics) {
@@ -175,16 +176,5 @@ export async function watchProject(options: WatchOptions): Promise<WatchHandle> 
       profileWatcher?.close();
       currentWatch?.close();
     },
-  };
-}
-
-function diagnosticHost(
-  ts: typeof import("typescript"),
-  projectRoot: string,
-): import("typescript").FormatDiagnosticsHost {
-  return {
-    getCurrentDirectory: () => projectRoot,
-    getCanonicalFileName: (fileName) => fileName,
-    getNewLine: () => ts.sys.newLine,
   };
 }

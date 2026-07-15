@@ -19,6 +19,7 @@ import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path
 import { projectSource, type MacroDiagnostic } from "../core/index.js";
 import { VERSION } from "../version.js";
 import type { ProfileFile } from "./config.js";
+import { formatCliDiagnostics } from "./diagnostics.js";
 import { decodeTypeScriptText } from "./source-files.js";
 
 export interface BuildOptions {
@@ -270,7 +271,7 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
   const preEmit = collectDiagnostics();
   const hasErrors = preEmit.some((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
   if (preEmit.length > 0) {
-    process.stderr.write(ts.formatDiagnosticsWithColorAndContext(preEmit, diagnosticHost(ts, projectRoot)));
+    process.stderr.write(formatCliDiagnostics(ts, preEmit, projectRoot));
   }
 
   const noEmit = parsed.options.noEmit === true;
@@ -290,7 +291,7 @@ export async function buildProject(options: BuildOptions): Promise<BuildResult> 
     (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
   );
   if (emitResult.diagnostics.length > 0) {
-    process.stderr.write(ts.formatDiagnosticsWithColorAndContext(emitResult.diagnostics, diagnosticHost(ts, projectRoot)));
+    process.stderr.write(formatCliDiagnostics(ts, emitResult.diagnostics, projectRoot));
   }
 
   // Record the Profile hash next to the build info so the next run detects a
@@ -367,17 +368,6 @@ function assertSupported(
       "tsifdef build does not support project references (tsc -b / composite solutions); run tsifdef build per referenced project instead.",
     );
   }
-}
-
-function diagnosticHost(
-  ts: typeof import("typescript"),
-  projectRoot: string,
-): import("typescript").FormatDiagnosticsHost {
-  return {
-    getCurrentDirectory: () => projectRoot,
-    getCanonicalFileName: (fileName) => fileName,
-    getNewLine: () => ts.sys.newLine,
-  };
 }
 
 function formatConfigDiagnostic(

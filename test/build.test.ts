@@ -244,6 +244,8 @@ test("type error diagnostics reference the original source path", async () => {
     assert.equal(result.hasErrors, true);
     const output = chunks.join("");
     assert.match(output, /src[\\/]main\.ts/);
+    assert.match(output, /error TS2322/);
+    assert.doesNotMatch(output, /\x1b\[/);
     assert.doesNotMatch(output, /Output[\\/]project/);
   } finally {
     (process.stderr as { write: unknown }).write = originalWrite;
