@@ -50,8 +50,16 @@ npm install -D tsifdef
 `tsifdef build` 读取 `package.json` 的 `tsifdef` 指针和项目的 `tsconfig.json`，
 对未激活的 `#if` 分支做等长遮盖，并自行驱动 TypeScript 编译器。因为编译器看到的
 是原始文件名，emit 出的 `.js.map` `sources`、`.d.ts` 和报错路径都指向你的原始
-源码——无需后处理、没有需要忽略的影子源码树。完整流程与 `-p` / 选项行为见
-`SPEC.md` §8。
+源码——无需后处理、没有需要忽略的影子源码树。可以指定其他 tsconfig，并在 `--`
+后传入覆盖 tsconfig 的 tsc 选项：
+
+```bash
+tsifdef build -p ./custom.tsconfig.json
+tsifdef build -p ./tsconfig.json -- --module commonjs --outDir dist
+```
+
+`-p`/`--project` 用于选择 tsconfig。`outFile` 和多项目 composite references
+（`tsc -b`）暂不支持。
 
 切换 Profile（修改 `package.json` 的 `tsifdef` 指针或 Profile 文件）会自动触发
 一次全量重编。

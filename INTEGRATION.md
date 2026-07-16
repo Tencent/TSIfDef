@@ -55,7 +55,16 @@ npm install -D tsifdef
 drives the TypeScript compiler itself. Because the compiler sees the original
 file names, emitted `.js.map` `sources`, `.d.ts`, and error paths point at your
 original sources — no post-processing, no shadow source tree to ignore. See
-`SPEC.md` §8 for the full pipeline and `-p` / options behavior.
+the examples below for project and compiler-option overrides:
+
+```bash
+tsifdef build -p ./custom.tsconfig.json
+tsifdef build -p ./tsconfig.json -- --module commonjs --outDir dist
+```
+
+`-p`/`--project` selects a tsconfig. Arguments after `--` are parsed as tsc
+options and override that tsconfig. `outFile` and multi-project composite
+references (`tsc -b`) are not supported.
 
 Switching Profiles (editing `package.json`'s `tsifdef` pointer or the Profile
 file) triggers a full rebuild automatically.
