@@ -1,178 +1,158 @@
-# 开发计划：投影编译（`tsifdef build`）
+# Development Plan: Projected Compilation (`tsifdef build`)
 
-对应 SPEC §8、§8.1–8.3、§11、§13。目标：把 TSIfDef 的构建方式从「投影落盘 +
-stock tsc」改为「劫持 CompilerHost + 自驱 emit」，从源头解决 SourceMap `sources`、
-`.d.ts`、报错路径指向原始源的问题，并支持增量与 watch。
+This plan corresponds to SPEC §8, §8.1–8.3, §11, and §13. Its goal was to
+replace on-disk projection plus stock `tsc` with intercepted CompilerHost reads
+and TSIfDef-driven emit. That design makes source maps, declarations, and
+diagnostics refer to original source files while supporting incremental and
+watch builds.
 
-**总原则：所有工作尽可能都带 auto test case（`node:test`）。** 每个阶段完成的定义
-（DoD）都包含「测试通过」。
+Every stage includes automated `node:test` coverage in its definition of done.
 
----
+## 0. Baseline
 
-## 0. 现状与约定
+- Tests use `node:test` and `node:assert/strict`. TypeScript tests below
+  `test/` compile to `.test-dist/` and run through `scripts/run-tests.cjs`.
+- The original build entry points were `src/cli/precompile.ts`,
+  `src/cli/main.ts`, and `src/cli/config.ts`.
+- `projectSource(text, definitions)` in `src/core/projection.ts` already
+  returned projected text and diagnostics. Build, tsserver, VSCode, and ESLint
+  had to reuse it without implementing separate masking rules.
+- Existing temporary-project test patterns in `test/precompile.test.ts` were
+  suitable for the new integration tests.
+- The legacy projection command remained available while `tsifdef build` was
+  introduced as a separate subcommand.
 
-- 测试框架：`node:test` + `node:assert/strict`。测试放 `test/*.test.ts`，经
-  `tsconfig.test.json` 编到 `.test-dist/`，由 `scripts/run-tests.cjs` 用
-  `node --test` 跑。跑法：`npm test`。
-- 现有构建入口：`src/cli/precompile.ts`（落盘投影）、`src/cli/main.ts`（`runCli`）、
-  `src/cli/config.ts`（Profile / tsconfig 指针解析）、`src/core/projection.ts`
-  （`projectSource` 等长遮盖）。
-- 核心遮盖函数 `projectSource(text, definitions)` 返回 `{ projectedText, diagnostics }`，
-  投影编译与落盘、tsserver、eslint 全部复用它，**不新写遮盖逻辑**。
-- 测试建临时工程的既有范式见 `test/precompile.test.ts`（`mkdtemp` + `writeFile` +
-  临时 tsconfig）。新测试沿用。
-- CLI 现有命令 `tsifdef [--project]`（落盘）**保留不动**；新增 `tsifdef build`
-  子命令，两者并存。落盘作为可选审计 dump（`--emit-projection`）的基础也保留。
+## Stage 1: One-shot projected compilation
 
----
+Target: `createProgram`, wrapped CompilerHost reads, emit, diagnostics, and
+correct exit codes, without incremental or watch behavior.
 
-## 阶段 1：一次性投影编译原型（`tsifdef build`）
+Implementation work:
 
-**目标**：`createProgram` + host 劫持（原始文件名喂遮盖文本）+ emit + 诊断 + 退出码。
-不含增量、不含 watch。
+- Add `src/cli/build.ts` with a `buildProject` entry point.
+- Parse compiler options with `ts.parseJsonConfigFileContent`.
+- Wrap `readFile` and `getSourceFile`. For macro-bearing source, read original
+  disk text, call `projectSource`, and create the SourceFile under its original
+  file name. Pass non-macro files such as `.d.ts` and files under
+  `node_modules` through unchanged.
+- Abort before emit when macro diagnostics exist.
+- Run `getPreEmitDiagnostics`, respect `noEmitOnError`, and format TypeScript
+  diagnostics through TypeScript's own APIs.
+- Drive `program.emit()` and honor `noEmit`.
+- Reject `outFile` and multi-project composite references with clear errors.
+- Dispatch the new `build` subcommand from `src/cli/main.ts` while preserving
+  legacy command behavior.
 
-**新增文件**
-- `src/cli/build.ts`：`buildProject(options): Promise<BuildResult>`
-  - 复用 `parseJsonConfigFileContent` 得到 `CompilerOptions`（参照 precompile.ts 现有
-    解析）。
-  - `host = ts.createCompilerHost(options)`，包 `readFile` / `getSourceFile`：
-    宏文件 → 读磁盘原文 → `projectSource` → 以**原始 fileName** 建 SourceFile；
-    非宏文件（`.d.ts`、node_modules）透传。
-  - 收集宏诊断；有则中止、不 emit、退出码 1（复用 `PrecompileDiagnosticsError` 或
-    平行的 `BuildDiagnosticsError`）。
-  - `getPreEmitDiagnostics`；尊重 `noEmitOnError`（有 error 不 emit、退出码 1）；
-    用 `ts.formatDiagnosticsWithColorAndContext` 输出。
-  - `program.emit()`。
-  - 检测 `outFile`、`tsc -b` composite 引用 → 明确 "unsupported" 错误。
-- `src/cli/build.ts` 的导出接进 `src/cli/index.ts`。
+Required tests:
 
-**改动**
-- `src/cli/main.ts`：`runCli` 识别 `build` 子命令，分派到 `buildProject`；保留旧
-  无子命令行为。参数解析支持 `build [-p <tsconfig>]`。
+1. Emitted JavaScript matches the semantics of stock tsc given manually
+   selected active branches.
+2. `.js.map` source paths are relative, portable, and resolve to original files.
+3. Maps emitted at different directory depths each use the correct relative path.
+4. Active symbols retain their source-map line and column positions.
+5. `inlineSources` embeds original disk source, not masked text.
+6. Declarations omit inactive branches and declaration maps point to source.
+7. Diagnostics report original source paths.
+8. `noEmitOnError` suppresses artifacts and returns exit code 1.
+9. `noEmit` performs checking without artifacts.
+10. Macro-structure errors abort the build.
+11. Unsupported configurations fail clearly.
 
-**测试** `test/build.test.ts`（SPEC §11.3）
-1. emit 出的 `.js` 与「人工删未激活分支后 stock tsc 编译」语义等价（比较关键片段）。
-2. `.js.map` 的 `sources` 为相对、可移植路径，解析后命中原始源文件（存在性断言）。
-3. 多目录深度：浅层 / 深层 `.map` 各自相对深度不同但都命中原始源（复现实验结论）。
-4. `sourceMap` mappings 行列不因遮盖偏移（挑一个激活分支里的符号，验证映射行列）。
-5. `inlineSources`：map 内嵌源是磁盘原文，不是空白。
-6. `declaration` / `declarationMap`：未激活分支声明消失；`.d.ts.map` 指原始源。
-7. 报错路径为原始源路径（构造类型错误，断言 stderr / 诊断文件名是原始路径）。
-8. `noEmitOnError` + 类型错误：无产物、退出码 1。
-9. `noEmit`：只检查、无产物。
-10. 宏结构错误（缺 `#endif`）：报诊断、中止、退出码 1。
-11. `outFile` / `tsc -b` 多 composite：报 "unsupported"。
+Definition of done: all tests above and `npm run typecheck` pass.
 
-**DoD**：上述测试全绿；`npm run typecheck` 通过。
+## Stage 2: Incremental builds and Profile invalidation
 
----
+Target: use `createIncrementalProgram` while ensuring a Profile switch never
+reuses output produced for another Profile.
 
-## 阶段 2：增量与 Profile 失效
+Implementation work:
 
-**目标**：接 `createIncrementalProgram`，用 `tsifdef.profilehash` 保证切 Profile 时
-不复用旧结果（SPEC §8.1）。
+- Use TypeScript incremental APIs when requested by `incremental`,
+  `tsBuildInfoFile`, or `composite` options.
+- Hash normalized Profile content and store it in `tsifdef.profilehash` beside
+  build output.
+- If the hash is missing or different, ignore old `.tsbuildinfo`, perform a
+  full build, and write the new hash only after a successful build.
+- Share the same invalidation behavior between CLI and future watch support.
 
-**改动 / 新增**
-- `src/cli/build.ts`：
-  - 增量分支用 `ts.createIncrementalProgram`（或
-    `createEmitAndSemanticDiagnosticsBuilderProgram`），沿用 tsconfig 的
-    `incremental` / `tsBuildInfoFile` / `composite`。
-  - build 前：读 outDir/Output 旁的 `tsifdef.profilehash`，与当前 Profile 内容哈希
-    （复用 precompile.ts 里的 `hash`）比较；不一致或缺失 → 删除/忽略 `.tsbuildinfo`
-    做全量，成功后回写新哈希；一致 → 正常增量。
-  - profilehash 文件位置：与 `.tsbuildinfo` 同目录，命名 `tsifdef.profilehash`。
+Required tests:
 
-**测试** `test/build-incremental.test.ts`（SPEC §11.4）
-1. 同 Profile 连续两次 build，第二次命中增量（断言 `.tsbuildinfo` 复用 / 未全量）。
-2. 改激活分支后 build，仅相关文件重编、产物更新。
-3. **核心回归**：源文件不变、仅切 Profile → 产物反映新 Profile，未复用旧结果。
-4. `tsifdef.profilehash` 缺失 → 全量。
+1. Two builds with one Profile use incremental state on the second build.
+2. An active-source change updates only relevant artifacts.
+3. Switching only the Profile produces new-Profile output without reusing old
+   results. This is the critical regression case.
+4. A missing hash sidecar forces a full build.
+5. A failed build does not record a successful Profile hash.
 
-**DoD**：测试全绿；用例 3 是必过项（静默错误的防线）。
+## Stage 3: Watch mode
 
----
+Target: implement `tsifdef build --watch`, including separate Profile-file
+monitoring and full reconstruction when the Profile changes.
 
-## 阶段 3：Watch
+Implementation work:
 
-**目标**：`tsifdef build --watch`，含 Profile 文件监视与切换重建（SPEC §8.2）。
+- Add `src/cli/watch.ts` using `ts.createWatchCompilerHost` and
+  `ts.createWatchProgram`.
+- Apply the same wrapped reads and `projectSource` behavior as one-shot builds.
+- Watch the Profile separately because it is outside tsc's source graph.
+- Dispose the current WatchProgram and create a new one after a Profile change.
+- Serialize rebuild and disposal transitions to avoid overlapping programs.
+- Keep watch diagnostics consistent with one-shot formatting.
 
-**新增**
-- `src/cli/watch.ts`：`watchProject(options)`
-  - `ts.createWatchCompilerHost(configPath, overrides, sys, createProgram, reportDiag,
-    reportWatch)`，包 `readFile` / `getSourceFile` 复用同一遮盖。
-  - 额外 `fs.watch`（或 `sys.watchFile`）监视 Profile 文件；变化 → 关闭当前
-    WatchProgram、以新 Profile 重建（全量刷新）。
-  - 确保无绕过遮盖的直读路径（`readDirectory` 等）。
-- 接进 `main.ts` 的 `build --watch`。
+Required tests use isolated child processes, artifact polling, and timeouts:
 
-**测试** `test/build-watch.test.ts`（SPEC §11.5）
-> Watch 测试用 spawn 子进程 + 轮询产物文件 + 超时兜底；每个用例独立临时工程，
-> 结束 kill 进程。参考 `spawnSync` 已有用法，改 `spawn` 异步。
-1. 改激活分支 → 重编、产物更新、map sources 仍指原始源。
-2. 改未激活分支 → 遮盖后等价、产物不变。
-3. 改坏宏结构（删 `#endif`）→ 报诊断、watch 不崩、修复后恢复。
-4. 切 Profile 文件 → 重建、产物反映新 Profile。
-5. 新增 / 删除源文件 → watch 感知。
-6.（尽力）连续快速改动不丢事件。
+1. An active-branch edit rebuilds and updates output.
+2. An inactive-branch edit leaves projected output unchanged.
+3. A malformed directive reports a diagnostic and recovers after correction.
+4. A Profile change rebuilds in full and updates output.
+5. Adding or deleting source files is detected.
 
-**DoD**：至少 1–5 稳定通过；6 若 flaky 则标注并降级为手动/尽力。
+Rapid-edit stress coverage was considered optional because timing-sensitive
+assertions are difficult to keep stable.
 
----
+## Stage 4: Compiler-option matrix
 
-## 阶段 4：选项矩阵补全
+Required coverage:
 
-**目标**：SPEC §8 选项表里「特殊照顾 / 不支持」项全部有明确行为 + 测试。
+- `sourceMap`, `inlineSourceMap`, `inlineSources`, `declaration`, and
+  `declarationMap` in representative combinations.
+- `noEmitOnError` with TypeScript and macro diagnostics.
+- `noEmit` with macro validation still enabled.
+- Incremental behavior with explicit and default `tsBuildInfoFile` paths.
+- Clear rejection of `outFile` and project references.
+- Correct pass-through of representative CommonJS and ESM `module`/`target`
+  combinations.
+- Correct handling of `files`, `include`, and `exclude`.
 
-**改动**：集中在 `build.ts`，把散落的选项处理收敛、补齐边界。
+## Stage 5: Audit dump and documentation
 
-**测试**：并入 `test/build.test.ts` 或新增 `test/build-options.test.ts`
-- `module` / `target` 组合透传正确（cjs、esm 各一）。
-- `paths` / `baseUrl` 别名解析在投影编译下仍正确。
-- `emitBOM` / `newLine` 不破坏遮盖字节。
-- 明确不支持项报错信息稳定（快照式断言 message 关键字）。
+- Add optional `--emit-projection <dir>` output for debugging and auditing.
+- Write projected files at their original project-relative paths without
+  generating a tsconfig or manifest and without using them as compiler input.
+- Document `tsifdef build`, `-p`, `--watch`, incremental invalidation, supported
+  and unsupported options, and original-source path guarantees.
+- Update the changelog and both English and Chinese integration guides.
 
-**DoD**：选项表每一「必须处理 / 特殊照顾 / 不支持」行至少一条测试覆盖。
+## Stage 6: Downstream HOK integration
 
----
+This stage belongs to the downstream HOK repository, not TSIfDef itself:
 
-## 阶段 5：可选审计 dump 与文档收尾
+- Replace four `tsc` invocations in `compile.mjs` with `tsifdef build` while
+  preserving existing compiler flags after `--`.
+- Ensure the Babel/remap/source-map chain still resolves original sources.
+- Run at least two regional Profiles and verify artifact differences.
 
-**目标**：`--emit-projection <dir>`（按需 dump 遮盖后投影树，默认不落盘）；文档一致性。
+Tracking moved to `HOK-Integration-Checklist.md` and roadmap item PC-006.
 
-**改动**
-- `build.ts`：`--emit-projection <dir>` 时把遮盖文本写到该目录（复用 precompile 落盘
-  逻辑，但只作调试产物，不生成 tsconfig / manifest）。
-- 更新 `README` / `README.zh-CN`：`tsifdef build` 用法、watch、与 ESLint/tsserver 的
-  关系（lint/编辑器与构建正交）。
-- `CHANGELOG` / `CHANGELOG.zh-CN`：记录投影编译。
-- `INTEGRATION` / `INTEGRATION.zh-CN`：把「precompile + tsc」示例改为 `tsifdef build`。
+## Risk priorities
 
-**测试**
-- `--emit-projection` 产物是等长遮盖文本、与 emit 用的投影一致。
+- Highest risk: Profile switching combined with incremental state. A failure
+  can silently emit JavaScript for the wrong target, so the regression test is
+  mandatory.
+- High risk: source-map and declaration-map path correctness. Multiple directory
+  depths must be tested.
+- Medium risk: watch disposal and rebuild races.
+- Lower risk: the optional audit dump, which is not a compiler input.
 
-**DoD**：文档无 `precompile`/`tsc -p .tsifdef/Output` 陈述残留；示例与 SPEC 一致。
-
----
-
-## 阶段 6：集成回归
-
-- `npm test` 全绿（含旧 tsserver / vscode / core 测试不回归）。
-- 固定 TypeScript 版本；README 注明升级前须全量重跑（SPEC §13 约束）。
-- （HOK 侧，另一个仓库，不在本仓库提交）接 `compile.mjs`：`run_tsifdef()` + `tsc`
-  两步并为 `tsifdef build`；验证 babel → remap → 下游 SourceMap 一路指原始源。此项
-  记入 `HOK-Integration-Checklist.md`，不阻塞本仓库发布。
-
----
-
-## 风险与注意
-
-- **最大风险**：阶段 2 用例 3（切 Profile × 增量）——一旦漏，产错 JS 且不报错。优先做、
-  优先测。
-- 旧 `precompile` 命令与测试保留，避免破坏既有契约；新旧并存直到确认 `build` 稳定。
-- `createIncrementalProgram` 的 builder program 与 host 劫持的组合需实测；若增量与
-  劫持冲突，退化为「Profile 变即全量」已是既定策略，可先牺牲增量保正确。
-- Watch 测试易 flaky，用轮询 + 超时，避免固定 sleep。
-
-## 阶段依赖
-
-1 → 2 → 3 顺序做（后者依赖前者的 host 劫持）。4 可与 2/3 并行。5、6 收尾。
+The implementation order was 1 → 2 → 3, followed by the option matrix,
+documentation, and downstream integration.

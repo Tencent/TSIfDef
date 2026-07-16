@@ -12,32 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TSIfDef postinstall：在宿主工程的 node_modules 里生成一个转发包
-// eslint-plugin-tsifdef，重新导出 tsifdef/eslint-plugin。
+// TSIfDef postinstall: create an eslint-plugin-tsifdef forwarding package in
+// the host project's node_modules that re-exports tsifdef/eslint-plugin.
 //
-// 为什么需要它：ESLint（eslintrc 格式）把 `plugins: ["tsifdef"]` 解析成
-// 包名 `eslint-plugin-tsifdef`，无法直接指向 `tsifdef` 包。npm alias 会拿到
-// 主入口（core），没有 processors。所以由本脚本在安装时自动铺一个极小的转发包，
-// 让工程零手写即可 `plugins:["tsifdef"] + processor:"tsifdef/macros"`。
+// Why this is needed: ESLint's eslintrc format resolves `plugins: ["tsifdef"]`
+// to the package name `eslint-plugin-tsifdef` and cannot point directly at the
+// `tsifdef` package. An npm alias resolves to the main core entry, which has no
+// processors. This script installs a tiny forwarder so projects can use
+// `plugins:["tsifdef"] + processor:"tsifdef/macros"` without a manual shim.
 //
-// 安装时 npm 以本包目录（node_modules/tsifdef）为 cwd 运行本脚本；转发包建在
-// 同级 node_modules/eslint-plugin-tsifdef。幂等；任何失败都不阻断安装。
+// npm runs this script from node_modules/tsifdef during installation. The
+// forwarder is created in the sibling node_modules/eslint-plugin-tsifdef.
+// The operation is idempotent, and failures never block installation.
 "use strict";
 
 const fs = require("node:fs");
 const path = require("node:path");
 
 try {
-  // 本脚本位于 <install>/node_modules/tsifdef/scripts/postinstall.cjs
-  // 目标转发包位于 <install>/node_modules/eslint-plugin-tsifdef
+  // This script lives at <install>/node_modules/tsifdef/scripts/postinstall.cjs.
+  // The forwarder lives at <install>/node_modules/eslint-plugin-tsifdef.
   const tsifdefPkgDir = path.resolve(__dirname, "..");
   const nodeModulesDir = path.resolve(tsifdefPkgDir, "..");
   const tsifdefVersion = JSON.parse(
     fs.readFileSync(path.join(tsifdefPkgDir, "package.json"), "utf8"),
   ).version;
 
-  // 仅当确实处于某个 node_modules 下（真实安装场景）才铺设，
-  // 避免在 tsifdef 仓库自身开发时误建。
+  // Install only when actually running below node_modules, avoiding accidental
+  // creation while developing in the tsifdef repository itself.
   if (path.basename(nodeModulesDir) !== "node_modules") {
     process.exit(0);
   }
@@ -68,7 +70,7 @@ try {
     "utf8",
   );
 } catch {
-  // 转发包生成失败不应让 npm install 失败；工程仍可手动铺设。
+  // A forwarder failure must not fail npm install; projects can add it manually.
 }
 
 process.exit(0);

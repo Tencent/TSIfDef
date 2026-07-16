@@ -1,6 +1,6 @@
 # Development Status
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## Current Task
 
@@ -8,22 +8,21 @@ No active task in this repository.
 
 ## Completed This Session
 
-- **CLI diagnostic compatibility fix**: redirected/piped CLI TypeScript
-  diagnostics now use plain `file(line,column): error TSxxxx` formatting so
-  downstream CI log scanners can match `error TS` in `tslog.txt`.
-  - Interactive TTY output keeps colored context formatting.
-  - One-shot build and watch diagnostics share the same formatter.
-  - Added a regression assertion that captured diagnostics contain `error TS`
-    and no ANSI escape codes.
+- **DOC-001 - English-only source comments and default documentation**:
+  - Translated all maintained source comments to English.
+  - Rewrote `SPEC.md` and the projected-compilation plan in clear English.
+  - Translated non-localized historical design documents to English.
+  - Preserved Chinese `*.zh-CN.md` localized documents and intentional Chinese
+    Unicode/UTF-16 test fixtures.
+  - Left the pre-existing untracked `HOK-Integration-Checklist.md` untouched.
 
 ## Verification
 
+- English audit: no Han characters remain in tracked non-localized source or
+  documentation; the only non-localized matches are intentional test fixtures.
 - `npm run build`: passed.
 - `npm run typecheck`: passed.
 - `npm test`: passed; 110 tests.
-- Manual redirected CLI smoke: a temporary project with a TS2322 error wrote
-  `src/main.ts(1,14): error TS2322: ...` to `tslog.txt`, and `error TS`
-  matched successfully.
 
 ## Known Issues
 

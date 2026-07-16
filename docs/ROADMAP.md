@@ -9,6 +9,19 @@ Task states are `TODO`, `ACTIVE`, `DONE`, and `BLOCKED`. Only one task may be
 
 ## Open Source Readiness
 
+### DOC-001 - English-only source comments and default documentation (`DONE`)
+
+Translate maintained source comments and non-localized documentation to
+English. Chinese remains only in explicitly localized `*.zh-CN.md` documents
+and intentional Unicode test fixtures.
+
+Acceptance criteria:
+
+- Maintained source-code comments contain no Chinese text.
+- Tracked non-localized documentation contains no Chinese prose.
+- Chinese localized documents and Unicode/UTF-16 test fixtures remain intact.
+- Standard build, typecheck, and test commands pass.
+
 ### OS-001 - Apache-2.0 licensing (`DONE`)
 
 Add the Apache License 2.0 with Tencent ownership information and apply the

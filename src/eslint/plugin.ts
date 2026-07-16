@@ -20,37 +20,41 @@ import { projectSource, type MacroDefinitions } from "../core/index.js";
 
 // TSIfDef ESLint processor
 //
-// 与 tsserver 插件对称：tsserver 劫持 getScriptSnapshot 让语言服务只看到投影后的
-// 源码；这里用 ESLint 的 processor.preprocess 让 ESLint 的 parser 也只看到投影后的
-// 源码。等长遮盖保证行列不变，因此 postprocess 直接透传诊断，位置无需换算。
+// This mirrors the tsserver plugin: tsserver intercepts getScriptSnapshot so
+// the language service sees only projected source, while this processor uses
+// preprocess so the ESLint parser also sees only projected source. Equal-length
+// masking preserves line and column coordinates, so postprocess can return
+// diagnostics without remapping their positions.
 //
-// 用法（工程 .eslintrc）：
+// Usage (in the project's .eslintrc):
 //   { "plugins": ["tsifdef"],
 //     "overrides": [{ "files": ["*.ts","*.mts"], "processor": "tsifdef/macros" }] }
 //
-// Profile 来源与 CLI/tsserver 一致：从被检查文件向上查找带 "tsifdef" 指针的
-// package.json，指针指向启用宏名的 JSON 数组。找不到时降级为原文本（不阻断 lint）。
+// Profile resolution matches the CLI and tsserver: search upward from the
+// checked file for a package.json with a "tsifdef" pointer to a JSON array of
+// enabled macro names. If none is found, fall back to the original text so lint
+// is not blocked.
 
 interface ProfileCacheEntry {
   readonly mtimeMs: number;
   readonly definitions: MacroDefinitions;
 }
 
-// 按 profile 文件路径缓存，避免每个文件都重复读、重复解析。以 mtime 失效。
+// Cache by Profile path to avoid repeated reads and parsing; invalidate by mtime.
 const profileCache = new Map<string, ProfileCacheEntry>();
-// 按目录缓存"向上找到的 profile 路径"，避免每个文件都走一遍 findUp。
+// Cache upward Profile-path lookups by directory to avoid a search per file.
 const pointerCache = new Map<string, string | null>();
 
 const macroFilePattern = /\.(?:d\.)?(?:ts|tsx|mts|cts)$/i;
 
-/** 从文件所在目录向上查找带 tsifdef 指针的 package.json，返回 profile 绝对路径。 */
+/** Find the nearest package.json with a tsifdef pointer and return its absolute Profile path. */
 function resolveProfilePath(filename: string): string | undefined {
   let dir = dirname(resolve(filename));
   const chain: string[] = [];
   for (;;) {
     const cached = pointerCache.get(dir);
     if (cached !== undefined) {
-      // 命中缓存：把途经目录也填上，回填结果。
+      // Cache the resolved result for every directory traversed on this lookup.
       for (const d of chain) pointerCache.set(d, cached);
       return cached ?? undefined;
     }
@@ -67,12 +71,12 @@ function resolveProfilePath(filename: string): string | undefined {
       if (typeof value === "string" && value.trim() !== "") {
         pointer = resolve(dir, value);
       } else if (raw !== null && typeof raw === "object") {
-        // 有 package.json 但没有 tsifdef 指针：这是包边界，停止上查。
+        // A package.json without a tsifdef pointer is a package boundary.
         for (const d of chain) pointerCache.set(d, null);
         return undefined;
       }
     } catch {
-      // 该目录没有 package.json（或无法读取）：继续向上。
+      // No readable package.json in this directory; continue upward.
     }
     if (pointer !== undefined) {
       for (const d of chain) pointerCache.set(d, pointer);
@@ -81,7 +85,7 @@ function resolveProfilePath(filename: string): string | undefined {
 
     const parent = dirname(dir);
     if (parent === dir) {
-      // 到达文件系统根仍未找到。
+      // Reached the file-system root without finding a Profile.
       for (const d of chain) pointerCache.set(d, null);
       return undefined;
     }
@@ -89,7 +93,7 @@ function resolveProfilePath(filename: string): string | undefined {
   }
 }
 
-/** 读取并解析 profile，按 mtime 缓存。失败返回 undefined（降级）。 */
+/** Read and parse a Profile with mtime caching; return undefined on failure. */
 function loadDefinitions(profilePath: string): MacroDefinitions | undefined {
   let mtimeMs: number;
   try {
@@ -132,11 +136,12 @@ export const processors = {
       if (definitions === undefined) {
         return [text];
       }
-      // 等长遮盖：未激活分支与宏指令行变为空格，保留 CR/LF 与总长度。
+      // Equal-length masking replaces inactive branches and directive lines
+      // with spaces while preserving CR/LF characters and total length.
       return [projectSource(text, definitions).projectedText];
     },
     postprocess(messages: LintMessage[][]): LintMessage[] {
-      // 投影等长，行列不变，诊断位置直接透传。
+      // The equal-length projection preserves diagnostic line and column positions.
       return messages.flat();
     },
   },

@@ -1,64 +1,64 @@
-# TSIfDef 接入 TsScripts — 修订版（编辑器插件 + 标准 precompile 模式）
+# TSIfDef Integration with TsScripts — Revised Plan
 
-上一版两个问题（用户反馈）：
-1. VSCode 里写 `#if AAAA` 不置灰反而报错 —— **编辑器插件（VSIX + tsserver plugin）根本没装**，只接了 CLI 编译。
-2. 在 compile.mjs 内部逐处 hack 4 个 tsc 调用，不是文档的标准 `precompile` 形态。
+Two issues with the previous version (user feedback):
+1. Write `#if AAAA` in VSCode and it will not be grayed out but will report an error - **Editor plugin (VSIX + tsserver plugin) is not installed at all**, only CLI is used for compilation.
+2. Hack 4 tsc calls one by one inside compile.mjs, which is not the standard `precompile` form of the document.
 
-用户选择：装 vsix + 配 tsdk；改成标准 precompile 模式。
+User choice: install vsix + tsdk; change to standard precompile mode.
 
-## 关键现状（已核实）
+## Key status quo (verified)
 
-- 工作方式：打开 `TsScripts.code-workspace`（多 folder：TsScripts + Puerts + C# + Tdr）。
-- workspace/settings 里**没有** `typescript.tsdk`，**没有** tsserver plugin，**没装** TSIfDef 扩展 → 编辑器半套完全缺失。
-- 源码 `.mts` 为主（579）少量 `.ts`（3）；插件扩展名匹配 `.ts/.tsx/.mts/.cts`，不是扩展名问题。
-- `SystemScripts/tsconfig.json` 由 `tsconfig.gen.mjs` 在每次 `init.mjs` 时按 REGION **重新生成**；
-  `tsconfig.build.json` extends 它。所以源 tsconfig 是每区域生成物。
-- 所有 tsc 调用都在 `compile.mjs` 的 4 处（`compile_cjs/esm`、`watch_cjs/esm`），`build.mjs`/`miniapp` 复用之。
-- 本地有 `node_modules/typescript`（可作 tsdk 承载 tsserver plugin）。
-- TSIfDef 产物：`release/tsifdef-1.0.0.vsix`（扩展）、`tsifdef-1.0.0.tgz`（CLI，已装）。
-- 生成物是 `.tsifdef/Output/tsconfig.json`（不是 package.json）。
+- How it works: Open `TsScripts.code-workspace` (multi-folder: TsScripts + Puerts + C# + Tdr).
+- There is **no** `typescript.tsdk` in workspace/settings, **no** tsserver plugin, **not installed** TSIfDef extension → half of the editor is completely missing.
+- The source code is mainly `.mts` (579) and a small amount of `.ts` (3); the plug-in extension matches `.ts/.tsx/.mts/.cts`, which is not an extension problem.
+- `SystemScripts/tsconfig.json` is generated from `tsconfig.gen.mjs` on REGION **regeneration** every time `init.mjs` is pressed;
+`tsconfig.build.json` extends it. So the source tsconfig is a per-zone build.
+- All tsc calls are in 4 places of `compile.mjs` (`compile_cjs/esm`, `watch_cjs/esm`), which are reused by `build.mjs`/`miniapp`.
+- There is `node_modules/typescript` locally (can be used as tsdk to host tsserver plugin).
+- TSIfDef artifacts: `release/tsifdef-1.0.0.vsix` (extended), `tsifdef-1.0.0.tgz` (CLI, installed).
+- The generated product is `.tsifdef/Output/tsconfig.json` (not package.json).
 
-## 问题 1：编辑器插件（置灰/折叠/不报错）
+## Question 1: Editor plug-in (grayed/collapsed/no error reported)
 
-TSIfDef 编辑器半套 = **VSCode 扩展**（置灰、折叠、状态栏、Profile 监听）+ **tsserver plugin**
-（劫持 getScriptSnapshot，让语言服务只看到投影，从而不对未激活代码报错）。
+TSIfDef editor half set = **VSCode extension** (grayed, collapsed, status bar, Profile monitoring) + **tsserver plugin**
+(Hijack getScriptSnapshot so that the language service only sees the projection and does not report errors for inactive code).
 
-步骤：
-1. 安装扩展：`code --install-extension E:/TSIfDef/release/tsifdef-1.0.0.vsix`（或 VSCode 里手动装 VSIX）。
-2. workspace 配 `typescript.tsdk` 指向工程本地 TS：
-   `TsScripts.code-workspace` 的 settings 加 `"typescript.tsdk": "node_modules/typescript/lib"`，
-   并 `"typescript.enablePromptUseWorkspaceTsdk": true`。
-   （tsserver plugin 通过 workspace TS 版本加载，package.json 里 `contributes.typescriptServerPlugins`
-   已声明 `enableForWorkspaceTypeScriptVersions`。）
-3. 确认 package.json 有 `tsifdef` 指针（已加）——扩展和 plugin 都从它读当前 Profile。
-4. VSCode 里 `TypeScript: Restart TS Server` 让 plugin 生效。
+step:
+1. Install the extension: `code --install-extension E:/TSIfDef/release/tsifdef-1.0.0.vsix` (or manually install VSIX in VSCode).
+2. The workspace is equipped with `typescript.tsdk` pointing to the local TS of the project:
+Add `"typescript.tsdk": "node_modules/typescript/lib"` to the settings of `TsScripts.code-workspace`,
+and `"typescript.enablePromptUseWorkspaceTsdk": true`.
+(tsserver plugin is loaded through the workspace TS version, `contributes.typescriptServerPlugins` in package.json
+`enableForWorkspaceTypeScriptVersions` declared. )
+3. Make sure package.json has a `tsifdef` pointer (added) - both extensions and plugins read the current Profile from it.
+4. `TypeScript: Restart TS Server` in VSCode makes the plugin effective.
 
-验证：打开一个 `.mts`，写
+Verification: Open a `.mts` and write
 ```
 #if GLOBAL_GENERAL
 const a = 1;
 #else
-const b: NotAType = 2;   // 未激活，应被投影遮盖，不报错
+const b: NotAType = 2; // Not activated, should be covered by projection, no error will be reported
 #endif
 ```
-预期：`#else` 块置灰+折叠，`NotAType` 不报错（因为 tsserver 看不到它）；`#if AAAA`（未定义宏）
-不报“未知宏”，整块按 false 处理。
+Expected: `#else` block is grayed out + collapsed, `NotAType` does not report an error (because tsserver cannot see it); `#if AAAA` (undefined macro)
+"Unknown macro" is not reported, and the entire block is treated as false.
 
-## 问题 2：改成标准 precompile 模式
+## Question 2: Change to standard precompile mode
 
-目标：package.json 里显式的 `precompile` 任务 + 编译指向投影 tsconfig，而不是散在 mjs 内部。
-但本工程 task 多数走 `Build/bin/pipeline/*.mjs`，tsc 埋在里面，纯 package.json 覆盖不到 mjs。
-折中：**两层**——package.json 暴露标准入口 + 一个集中开关贯穿 mjs。
+Target: Explicit `precompile` task in package.json + compilation points to projected tsconfig, rather than scattered inside mjs.
+However, most of the tasks in this project go to `Build/bin/pipeline/*.mjs`, tsc is buried in it, and pure package.json cannot cover mjs.
+Compromise: **Two layers** - package.json exposes standard entries + a centralized switch throughout mjs.
 
-### 2a. 回滚 compile.mjs 内部散改
+### 2a. Roll back compile.mjs internal changes
 
-把上一版在 compile.mjs 里 4 处 `PROJECTED_TSCONFIG` 改动收敛：不在每个函数里 hack，
-而是让 `run_tsifdef()` 产出投影后，**统一通过一个 `TSCONFIG_EFFECTIVE` 变量**决定 tsc -p 指向谁：
-- 定义 `const TSCONFIG_EFFECTIVE = USE_TSIFDEF ? PROJECTED_TSCONFIG : TSCONFIG`。
-- 4 处 tsc 用 `${TSCONFIG_EFFECTIVE}`。
-- 编译流程开头统一 `await run_tsifdef()`（一次），而非每函数各调。
+Convergence the 4 `PROJECTED_TSCONFIG` changes in compile.mjs in the previous version: do not hack in each function,
+Instead, let `run_tsifdef()` produce the projection, and then use a `TSCONFIG_EFFECTIVE` variable to determine who tsc -p points to:
+- define `const TSCONFIG_EFFECTIVE = USE_TSIFDEF ? PROJECTED_TSCONFIG : TSCONFIG`.
+- 4 places where tsc uses `${TSCONFIG_EFFECTIVE}`.
+- Unified `await run_tsifdef()` (once) at the beginning of the compilation process instead of calling each function individually.
 
-### 2b. package.json 暴露标准任务（文档形态）
+### 2b. package.json exposes standard tasks (document form)
 
 ```json
 "scripts": {
@@ -67,24 +67,25 @@ const b: NotAType = 2;   // 未激活，应被投影遮盖，不报错
   ...
 }
 ```
-——但注意：init.mjs 会重生成 tsconfig，tsifdef 必须在 init 之后跑。所以 precompile 不能简单前置，
-需要在 init（生成 tsconfig）之后、compile.mjs 的 tsc 之前跑 tsifdef。这就是为什么 2a 里把
-`run_tsifdef()` 放在 compile.mjs 流程里（init 已在 npm script 里先跑）。
+However, `init.mjs` regenerates tsconfig, so tsifdef must run after init. The
+precompile step cannot simply be prefixed to the existing command.
+You need to run tsifdef after init (generating tsconfig) and before tsc of compile.mjs. That's why 2a
+`run_tsifdef()` is placed in the compile.mjs process (init has been run first in npm script).
 
-### 2c. 让“所有 task 都 cover”
+### 2c. Let “all tasks be covered”
 
-- 直接/间接走 compile.mjs 的：`watch`/`compile`/`build`/`compile:devops_pipeline` → 经 `run_tsifdef` + `TSCONFIG_EFFECTIVE` 覆盖。
-- `build:v8cc`/miniapp 系列 → 确认它们的编译是否也经 compile.mjs；若有独立 tsc 需同样接。
-- 纯工具 task（proto/faas/tdrjs/push）不编译 TS，无需接。
+- Directly/indirectly go to compile.mjs: `watch`/`compile`/`build`/`compile:devops_pipeline` → covered by `run_tsifdef` + `TSCONFIG_EFFECTIVE`.
+- `build:v8cc`/miniapp series → Confirm whether their compilation also passes compile.mjs; if there is an independent tsc, it must be connected in the same way.
+- Pure tool task (proto/faas/tdrjs/push) does not compile TS and does not need to be connected.
 
-## 待决/风险
+## Pending/Risk
 
-- **sourcemap sources 指向 .tsifdef/Output**：上一版发现的问题仍在。改标准模式不自动解决。
-  需确认调试/CrashSight 是否受影响；若受影响，用 sourceRoot 或 map 重写处理（另开）。
-- init.mjs 重生成 tsconfig 与 tsifdef 顺序：必须 init → tsifdef → tsc。
-- watch 模式 tsifdef 无 watch：源码结构变化需重跑。
+- **sourcemap sources point to .tsifdef/Output**: The problems found in the previous version are still there. Changing to standard mode does not automatically solve the problem.
+It is necessary to confirm whether debugging/CrashSight is affected; if affected, use sourceRoot or map to rewrite the processing (open separately).
+- init.mjs regenerates tsconfig and tsifdef in the order: init → tsifdef → tsc.
+- watch mode tsifdef no watch: source code structure changes require re-running.
 
-## 明确不做
+## Explicitly do not do it
 
-- 不接 3 个库子包。
-- 不改 Unity adapter（宏生成已验证 OK）。
+- Not picking up 3 library subpackages.
+- Do not change Unity adapter (macro generation verified OK).
