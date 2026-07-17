@@ -11,8 +11,7 @@
 ```bash
 cd examples/demo
 npm install
-npm run precompile
-npm run compile
+npm run build
 ```
 
 演示项目的 `package.json`：
@@ -21,17 +20,27 @@ npm run compile
 {
   "tsifdef": "./profiles/TEST_A.json",
   "scripts": {
-    "precompile": "tsifdef",
-    "compile": "tsc -p .tsifdef/Output/tsconfig.json"
+    "build": "tsifdef build -- --noEmit false --outDir Build/.demorun/active",
+    "watch": "tsifdef build --watch -- --noEmit false --outDir Build/.demorun/active"
   }
 }
 ```
 
-`npm run precompile` 会先生成 `.tsifdef/Output`，`npm run compile` 再用
-stock `tsc` 编译 `.tsifdef/Output/tsconfig.json`。
+`npm run build` 使用现代投影编译路径（`tsifdef build`），并把当前 Profile
+的输出写到 `Build/.demorun/active`。`npm run watch` 会以相同配置进入 watch
+模式。
 
-当前工程自己的 `files`、`include` 和 `exclude` 都属于预处理合同的一
-部分。独立子工程保留自己的 `tsifdef` 配置，不会被父工程隐式重写。
+如果需要对比旧的预编译流程，仍然可以运行：
+
+```bash
+npm run legacy:compile
+```
+
+该流程会先生成 `.tsifdef/Output`，再用 stock `tsc` 编译
+`.tsifdef/Output/tsconfig.json`。
+
+当前工程自己的 `files`、`include` 和 `exclude` 在两种路径下都会被遵守。
+独立子工程保留自己的 `tsifdef` 配置，不会被父工程隐式重写。
 
 ## 关注点
 

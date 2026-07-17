@@ -30,3 +30,14 @@ test("generated runtime and helper package versions follow root package.json", a
   assert.equal(VERSION, rootPackage.version);
   assert.equal(tsserverPackage.version, rootPackage.version);
 });
+
+test("demo package advertises the modern projected build path", async () => {
+  const demoPackage = JSON.parse(
+    await readFile(resolve("examples", "demo", "package.json"), "utf8"),
+  ) as { scripts?: Record<string, unknown> };
+
+  assert.match(String(demoPackage.scripts?.build), /^tsifdef build\b/);
+  assert.match(String(demoPackage.scripts?.watch), /^tsifdef build --watch\b/);
+  assert.equal(Object.prototype.hasOwnProperty.call(demoPackage.scripts ?? {}, "precompile"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(demoPackage.scripts ?? {}, "legacy:compile"), true);
+});

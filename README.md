@@ -48,8 +48,9 @@ subprojects keep their own `tsifdef` configuration and are not rewritten
 implicitly. `outFile` and project references (`tsc -b`) are not supported.
 
 For auditing, `tsifdef build --emit-projection <dir>` also writes the masked
-projection under `<dir>` at each file's original relative path; the dump is a
-debug artifact and is never fed to the compiler.
+projection under `<dir>` at each file's original relative path; the same flag is
+available in `--watch` mode. The dump is a debug artifact and is never fed to
+the compiler.
 
 ## Use in VSCode
 

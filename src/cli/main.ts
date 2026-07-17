@@ -69,7 +69,7 @@ async function runBuild(args: readonly string[], cwd: string): Promise<number> {
   }
   try {
     const project = parseProjectOption(rest, "Usage: tsifdef build [--watch] [--emit-projection <dir>] [-p <tsconfig>] [-- <tsc flags>]");
-    const compilerOptionsOverride = await parseTscOverride(overrideArgs);
+    const compilerOptionsOverride = await parseTscOverride(overrideArgs, cwd);
     const projectRoot = resolve(cwd);
     const configuration = await loadProjectConfiguration(projectRoot);
     const profile = await loadProfileFile(configuration.profilePath);
@@ -79,6 +79,7 @@ async function runBuild(args: readonly string[], cwd: string): Promise<number> {
         project: project ?? "tsconfig.json",
         profilePath: configuration.profilePath,
         compilerOptionsOverride,
+        ...(emitProjectionDir === undefined ? {} : { emitProjectionDir }),
         onBuild: (info) => {
           process.stdout.write(
             info.hasErrors

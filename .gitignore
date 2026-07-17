@@ -4,6 +4,7 @@ node_modules/
 *.tgz
 **/Build/.macrobuild/
 **/Build/.tsifdef/
+**/Build/.legacy/
 **/.tsifdef/
 **/Build/.demorun/
 release/

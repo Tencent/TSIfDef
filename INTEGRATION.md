@@ -60,11 +60,13 @@ the examples below for project and compiler-option overrides:
 ```bash
 tsifdef build -p ./custom.tsconfig.json
 tsifdef build -p ./tsconfig.json -- --module commonjs --outDir dist
+tsifdef build --watch --emit-projection .projection
 ```
 
 `-p`/`--project` selects a tsconfig. Arguments after `--` are parsed as tsc
-options and override that tsconfig. `outFile` and multi-project composite
-references (`tsc -b`) are not supported.
+options and override that tsconfig. `--emit-projection` writes an equal-length
+debug dump in both one-shot and watch mode. `outFile` and multi-project
+composite references (`tsc -b`) are not supported.
 
 Switching Profiles (editing `package.json`'s `tsifdef` pointer or the Profile
 file) triggers a full rebuild automatically.

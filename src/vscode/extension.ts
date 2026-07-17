@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { createRequire } from "node:module";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import type { MacroDefinitions } from "../core/expression.js";
@@ -269,23 +269,32 @@ let active: ActiveExtension | undefined;
  * forwarder on activation so a fresh install (or a `--force` reinstall that
  * wiped a previous shim) self-heals without manual steps.
  */
-function ensureTsserverPluginModule(): void {
+export function ensureTsserverPluginModule(): void {
   try {
     // Compiled to `<ext>/dist/vscode/extension.js`; the extension root is two up.
     const extensionRoot = dirname(dirname(__dirname));
     const moduleDir = join(extensionRoot, "node_modules", "tsifdef-tsserver");
     const manifest = join(moduleDir, "package.json");
-    if (existsSync(manifest)) return;
+    const index = join(moduleDir, "index.js");
+    const expectedManifest = `${JSON.stringify(
+      { name: "tsifdef-tsserver", version: VERSION, private: true, main: "../../dist/tsserver/plugin.js" },
+      null,
+      2,
+    )}\n`;
+    const expectedIndex = 'module.exports = require("../../dist/tsserver/plugin.js");\n';
+    let currentManifest: string | undefined;
+    let currentIndex: string | undefined;
+    try {
+      currentManifest = readFileSync(manifest, "utf8");
+      currentIndex = readFileSync(index, "utf8");
+    } catch {
+      currentManifest = undefined;
+      currentIndex = undefined;
+    }
+    if (currentManifest === expectedManifest && currentIndex === expectedIndex) return;
     mkdirSync(moduleDir, { recursive: true });
-    writeFileSync(
-      manifest,
-      `${JSON.stringify(
-        { name: "tsifdef-tsserver", version: VERSION, private: true, main: "../../dist/tsserver/plugin.js" },
-        null,
-        2,
-      )}\n`,
-      "utf8",
-    );
+    writeFileSync(manifest, expectedManifest, "utf8");
+    writeFileSync(index, expectedIndex, "utf8");
   } catch {
     // Best-effort: if the directory is read-only, a reinstall applies. Never
     // block activation over it.

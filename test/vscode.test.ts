@@ -13,10 +13,12 @@
 // limitations under the License.
 
 import assert from "node:assert/strict";
-import { join } from "node:path";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { activeProfileCommand, ProfileStateController } from "../src/vscode/index.js";
+import { ensureTsserverPluginModule } from "../src/vscode/extension.js";
 import { FakeHost } from "./fake-host.js";
 
 test("renders the package-selected Profile file and full-path tooltip", () => {
@@ -54,4 +56,31 @@ test("active Profile command returns the package-selected absolute path", async 
   assert.equal(await host.commands.get(activeProfileCommand)?.(), profile);
   controller.dispose();
   assert.equal(host.commands.has(activeProfileCommand), false);
+});
+
+test("tsserver plugin shim is rewritten when stale or incomplete", async () => {
+  const moduleDir = resolve(".test-dist", "node_modules", "tsifdef-tsserver");
+  const manifest = join(moduleDir, "package.json");
+  const index = join(moduleDir, "index.js");
+  await rm(moduleDir, { recursive: true, force: true });
+  await mkdir(moduleDir, { recursive: true });
+  await writeFile(
+    manifest,
+    JSON.stringify({ name: "tsifdef-tsserver", version: "0.0.0", private: true, main: "stale.js" }, null, 2),
+    "utf8",
+  );
+  await writeFile(index, "module.exports = require('./stale.js');\n", "utf8");
+
+  ensureTsserverPluginModule();
+
+  const rewrittenManifest = JSON.parse(await readFile(manifest, "utf8")) as {
+    version?: string;
+    main?: string;
+  };
+  assert.notEqual(rewrittenManifest.version, "0.0.0");
+  assert.equal(rewrittenManifest.main, "../../dist/tsserver/plugin.js");
+  assert.equal(
+    await readFile(index, "utf8"),
+    'module.exports = require("../../dist/tsserver/plugin.js");\n',
+  );
 });

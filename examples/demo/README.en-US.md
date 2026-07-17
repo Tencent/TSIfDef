@@ -11,8 +11,7 @@ This demo shows TSIfDef with neutral sample macros only:
 ```bash
 cd examples/demo
 npm install
-npm run precompile
-npm run compile
+npm run build
 ```
 
 Demo `package.json`:
@@ -21,18 +20,28 @@ Demo `package.json`:
 {
   "tsifdef": "./profiles/TEST_A.json",
   "scripts": {
-    "precompile": "tsifdef",
-    "compile": "tsc -p .tsifdef/Output/tsconfig.json"
+    "build": "tsifdef build -- --noEmit false --outDir Build/.demorun/active",
+    "watch": "tsifdef build --watch -- --noEmit false --outDir Build/.demorun/active"
   }
 }
 ```
 
-`npm run precompile` generates `.tsifdef/Output`, and `npm run compile` runs
-stock `tsc` against `.tsifdef/Output/tsconfig.json`.
+`npm run build` uses the modern projected compiler path (`tsifdef build`) and
+writes the active Profile output to `Build/.demorun/active`. `npm run watch`
+keeps the same projected build alive in watch mode.
 
-Current-project `files`, `include`, and `exclude` are part of the precompile
-contract. Separate subprojects keep their own `tsifdef` configuration and are
-not rewritten implicitly.
+Legacy precompile is still available for comparison:
+
+```bash
+npm run legacy:compile
+```
+
+That path generates `.tsifdef/Output` first and then runs stock `tsc` against
+`.tsifdef/Output/tsconfig.json`.
+
+Current-project `files`, `include`, and `exclude` are honored by both paths.
+Separate subprojects keep their own `tsifdef` configuration and are not
+rewritten implicitly.
 
 ## What to look for
 

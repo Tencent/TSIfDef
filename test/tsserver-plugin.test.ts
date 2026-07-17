@@ -132,3 +132,36 @@ test("plugin leaves the service untouched when no profile is selected", async ()
     }
   });
 });
+
+test("plugin closes the Profile directory watcher on dispose", async () => {
+  await withProject(async (root) => {
+    const profilePath = join(root, "HOK.json");
+    await writeFile(profilePath, "[\"HOK\"]", "utf8");
+    const file = join(root, "main.ts");
+    const host = createMemoryHost(new Map([[file, { text: "const value = 1;\n", version: "1" }]]));
+    const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
+    let closed = 0;
+    const info = pluginInfo(root, host, languageService, { profileFile: profilePath }) as {
+      serverHost: {
+        watchDirectory?: (
+          path: string,
+          callback: () => void,
+          recursive?: boolean,
+        ) => { close(): void };
+      };
+    };
+    info.serverHost = {
+      watchDirectory: () => ({
+        close: () => {
+          closed += 1;
+        },
+      }),
+    };
+
+    const plugin = init({ typescript: ts });
+    const wrapped = plugin.create(info);
+    wrapped.dispose();
+
+    assert.equal(closed, 1);
+  });
+});

@@ -13,11 +13,21 @@ This demo shows TSIfDef with neutral sample macros only:
 ```bash
 cd examples/demo
 npm install
-npm run compile
+npm run build
 ```
 
-`npm run precompile` generates `.tsifdef/Output`, and `npm run compile` runs
-stock `tsc` against `.tsifdef/Output/tsconfig.json`.
+`npm run build` uses the modern projected compiler path (`tsifdef build`) and
+writes the active Profile output to `Build/.demorun/active`. `npm run watch`
+keeps the same projected build alive in watch mode.
+
+Legacy precompile is still available for comparison:
+
+```bash
+npm run legacy:compile
+```
+
+That path generates `.tsifdef/Output` first and then runs stock `tsc` against
+`.tsifdef/Output/tsconfig.json`.
 
 ## What to look for
 

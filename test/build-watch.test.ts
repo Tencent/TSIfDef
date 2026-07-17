@@ -18,7 +18,12 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
-import { watchProject, type WatchBuildInfo, type WatchHandle } from "../src/cli/index.js";
+import {
+  BuildUnsupportedError,
+  watchProject,
+  type WatchBuildInfo,
+  type WatchHandle,
+} from "../src/cli/index.js";
 
 /** Collects build events and lets tests await the next one matching a predicate. */
 class BuildEvents {
@@ -60,7 +65,11 @@ interface Fixture {
   readonly handle: WatchHandle;
 }
 
-async function startWatch(files: Readonly<Record<string, string>>, profile: readonly string[]): Promise<Fixture> {
+async function startWatch(
+  files: Readonly<Record<string, string>>,
+  profile: readonly string[],
+  options: { readonly emitProjectionDir?: string } = {},
+): Promise<Fixture> {
   const root = await mkdtemp(join(tmpdir(), "tsifdef-watch-"));
   await writeFile(join(root, "Profile.json"), JSON.stringify(profile), "utf8");
   await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", tsifdef: "./Profile.json" }), "utf8");
@@ -82,6 +91,7 @@ async function startWatch(files: Readonly<Record<string, string>>, profile: read
     projectRoot: root,
     project: "tsconfig.json",
     profilePath: join(root, "Profile.json"),
+    ...(options.emitProjectionDir === undefined ? {} : { emitProjectionDir: options.emitProjectionDir }),
     onBuild: (info) => events.push(info),
   });
   return { root, events, handle };
@@ -202,6 +212,114 @@ test("changing the Profile file rebuilds with the new Profile", async () => {
     assert.doesNotMatch(js, /browser/);
   } finally {
     await cleanup(fixture);
+  }
+});
+
+test("watch mode dumps projections when emitProjectionDir is set", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-watch-"));
+  const projectionDir = join(root, ".projection");
+  await writeFile(join(root, "Profile.json"), JSON.stringify(["BROWSER"]), "utf8");
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", tsifdef: "./Profile.json" }), "utf8");
+  await writeFile(
+    join(root, "tsconfig.json"),
+    JSON.stringify({
+      compilerOptions: { strict: true, outDir: "dist", module: "commonjs", target: "ES2020" },
+      include: ["src/**/*.ts"],
+    }),
+    "utf8",
+  );
+  await mkdir(join(root, "src"), { recursive: true });
+  const source = "#if BROWSER\nexport const only = 'browser';\n#else\nexport const only = 'node';\n#endif\n";
+  await writeFile(join(root, "src", "main.ts"), source, "utf8");
+  const events = new BuildEvents();
+  const handle = await watchProject({
+    projectRoot: root,
+    project: "tsconfig.json",
+    profilePath: join(root, "Profile.json"),
+    emitProjectionDir: projectionDir,
+    onBuild: (info) => events.push(info),
+  });
+  try {
+    await events.next();
+    const dumped = await readFile(join(projectionDir, "src", "main.ts"), "utf8");
+    assert.equal(dumped.length, source.length);
+    assert.match(dumped, /only = 'browser'/);
+    assert.doesNotMatch(dumped, /only = 'node'/);
+  } finally {
+    handle.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("watch mode rejects unsupported outFile and project references", async () => {
+  const outFileRoot = await mkdtemp(join(tmpdir(), "tsifdef-watch-outfile-"));
+  try {
+    await writeFile(join(outFileRoot, "Profile.json"), "[]", "utf8");
+    await writeFile(join(outFileRoot, "package.json"), JSON.stringify({ name: "fixture", tsifdef: "./Profile.json" }), "utf8");
+    await mkdir(join(outFileRoot, "src"), { recursive: true });
+    await writeFile(join(outFileRoot, "src", "main.ts"), "export const value = 1;\n", "utf8");
+    await writeFile(
+      join(outFileRoot, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { strict: true, outFile: "bundle.js", module: "system", target: "ES2020" },
+        include: ["src/**/*.ts"],
+      }),
+      "utf8",
+    );
+    await assert.rejects(
+      watchProject({
+        projectRoot: outFileRoot,
+        project: "tsconfig.json",
+        profilePath: join(outFileRoot, "Profile.json"),
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof BuildUnsupportedError);
+        assert.match(error.message, /outFile/);
+        return true;
+      },
+    );
+  } finally {
+    await rm(outFileRoot, { recursive: true, force: true });
+  }
+
+  const refsRoot = await mkdtemp(join(tmpdir(), "tsifdef-watch-refs-"));
+  try {
+    await writeFile(join(refsRoot, "Profile.json"), "[]", "utf8");
+    await writeFile(join(refsRoot, "package.json"), JSON.stringify({ name: "fixture", tsifdef: "./Profile.json" }), "utf8");
+    await mkdir(join(refsRoot, "lib"), { recursive: true });
+    await writeFile(
+      join(refsRoot, "lib", "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { composite: true, outDir: "dist", module: "commonjs", target: "ES2020" },
+        files: [],
+      }),
+      "utf8",
+    );
+    await mkdir(join(refsRoot, "src"), { recursive: true });
+    await writeFile(join(refsRoot, "src", "main.ts"), "export const value = 1;\n", "utf8");
+    await writeFile(
+      join(refsRoot, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { strict: true, outDir: "dist", module: "commonjs", target: "ES2020" },
+        include: ["src/**/*.ts"],
+        references: [{ path: "./lib" }],
+      }),
+      "utf8",
+    );
+    await assert.rejects(
+      watchProject({
+        projectRoot: refsRoot,
+        project: "tsconfig.json",
+        profilePath: join(refsRoot, "Profile.json"),
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof BuildUnsupportedError);
+        assert.match(error.message, /project references|tsc -b|composite/);
+        return true;
+      },
+    );
+  } finally {
+    await rm(refsRoot, { recursive: true, force: true });
   }
 });
 

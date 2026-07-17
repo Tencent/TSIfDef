@@ -7,7 +7,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/Build/.demorun/active/main.js",
       "cwd": "${workspaceFolder}",
-      "preLaunchTask": "TSIfDef: Compile active demo",
+      "preLaunchTask": "TSIfDef: Build active demo",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/Build/.demorun/active/**/*.js"],
       "skipFiles": ["<node_internals>/**"]

@@ -16,10 +16,11 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm, writeFile, stat } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import test from "node:test";
 
 import { buildProject, BuildUnsupportedError, loadProfileFile } from "../src/cli/index.js";
+import { runCli } from "../src/cli/main.js";
 
 interface ProjectSpec {
   readonly profile?: readonly string[];
@@ -238,6 +239,27 @@ test("compilerOptionsOverride overrides tsconfig (module + outDir)", async () =>
     const js = await readFile(join(root, "out-cjs", "main.js"), "utf8");
     assert.match(js, /exports\.value|Object\.defineProperty\(exports/);
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("runCli resolves relative tsc path overrides against its supplied cwd", async () => {
+  const root = await setup({
+    compilerOptions: { strict: true, outDir: "dist", module: "commonjs", target: "ES2020" },
+    files: { "src/main.ts": "export const value = 1;\n" },
+  });
+  const outDir = `out-cli-${basename(root)}`;
+  const accidentalOutDir = join(process.cwd(), outDir);
+  const originalWrite = process.stdout.write;
+  (process.stdout as { write: unknown }).write = (() => true) as typeof process.stdout.write;
+  try {
+    const code = await runCli(["build", "--", "--outDir", outDir], root);
+    assert.equal(code, 0);
+    assert.equal(await exists(join(root, outDir, "main.js")), true);
+    assert.equal(await exists(join(root, "dist", "main.js")), false);
+  } finally {
+    (process.stdout as { write: unknown }).write = originalWrite;
+    await rm(accidentalOutDir, { recursive: true, force: true });
     await rm(root, { recursive: true, force: true });
   }
 });

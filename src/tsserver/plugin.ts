@@ -67,14 +67,18 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
       // `TypeScript: Restart TS Server` command (the extension triggers it
       // automatically when the Profile content changes).
       const selectedPath = profilePath();
-      if (selectedPath !== undefined) watchConfigDirectory(info, selectedPath, reloader);
+      const configWatcher =
+        selectedPath === undefined
+          ? undefined
+          : watchConfigDirectory(info, selectedPath, reloader);
 
       // Drop this project's reloader when its language service is disposed so
-      // stale controllers do not accumulate and reload on every change.
+      // stale controllers/watchers do not accumulate and reload on every change.
       const languageService = info.languageService;
       const originalDispose = languageService.dispose.bind(languageService);
       languageService.dispose = (): void => {
         reloaders.delete(reloader);
+        configWatcher?.close();
         originalDispose();
       };
 
@@ -155,12 +159,12 @@ function watchConfigDirectory(
   info: ts.server.PluginCreateInfo,
   configPath: string,
   onChange: () => void,
-): void {
+): ts.FileWatcher | undefined {
   const serverHost = info.serverHost;
   if (typeof serverHost.watchDirectory !== "function") {
-    return;
+    return undefined;
   }
-  serverHost.watchDirectory(dirname(configPath), () => onChange(), /* recursive */ false);
+  return serverHost.watchDirectory(dirname(configPath), () => onChange(), /* recursive */ false);
 }
 
 /** Small deterministic content hash; only used for AST-cache versioning. */

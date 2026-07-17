@@ -56,10 +56,11 @@ npm install -D tsifdef
 ```bash
 tsifdef build -p ./custom.tsconfig.json
 tsifdef build -p ./tsconfig.json -- --module commonjs --outDir dist
+tsifdef build --watch --emit-projection .projection
 ```
 
-`-p`/`--project` 用于选择 tsconfig。`outFile` 和多项目 composite references
-（`tsc -b`）暂不支持。
+`-p`/`--project` 用于选择 tsconfig。`--emit-projection` 可在单次构建和 watch
+模式下写出等长调试投影。`outFile` 和多项目 composite references（`tsc -b`）暂不支持。
 
 切换 Profile（修改 `package.json` 的 `tsifdef` 指针或 Profile 文件）会自动触发
 一次全量重编。

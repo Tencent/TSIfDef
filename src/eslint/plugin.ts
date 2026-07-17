@@ -40,57 +40,78 @@ interface ProfileCacheEntry {
   readonly definitions: MacroDefinitions;
 }
 
+interface PackagePointerCacheEntry {
+  readonly mtimeMs: number;
+  readonly size: number;
+  /** `null` means a package.json boundary without a TSIfDef opt-in. */
+  readonly profilePath: string | null;
+}
+
+type PackagePointerLookup =
+  | { readonly kind: "continue" }
+  | { readonly kind: "resolved"; readonly profilePath: string | null };
+
 // Cache by Profile path to avoid repeated reads and parsing; invalidate by mtime.
 const profileCache = new Map<string, ProfileCacheEntry>();
-// Cache upward Profile-path lookups by directory to avoid a search per file.
-const pointerCache = new Map<string, string | null>();
+// Cache package.json pointer parsing by file stamp, not by directory forever.
+const packagePointerCache = new Map<string, PackagePointerCacheEntry>();
 
 const macroFilePattern = /\.(?:d\.)?(?:ts|tsx|mts|cts)$/i;
 
 /** Find the nearest package.json with a tsifdef pointer and return its absolute Profile path. */
 function resolveProfilePath(filename: string): string | undefined {
   let dir = dirname(resolve(filename));
-  const chain: string[] = [];
   for (;;) {
-    const cached = pointerCache.get(dir);
-    if (cached !== undefined) {
-      // Cache the resolved result for every directory traversed on this lookup.
-      for (const d of chain) pointerCache.set(d, cached);
-      return cached ?? undefined;
-    }
-    chain.push(dir);
-
-    const packagePath = join(dir, "package.json");
-    let pointer: string | undefined;
-    try {
-      const raw = JSON.parse(readFileSync(packagePath, "utf8").replace(/^﻿/, "")) as unknown;
-      const value =
-        raw !== null && typeof raw === "object"
-          ? (raw as Record<string, unknown>).tsifdef
-          : undefined;
-      if (typeof value === "string" && value.trim() !== "") {
-        pointer = resolve(dir, value);
-      } else if (raw !== null && typeof raw === "object") {
-        // A package.json without a tsifdef pointer is a package boundary.
-        for (const d of chain) pointerCache.set(d, null);
-        return undefined;
-      }
-    } catch {
-      // No readable package.json in this directory; continue upward.
-    }
-    if (pointer !== undefined) {
-      for (const d of chain) pointerCache.set(d, pointer);
-      return pointer;
+    const lookup = readPackagePointer(join(dir, "package.json"), dir);
+    if (lookup.kind === "resolved") {
+      return lookup.profilePath ?? undefined;
     }
 
     const parent = dirname(dir);
     if (parent === dir) {
       // Reached the file-system root without finding a Profile.
-      for (const d of chain) pointerCache.set(d, null);
       return undefined;
     }
     dir = parent;
   }
+}
+
+function readPackagePointer(packagePath: string, packageDir: string): PackagePointerLookup {
+  let stat;
+  try {
+    stat = statSync(packagePath);
+  } catch {
+    return { kind: "continue" };
+  }
+
+  const cached = packagePointerCache.get(packagePath);
+  if (
+    cached !== undefined
+    && cached.mtimeMs === stat.mtimeMs
+    && cached.size === stat.size
+  ) {
+    return { kind: "resolved", profilePath: cached.profilePath };
+  }
+
+  try {
+    const raw = JSON.parse(readFileSync(packagePath, "utf8").replace(/^\uFEFF/, "")) as unknown;
+    if (raw !== null && typeof raw === "object") {
+      const value = (raw as Record<string, unknown>).tsifdef;
+      const profilePath =
+        typeof value === "string" && value.trim() !== ""
+          ? resolve(packageDir, value)
+          : null;
+      packagePointerCache.set(packagePath, {
+        mtimeMs: stat.mtimeMs,
+        size: stat.size,
+        profilePath,
+      });
+      return { kind: "resolved", profilePath };
+    }
+  } catch {
+    // Keep lint permissive when a package.json is temporarily unreadable.
+  }
+  return { kind: "continue" };
 }
 
 /** Read and parse a Profile with mtime caching; return undefined on failure. */

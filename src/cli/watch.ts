@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { type FSWatcher, readFileSync, watch as fsWatch } from "node:fs";
-import { resolve } from "node:path";
+import { type FSWatcher, mkdirSync, readFileSync, watch as fsWatch, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import { projectSource, type MacroDiagnostic } from "../core/index.js";
-import { restoreInlineSourcesFor } from "./build.js";
+import { BuildUnsupportedError, restoreInlineSourcesFor } from "./build.js";
 import { loadProfileFile, type ProfileFile } from "./config.js";
 import { formatCliDiagnostics } from "./diagnostics.js";
 import { decodeTypeScriptText } from "./source-files.js";
@@ -40,6 +40,8 @@ export interface WatchOptions {
   readonly onProfileReload?: (profile: ProfileFile) => void;
   /** Compiler options that override the tsconfig (parsed via `parseTscOverride`). */
   readonly compilerOptionsOverride?: import("typescript").CompilerOptions;
+  /** Optional equal-length projection dump, matching `build --emit-projection`. */
+  readonly emitProjectionDir?: string;
 }
 
 export interface WatchHandle {
@@ -58,6 +60,23 @@ export async function watchProject(options: WatchOptions): Promise<WatchHandle> 
   const ts = (await import("typescript")).default;
   const projectRoot = resolve(options.projectRoot);
   const configPath = resolve(projectRoot, options.project);
+
+  const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+  if (configFile.error !== undefined) throw new Error(formatConfigDiagnostic(ts, configFile.error));
+  const parsed = ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    dirname(configPath),
+    undefined,
+    configPath,
+  );
+  if (parsed.errors.length > 0) {
+    throw new Error(parsed.errors.map((item) => formatConfigDiagnostic(ts, item)).join("\n"));
+  }
+  if (options.compilerOptionsOverride !== undefined) {
+    Object.assign(parsed.options, options.compilerOptionsOverride);
+  }
+  assertWatchSupported(parsed.options, parsed.projectReferences);
 
   let currentWatch: { close(): void } | undefined;
   let profileWatcher: FSWatcher | undefined;
@@ -79,6 +98,15 @@ export async function watchProject(options: WatchOptions): Promise<WatchHandle> 
       const result = projectSource(decodeTypeScriptText(bytes), definitions);
       if (result.diagnostics.length > 0) macroDiagnostics.set(absolute, result.diagnostics);
       else macroDiagnostics.delete(absolute);
+      if (options.emitProjectionDir !== undefined && isInsideRoot(projectRoot, absolute)) {
+        const dumpPath = resolve(options.emitProjectionDir, relative(projectRoot, absolute));
+        try {
+          mkdirSync(dirname(dumpPath), { recursive: true });
+          writeFileSync(dumpPath, result.projectedText, "utf8");
+        } catch {
+          // Projection dump is best-effort.
+        }
+      }
       return result.projectedText;
     };
 
@@ -177,4 +205,33 @@ export async function watchProject(options: WatchOptions): Promise<WatchHandle> 
       currentWatch?.close();
     },
   };
+}
+
+/** Keep watch-mode support aligned with one-shot build. */
+function assertWatchSupported(
+  options: import("typescript").CompilerOptions,
+  projectReferences: readonly import("typescript").ProjectReference[] | undefined,
+): void {
+  if (typeof options.outFile === "string" && options.outFile !== "") {
+    throw new BuildUnsupportedError(
+      "tsifdef build does not support 'outFile'; per-file projection is incompatible with single-file bundle output.",
+    );
+  }
+  if (projectReferences !== undefined && projectReferences.length > 0) {
+    throw new BuildUnsupportedError(
+      "tsifdef build does not support project references (tsc -b / composite solutions); run tsifdef build per referenced project instead.",
+    );
+  }
+}
+
+function isInsideRoot(root: string, path: string): boolean {
+  const value = relative(root, path);
+  return value !== ".." && !value.startsWith(`..${sep}`) && !isAbsolute(value);
+}
+
+function formatConfigDiagnostic(
+  ts: typeof import("typescript"),
+  diagnostic: import("typescript").Diagnostic,
+): string {
+  return `TS${diagnostic.code}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`;
 }
