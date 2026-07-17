@@ -41,7 +41,8 @@ npm run compile
 `tsifdef` 配置，不会被隐式改写。不支持 `outFile` 和 project references（`tsc -b`）。
 
 用于审计时，`tsifdef build --emit-projection <dir>` 会把遮盖后的投影按各文件的
-原始相对路径写到 `<dir>`；该 dump 只是调试产物，不会喂给编译器。
+原始相对路径写到 `<dir>`；该参数同样支持 `--watch` 模式。该 dump 只是调试产物，
+不会喂给编译器。
 
 ## 在 VSCode 里使用
 
