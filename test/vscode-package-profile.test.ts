@@ -46,6 +46,7 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     assert.equal((hokConfig?.configuration as { profileFile?: string }).profileFile, hok);
     const hokToken = (hokConfig?.configuration as { profileToken?: string }).profileToken;
     assert.equal(typeof hokToken, "string");
+    assert.equal(host.typeScriptProjectReloads, 0);
 
     await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profiles/Domestic.json" }), "utf8");
     await controller.reload();
@@ -60,6 +61,63 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     // The token must change with the enabled macro set so the TypeScript
     // extension always forwards the new config to the plugin.
     assert.notEqual(domesticConfig.profileToken, hokToken);
+    assert.equal(host.typeScriptProjectReloads, 1);
+
+    await controller.reload();
+    assert.equal(host.typeScriptProjectReloads, 1);
+    controller.dispose();
+    state.dispose();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("editing the selected Profile reloads TypeScript projects once", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-profile-edit-"));
+  try {
+    const profilePath = join(root, "Profile.json");
+    await writeFile(profilePath, "[\"AAA\"]", "utf8");
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profile.json" }), "utf8");
+
+    const host = new FakeHost({ root });
+    const state = new ProfileStateController(host);
+    let definitions: MacroDefinitions | undefined;
+    const controller = new PackageProfileController(host, state, (next) => { definitions = next; });
+
+    await controller.reload();
+    assert.equal(definitions?.AAA, true);
+    assert.equal(host.typeScriptProjectReloads, 0);
+
+    await writeFile(profilePath, "[\"AAA\",\"AAA4\"]", "utf8");
+    await controller.reload();
+    assert.equal(definitions?.AAA4, true);
+    assert.equal(host.typeScriptProjectReloads, 1);
+
+    await controller.reload();
+    assert.equal(host.typeScriptProjectReloads, 1);
+    controller.dispose();
+    state.dispose();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("saving an unchanged Profile does not reload TypeScript projects", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-profile-unchanged-"));
+  try {
+    const profilePath = join(root, "Profile.json");
+    await writeFile(profilePath, "[\"AAA\"]", "utf8");
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profile.json" }), "utf8");
+
+    const host = new FakeHost({ root });
+    const state = new ProfileStateController(host);
+    const controller = new PackageProfileController(host, state, () => undefined);
+
+    await controller.reload();
+    await writeFile(profilePath, "[\n  \"AAA\"\n]\n", "utf8");
+    await controller.reload();
+
+    assert.equal(host.typeScriptProjectReloads, 0);
     controller.dispose();
     state.dispose();
   } finally {

@@ -29,6 +29,8 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 export class PackageProfileController implements Disposable {
   private watcher: Disposable | undefined;
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private appliedIdentity: string | undefined;
+  private initialized = false;
 
   public constructor(
     private readonly host: ExtensionHost,
@@ -64,6 +66,7 @@ export class PackageProfileController implements Disposable {
       this.onDefinitions(undefined);
       this.state.setProfile(undefined);
       await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {});
+      await this.finishReload("none");
       return;
     }
     let profilePath: string | undefined;
@@ -73,21 +76,19 @@ export class PackageProfileController implements Disposable {
         this.onDefinitions(undefined);
         this.state.setProfile(undefined);
         await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {});
+        await this.finishReload("none");
         return;
       }
       profilePath = configuration.profilePath;
       const profile = await this.loadProfileWithRetry(profilePath);
+      const token = profileToken(profile.definitions);
       this.onDefinitions(profile.definitions);
       this.state.setProfile(profilePath);
-      // A token that changes with the Profile's content. The pointer path is
-      // stable across edits, so without it the TypeScript extension may treat
-      // successive configurePlugin calls as identical and never forward them to
-      // the plugin. The plugin re-reads and re-versions on every such call, so
-      // the projection follows the Profile; open files refresh on next focus.
       await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {
         profileFile: profilePath,
-        profileToken: profileToken(profile.definitions),
+        profileToken: token,
       });
+      await this.finishReload(`${profilePath}:${token}`);
     } catch (error) {
       this.onDefinitions(undefined);
       const message = `Failed to load TSIfDef project configuration${profilePath === undefined ? "" : ` '${profilePath}'`}: ${
@@ -95,7 +96,17 @@ export class PackageProfileController implements Disposable {
       }`;
       this.state.setProfile(profilePath, message);
       await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {});
+      await this.finishReload("none");
       this.host.showErrorMessage(message);
+    }
+  }
+
+  private async finishReload(nextIdentity: string): Promise<void> {
+    const changed = this.initialized && this.appliedIdentity !== nextIdentity;
+    this.appliedIdentity = nextIdentity;
+    this.initialized = true;
+    if (changed) {
+      await this.host.reloadTypeScriptProjects();
     }
   }
 

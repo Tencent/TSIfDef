@@ -4,6 +4,14 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+## v1.0.2 - 2026-08-31
+
+- Reload TypeScript projects when the selected Profile path or enabled macro
+  set changes, so open-file language-service diagnostics follow Profile edits.
+- Avoid reloads for initial activation and saves that do not change the
+  effective macro set.
+- Remove reliance on private tsserver project invalidation methods.
+
 - Projected compilation `tsifdef build`: hijacks the TypeScript CompilerHost to
   feed equal-length masked text under the original file names and drives
   `program.emit()`, so emitted `.js.map` sources, `.d.ts`, and error paths point

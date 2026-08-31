@@ -29,77 +29,58 @@ function resolution(profile: ActiveProfile | undefined): ProfileResolution {
   return profile === undefined ? { kind: "none" } : { kind: "profile", profile };
 }
 
-test("reload marks the project dirty only when the profile version changes", () => {
+test("reload updates the profile only when its version changes", () => {
   const profiles: Array<ActiveProfile | undefined> = [
     { definitions: { HOK: true }, version: "HOK:1" },
     { definitions: { HOK: true }, version: "HOK:1" }, // unchanged
     { definitions: { HOK: false }, version: "DOMESTIC:1" }, // changed
   ];
   let index = 0;
-  let dirtyCount = 0;
   const controller = new ProfileProjectionController({
     resolve: () => resolution(profiles[Math.min(index, profiles.length - 1)]),
-    markDirty: () => {
-      dirtyCount += 1;
-    },
   });
 
   assert.equal(controller.getProfile()?.version, "HOK:1");
   index = 1;
   assert.equal(controller.reload(), false);
-  assert.equal(dirtyCount, 0);
   index = 2;
   assert.equal(controller.reload(), true);
-  assert.equal(dirtyCount, 1);
   assert.equal(controller.getProfile()?.version, "DOMESTIC:1");
 });
 
-test("reload invalidates across none<->selected transitions", () => {
+test("reload updates across none<->selected transitions", () => {
   let value: ActiveProfile | undefined;
-  let dirtyCount = 0;
   const controller = new ProfileProjectionController({
     resolve: () => resolution(value),
-    markDirty: () => {
-      dirtyCount += 1;
-    },
   });
   assert.equal(controller.getProfile(), undefined);
 
   value = { definitions: { HOK: true }, version: "HOK:1" };
   assert.equal(controller.reload(), true);
-  assert.equal(dirtyCount, 1);
 
-  // Same selection again: no further invalidation.
+  // Same selection again: no change.
   assert.equal(controller.reload(), false);
-  assert.equal(dirtyCount, 1);
 
   value = undefined;
   assert.equal(controller.reload(), true);
-  assert.equal(dirtyCount, 2);
   assert.equal(controller.getProfile(), undefined);
 });
 
 test("a transient unavailable resolution keeps the current profile", () => {
   let next: ProfileResolution = { kind: "profile", profile: { definitions: { HOK: true }, version: "HOK:1" } };
-  let dirtyCount = 0;
   const controller = new ProfileProjectionController({
     resolve: () => next,
-    markDirty: () => {
-      dirtyCount += 1;
-    },
   });
   assert.equal(controller.getProfile()?.version, "HOK:1");
 
   // A momentary read miss (atomic write) must not flap the profile to none.
   next = { kind: "unavailable" };
   assert.equal(controller.reload(), false);
-  assert.equal(dirtyCount, 0);
   assert.equal(controller.getProfile()?.version, "HOK:1");
 
   // Once the real new content is readable, it takes effect.
   next = { kind: "profile", profile: { definitions: { HOK: false }, version: "DOMESTIC:1" } };
   assert.equal(controller.reload(), true);
-  assert.equal(dirtyCount, 1);
   assert.equal(controller.getProfile()?.version, "DOMESTIC:1");
 });
 
@@ -128,7 +109,6 @@ test("switching the profile flips diagnostics on the same TypeScript 5.5.4 servi
   let active: ActiveProfile | undefined = { definitions: { HOK: true }, version: "HOK:1" };
   const controller = new ProfileProjectionController({
     resolve: () => resolution(active),
-    markDirty: () => undefined,
   });
   const host = wrapHostWithProjection(ts, memoryHost(files), {
     getProfile: () => controller.getProfile(),

@@ -33,8 +33,6 @@ interface PluginConfig {
  * The plugin resolves one externally selected, read-only Profile and projects
  * every macro file's snapshot through the shared core. It returns the original
  * language service unchanged; only the host's view of the source is altered.
- * When the Profile file changes, the project is invalidated so tsserver
- * re-projects affected files.
  */
 function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
   const typescript = modules.typescript;
@@ -49,7 +47,6 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
 
       const controller = new ProfileProjectionController({
         resolve: () => resolveProfile(profilePath(), log),
-        markDirty: () => invalidateProject(info.project),
         log,
       });
       const reloader = (): void => {
@@ -61,11 +58,8 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
         getProfile: () => controller.getProfile(),
       });
 
-      // Reload the Profile when its directory changes so a switch or edit
-      // re-projects without restarting the server. If cache refresh proves
-      // unstable in practice, the documented fallback is the
-      // `TypeScript: Restart TS Server` command (the extension triggers it
-      // automatically when the Profile content changes).
+      // Keep the in-process Profile current. The VSCode extension reloads
+      // TypeScript projects after a semantic Profile change.
       const selectedPath = profilePath();
       const configWatcher =
         selectedPath === undefined
@@ -133,26 +127,6 @@ function resolveProfile(
     );
     return { kind: "unavailable" };
   }
-}
-
-/** Best-effort project invalidation across tsserver versions. */
-function invalidateProject(project: ts.server.Project): void {
-  const dirtyable = project as ts.server.Project & {
-    markAsDirty?: () => void;
-    getScriptInfos?: () => ReadonlyArray<{ path: string }>;
-    markFileAsDirty?: (path: unknown) => void;
-  };
-  dirtyable.markAsDirty?.();
-  // Mark every file in the project dirty so the AST built for the previous
-  // Profile is discarded and diagnostics are recomputed for open files.
-  const scriptInfos = dirtyable.getScriptInfos?.();
-  if (scriptInfos !== undefined && typeof dirtyable.markFileAsDirty === "function") {
-    for (const info of scriptInfos) {
-      dirtyable.markFileAsDirty(info.path);
-    }
-  }
-  project.updateGraph();
-  project.refreshDiagnostics();
 }
 
 function watchConfigDirectory(

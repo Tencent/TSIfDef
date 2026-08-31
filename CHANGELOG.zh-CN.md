@@ -4,6 +4,13 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+## v1.0.2 - 2026-08-31
+
+- 所选 Profile 路径或有效宏集合变化时重新加载 TypeScript 项目，使已打开文件的
+  语言服务诊断及时跟随 Profile。
+- 首次激活和宏集合未变化的重复保存不会触发重新加载。
+- 移除对 tsserver 私有项目失效接口的依赖。
+
 - 投影编译 `tsifdef build`：劫持 TypeScript CompilerHost，以原始文件名把等长遮盖
   文本喂给编译器并驱动 `program.emit()`，因此 emit 出的 `.js.map` sources、`.d.ts`
   和报错路径都指向原始源，无需后处理、也没有落盘的影子源码树。
