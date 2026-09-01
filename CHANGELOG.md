@@ -4,6 +4,14 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+## v1.0.3 - 2026-09-01
+
+- Restart the TypeScript server when the selected Profile path or effective
+  macro set changes. Reloading projects alone could leave stale diagnostics in
+  open files.
+- Keep the existing guard against restarts during initial activation and when a
+  Profile is saved without changing its effective macro set.
+
 ## v1.0.2 - 2026-08-31
 
 - Reload TypeScript projects when the selected Profile path or enabled macro

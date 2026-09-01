@@ -235,9 +235,6 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
     restartTypeScriptServer: async () => {
       await vscode.commands.executeCommand("typescript.restartTsServer");
     },
-    reloadTypeScriptProjects: async () => {
-      await vscode.commands.executeCommand("typescript.reloadProjects");
-    },
     watchProjectConfiguration: (onChange) => {
       const watcher = vscode.workspace.createFileSystemWatcher("**/{package.json,*.json}");
       const subscriptions = [

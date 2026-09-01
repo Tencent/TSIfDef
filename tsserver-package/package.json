@@ -1,6 +1,6 @@
 {
   "name": "tsifdef-tsserver",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "main": "../../dist/tsserver/plugin.js"
 }

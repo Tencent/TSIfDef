@@ -4,6 +4,12 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+## v1.0.3 - 2026-09-01
+
+- 所选 Profile 路径或有效宏集合变化时重启 TypeScript Server。仅重新加载项目时，
+  已打开文件中仍可能残留旧诊断。
+- 保持原有触发条件：首次激活不重启，Profile 重复保存但有效宏未变化时也不重启。
+
 ## v1.0.2 - 2026-08-31
 
 - 所选 Profile 路径或有效宏集合变化时重新加载 TypeScript 项目，使已打开文件的

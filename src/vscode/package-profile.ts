@@ -106,7 +106,7 @@ export class PackageProfileController implements Disposable {
     this.appliedIdentity = nextIdentity;
     this.initialized = true;
     if (changed) {
-      await this.host.reloadTypeScriptProjects();
+      await this.host.restartTypeScriptServer();
     }
   }
 
