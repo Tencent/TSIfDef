@@ -17,10 +17,13 @@ const { join, resolve } = require("node:path");
 const { mkdtempSync } = require("node:fs");
 const os = require("node:os");
 const { spawnSync } = require("node:child_process");
+const yauzl = require("yauzl");
+const yazl = require("yazl");
 
 const root = resolve(__dirname, "..");
 const releaseDir = join(root, "release");
 const packageJsonPath = join(root, "package.json");
+const tsserverShimRoot = join(root, "node_modules", "tsifdef-tsserver");
 const npmCli = process.env.npm_execpath;
 
 function run(command, args, options = {}) {
@@ -96,7 +99,92 @@ function assertPackageVersion(path, expectedVersion, label) {
   }
 }
 
-function verifyInstalledVsix(vsixPath, packageJson) {
+function appendTsserverShim(vsixPath, packageJson) {
+  const temporaryPath = `${vsixPath}.new`;
+  const manifestEntry = "extension/node_modules/tsifdef-tsserver/package.json";
+  const indexEntry = "extension/node_modules/tsifdef-tsserver/index.js";
+  const shimEntries = new Set([manifestEntry, indexEntry]);
+  const manifestPath = join(tsserverShimRoot, "package.json");
+  const entryPath = join(tsserverShimRoot, "index.js");
+  assertPackageVersion(
+    manifestPath,
+    packageJson.version,
+    "generated tsserver plugin shim manifest",
+  );
+  assertExists(entryPath, "generated tsserver plugin shim entry");
+  const manifest = readFileSync(manifestPath);
+  const entry = readFileSync(entryPath);
+
+  return new Promise((resolvePromise, rejectPromise) => {
+    yauzl.open(vsixPath, { lazyEntries: true }, (openError, input) => {
+      if (openError || input === undefined) {
+        rejectPromise(openError ?? new Error(`Cannot open ${vsixPath}`));
+        return;
+      }
+
+      const output = new yazl.ZipFile();
+      const outputStream = require("node:fs").createWriteStream(temporaryPath);
+      output.outputStream.pipe(outputStream);
+      let failed = false;
+      const fail = (error) => {
+        if (failed) return;
+        failed = true;
+        input.close();
+        output.end();
+        outputStream.destroy();
+        rejectPromise(error);
+      };
+
+      outputStream.on("error", fail);
+      outputStream.on("close", () => {
+        if (failed) return;
+        rmSync(vsixPath, { force: true });
+        require("node:fs").renameSync(temporaryPath, vsixPath);
+        resolvePromise();
+      });
+
+      input.on("error", fail);
+      input.on("entry", (zipEntry) => {
+        if (shimEntries.has(zipEntry.fileName)) {
+          input.readEntry();
+          return;
+        }
+        input.openReadStream(zipEntry, (streamError, stream) => {
+          if (streamError || stream === undefined) {
+            fail(streamError ?? new Error(`Cannot read ${zipEntry.fileName}`));
+            return;
+          }
+          const chunks = [];
+          stream.on("data", (chunk) => chunks.push(chunk));
+          stream.on("end", () => {
+            output.addBuffer(Buffer.concat(chunks), zipEntry.fileName, {
+              compress: zipEntry.compressionMethod !== 0,
+              mtime: zipEntry.getLastModDate(),
+              mode: zipEntry.externalFileAttributes >>> 16,
+            });
+            input.readEntry();
+          });
+          stream.on("error", fail);
+        });
+      });
+      input.on("end", () => {
+        output.addBuffer(
+          manifest,
+          manifestEntry,
+        );
+        output.addBuffer(
+          entry,
+          indexEntry,
+        );
+        output.end();
+      });
+
+      input.readEntry();
+    });
+  });
+}
+
+async function verifyInstalledVsix(vsixPath, packageJson) {
   const tempRoot = mkdtempSync(join(os.tmpdir(), "tsifdef-vsix-"));
   const extensionsDir = join(tempRoot, "extensions");
   const userDataDir = join(tempRoot, "user-data");
@@ -121,11 +209,35 @@ function verifyInstalledVsix(vsixPath, packageJson) {
   }
   assertExists(join(installedRoot, "dist", "vscode", "extension.js"), "VSIX extension entry");
   assertExists(join(installedRoot, "dist", "tsserver", "plugin.js"), "VSIX tsserver plugin");
+  const shimRoot = join(installedRoot, "node_modules", "tsifdef-tsserver");
+  const shimManifest = join(shimRoot, "package.json");
+  const shimEntry = join(shimRoot, "index.js");
   assertPackageVersion(
     join(installedRoot, "tsserver-package", "package.json"),
     packageJson.version,
     "VSIX tsserver-package manifest",
   );
+  assertPackageVersion(
+    shimManifest,
+    packageJson.version,
+    "VSIX tsserver plugin shim manifest",
+  );
+  assertExists(shimEntry, "VSIX tsserver plugin shim entry");
+  const shimFiles = readdirSync(shimRoot).sort();
+  if (JSON.stringify(shimFiles) !== JSON.stringify(["index.js", "package.json"])) {
+    throw new Error(
+      `VSIX tsserver plugin shim must contain only index.js and package.json; found ${shimFiles.join(", ")}`,
+    );
+  }
+  if (typeof require(shimEntry) !== "function") {
+    throw new Error("VSIX tsserver plugin shim does not load the packaged plugin.");
+  }
+  const packagedModules = readdirSync(join(installedRoot, "node_modules")).sort();
+  if (JSON.stringify(packagedModules) !== JSON.stringify(["tsifdef-tsserver"])) {
+    throw new Error(
+      `VSIX must not contain extra node_modules dependencies; found ${packagedModules.join(", ")}`,
+    );
+  }
 }
 
 function verifyInstalledTgz(tgzPath, packageJson) {
@@ -165,7 +277,7 @@ function verifyInstalledTgz(tgzPath, packageJson) {
   );
 }
 
-function main() {
+async function main() {
   // Explorer, antivirus, and extension installers can briefly retain handles
   // after inspecting a VSIX. Let Node retry transient Windows EPERM/EBUSY
   // failures instead of making an otherwise valid release flaky.
@@ -202,6 +314,8 @@ function main() {
 
   const tgzName = packed[0].filename;
   const vsixName = `${packageJson.name}-${VERSION}.vsix`;
+  const vsixPath = join(releaseDir, vsixName);
+  await appendTsserverShim(vsixPath, packageJson);
   const manifest = {
     package: packageJson.name,
     version: VERSION,
@@ -225,7 +339,7 @@ function main() {
     throw new Error(`VSIX name '${vsixName}' does not include version '${VERSION}'.`);
   }
 
-  verifyInstalledVsix(join(releaseDir, vsixName), packageJson);
+  await verifyInstalledVsix(vsixPath, packageJson);
   verifyInstalledTgz(join(releaseDir, tgzName), packageJson);
 
   process.stdout.write(
@@ -233,4 +347,7 @@ function main() {
   );
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

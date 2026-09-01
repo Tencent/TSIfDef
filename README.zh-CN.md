@@ -51,6 +51,11 @@ npm run compile
 3. 状态栏会显示当前 Profile 文件名。
 4. 灰显、折叠、诊断和 tsserver 投影都会跟随该 Profile。
 
+VSIX 内只包含 VSCode 内置 TypeScript 语言服务加载插件所需的极小模块转发入口，
+不会额外打包一份 TypeScript，也不会给宿主工程增加运行依赖。如果内置 TypeScript
+语言服务不存在或被禁用，TSIfDef 会静默跳过语言服务接入，不弹扩展错误；灰显和折叠
+等独立的编辑器功能仍可使用。
+
 ## 在 ESLint 里使用
 
 ESLint 用自己的 parser 直接解析原始源码，因此不接入时，`#if` 那一行会让它报

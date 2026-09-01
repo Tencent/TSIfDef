@@ -8,7 +8,6 @@ test/**
 examples/**
 scripts/**
 node_modules/**
-!node_modules/tsifdef-tsserver/**
 tsconfig*.json
 **/*.map
 **/*.ts

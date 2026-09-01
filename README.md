@@ -60,6 +60,13 @@ the compiler.
 4. Gray ranges, folding, diagnostics, and tsserver projection all follow that
    Profile.
 
+The VSIX contains the small module shim required by VSCode's built-in
+TypeScript language service; it does not bundle another copy of TypeScript or
+add runtime dependencies to the host project. If the built-in TypeScript
+language service is unavailable or disabled, TSIfDef skips language-service
+integration without reporting an extension error. Its independent editor
+features, such as inactive-code decorations and folding, remain available.
+
 ## Use with ESLint
 
 ESLint parses the raw source with its own parser, so without integration a

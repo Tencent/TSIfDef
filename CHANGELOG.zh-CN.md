@@ -4,6 +4,15 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+## v1.0.4 - 2026-09-01
+
+- 将 `tsifdef-tsserver` 模块转发入口作为真实文件打入 VSIX，确保全新安装或强制覆盖
+  安装后，TypeScript Server 都能加载插件。
+- 发布时检查安装后的转发目录只能包含 manifest 和单个入口文件，并验证它能够加载
+  VSIX 中的插件。
+- VSCode 内置 TypeScript 语言服务不存在或不可用时静默降级，宏灰显和折叠功能仍可
+  正常使用。
+
 ## v1.0.3 - 2026-09-01
 
 - 所选 Profile 路径或有效宏集合变化时重启 TypeScript Server。仅重新加载项目时，

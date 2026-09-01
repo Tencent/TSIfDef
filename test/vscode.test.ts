@@ -18,7 +18,10 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { activeProfileCommand, ProfileStateController } from "../src/vscode/index.js";
-import { ensureTsserverPluginModule } from "../src/vscode/extension.js";
+import {
+  createTypeScriptIntegration,
+  ensureTsserverPluginModule,
+} from "../src/vscode/extension.js";
 import { FakeHost } from "./fake-host.js";
 
 test("renders the package-selected Profile file and full-path tooltip", () => {
@@ -83,4 +86,86 @@ test("tsserver plugin shim is rewritten when stale or incomplete", async () => {
     await readFile(index, "utf8"),
     'module.exports = require("../../dist/tsserver/plugin.js");\n',
   );
+});
+
+test("missing TypeScript language service is ignored", async () => {
+  let commandCalls = 0;
+  const integration = createTypeScriptIntegration({
+    extensions: {
+      getExtension: () => undefined,
+    },
+    commands: {
+      executeCommand: async () => {
+        commandCalls += 1;
+      },
+    },
+  });
+
+  await integration.configurePlugin("tsifdef-tsserver", {
+    profileFile: "Profile.json",
+  });
+  await integration.restartServer();
+
+  assert.equal(commandCalls, 0);
+});
+
+test("unavailable TypeScript language service API is ignored", async () => {
+  const integration = createTypeScriptIntegration({
+    extensions: {
+      getExtension: () => ({
+        exports: undefined,
+        activate: async () => {
+          throw new Error("disabled");
+        },
+      }),
+    },
+    commands: {
+      executeCommand: async () => {
+        throw new Error("command unavailable");
+      },
+    },
+  });
+
+  await integration.configurePlugin("tsifdef-tsserver", {
+    profileFile: "Profile.json",
+  });
+  await integration.restartServer();
+});
+
+test("available TypeScript language service receives config and restart", async () => {
+  const configurations: Array<{
+    name: string;
+    configuration: Readonly<Record<string, unknown>>;
+  }> = [];
+  const commands: string[] = [];
+  const integration = createTypeScriptIntegration({
+    extensions: {
+      getExtension: () => ({
+        exports: undefined,
+        activate: async () => ({
+          getAPI: () => ({
+            configurePlugin: (
+              name: string,
+              configuration: Readonly<Record<string, unknown>>,
+            ) => configurations.push({ name, configuration }),
+          }),
+        }),
+      }),
+    },
+    commands: {
+      executeCommand: async (command: string) => {
+        commands.push(command);
+      },
+    },
+  });
+
+  const configuration = { profileFile: "Profile.json", profileToken: "abc" };
+  await integration.configurePlugin("tsifdef-tsserver", configuration);
+  await integration.restartServer();
+
+  assert.deepEqual(configurations, [{
+    name: "tsifdef-tsserver",
+    configuration,
+  }]);
+  assert.deepEqual(commands, ["typescript.restartTsServer"]);
 });

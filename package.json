@@ -1,6 +1,6 @@
 {
   "name": "tsifdef",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Source-level conditional compilation for TypeScript",
   "license": "Apache-2.0",
   "repository": {
@@ -62,9 +62,11 @@
     "release": "npm run sync-version && node scripts/release.cjs"
   },
   "devDependencies": {
-    "@vscode/vsce": "3.9.2",
     "@types/node": "22.15.3",
-    "tsifdef-tsserver": "file:./tsserver-package"
+    "@vscode/vsce": "3.9.2",
+    "tsifdef-tsserver": "file:./tsserver-package",
+    "yauzl": "^3.4.0",
+    "yazl": "^2.5.1"
   },
   "dependencies": {
     "typescript": "5.5.4"

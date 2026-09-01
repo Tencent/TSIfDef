@@ -4,6 +4,15 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+## v1.0.4 - 2026-09-01
+
+- Package the `tsifdef-tsserver` module shim as real files in the VSIX so a
+  clean or forced extension install can always load the TypeScript plugin.
+- Verify during release that the installed shim contains only its manifest and
+  one forwarding entry, and that it loads the packaged plugin.
+- Gracefully keep decorations and folding available when VSCode's built-in
+  TypeScript language service is absent or unavailable.
+
 ## v1.0.3 - 2026-09-01
 
 - Restart the TypeScript server when the selected Profile path or effective

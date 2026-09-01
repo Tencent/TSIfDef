@@ -138,8 +138,58 @@ function toSnapshot(document: VsTextDocument): DocumentSnapshot {
   };
 }
 
+/** Optional bridge to VSCode's built-in TypeScript language service. */
+export function createTypeScriptIntegration(
+  vscode: {
+    readonly commands: {
+      executeCommand(command: string, ...args: readonly unknown[]): PromiseLike<unknown>;
+    };
+    readonly extensions: VsCodeApi["extensions"];
+  },
+): {
+  configurePlugin(
+    name: string,
+    configuration: Readonly<Record<string, unknown>>,
+  ): Promise<void>;
+  restartServer(): Promise<void>;
+} {
+  return {
+    configurePlugin: async (name, configuration) => {
+      const extension = vscode.extensions.getExtension("vscode.typescript-language-features");
+      if (extension === undefined) {
+        return;
+      }
+      try {
+        const exports = (await extension.activate()) as {
+          getAPI?(version: number): {
+            configurePlugin(
+              pluginName: string,
+              config: Readonly<Record<string, unknown>>,
+            ): void;
+          };
+        };
+        exports.getAPI?.(0)?.configurePlugin(name, configuration);
+      } catch {
+        // The TypeScript language service is optional. Decorations and folding
+        // still work when it is unavailable or supplied by another extension.
+      }
+    },
+    restartServer: async () => {
+      if (vscode.extensions.getExtension("vscode.typescript-language-features") === undefined) {
+        return;
+      }
+      try {
+        await vscode.commands.executeCommand("typescript.restartTsServer");
+      } catch {
+        // Keep the extension usable without VSCode's built-in tsserver.
+      }
+    },
+  };
+}
+
 /** Adapt the real `vscode` API to the host interface the shell depends on. */
 export function createHost(vscode: VsCodeApi): ExtensionHost {
+  const typeScript = createTypeScriptIntegration(vscode);
   const decorationTypes = new Map<string, { dispose(): void }>();
   let decorationSequence = 0;
   const toRange = (range: DocumentRange): unknown =>
@@ -216,25 +266,8 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
         },
       ),
     showErrorMessage: (message) => void vscode.window.showErrorMessage(message),
-    configureTypeScriptPlugin: async (name, configuration) => {
-      const extension = vscode.extensions.getExtension("vscode.typescript-language-features");
-      if (extension === undefined) {
-        throw new Error("VSCode TypeScript language features extension is unavailable.");
-      }
-      const exports = (await extension.activate()) as {
-        getAPI?(version: number): {
-          configurePlugin(pluginName: string, config: Readonly<Record<string, unknown>>): void;
-        };
-      };
-      const api = exports.getAPI?.(0);
-      if (api === undefined) {
-        throw new Error("VSCode TypeScript extension API 0 is unavailable.");
-      }
-      api.configurePlugin(name, configuration);
-    },
-    restartTypeScriptServer: async () => {
-      await vscode.commands.executeCommand("typescript.restartTsServer");
-    },
+    configureTypeScriptPlugin: typeScript.configurePlugin,
+    restartTypeScriptServer: typeScript.restartServer,
     watchProjectConfiguration: (onChange) => {
       const watcher = vscode.workspace.createFileSystemWatcher("**/{package.json,*.json}");
       const subscriptions = [

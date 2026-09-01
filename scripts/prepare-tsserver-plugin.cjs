@@ -12,7 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const { mkdirSync, writeFileSync, copyFileSync, existsSync } = require("node:fs");
+const {
+  mkdirSync,
+  writeFileSync,
+  copyFileSync,
+  existsSync,
+  lstatSync,
+  rmSync,
+  unlinkSync,
+} = require("node:fs");
 const { join, resolve } = require("node:path");
 
 // tsserver loads a workspace plugin by resolving it as a node module named after
@@ -27,6 +35,17 @@ const targetPkg = join(targetDir, "package.json");
 
 if (!existsSync(template)) {
   throw new Error(`Missing tsserver plugin template at ${template}.`);
+}
+
+// npm installs the local development dependency as a junction. VSIX packaging
+// does not follow that junction, so replace it with a real two-file directory
+// before packaging. The directory is generated and ignored by Git.
+if (existsSync(targetDir)) {
+  if (lstatSync(targetDir).isSymbolicLink()) {
+    unlinkSync(targetDir);
+  } else {
+    rmSync(targetDir, { recursive: true, force: true });
+  }
 }
 mkdirSync(targetDir, { recursive: true });
 copyFileSync(template, targetPkg);
