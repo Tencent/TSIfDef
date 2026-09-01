@@ -45,7 +45,9 @@ export class FakeHost implements ExtensionHost {
     readonly name: string;
     readonly configuration: Readonly<Record<string, unknown>>;
   }> = [];
+  public readonly typeScriptOperations: string[] = [];
   public typeScriptServerRestarts = 0;
+  public typeScriptProjectReloads = 0;
   public foldingProvider: FoldingRangeProvider | undefined;
   public diagnosticsCleared = 0;
   public documents: readonly DocumentSnapshot[];
@@ -155,11 +157,19 @@ export class FakeHost implements ExtensionHost {
     configuration: Readonly<Record<string, unknown>>,
   ): Promise<void> {
     this.typeScriptPluginConfigurations.push({ name, configuration });
+    this.typeScriptOperations.push("configure");
     return Promise.resolve();
   }
 
   public restartTypeScriptServer(): Promise<void> {
     this.typeScriptServerRestarts += 1;
+    this.typeScriptOperations.push("restart");
+    return Promise.resolve();
+  }
+
+  public reloadTypeScriptProjects(): Promise<void> {
+    this.typeScriptProjectReloads += 1;
+    this.typeScriptOperations.push("reload");
     return Promise.resolve();
   }
 

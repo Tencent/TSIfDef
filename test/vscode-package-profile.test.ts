@@ -47,6 +47,7 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     const hokToken = (hokConfig?.configuration as { profileToken?: string }).profileToken;
     assert.equal(typeof hokToken, "string");
     assert.equal(host.typeScriptServerRestarts, 0);
+    assert.equal(host.typeScriptProjectReloads, 0);
 
     await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profiles/Domestic.json" }), "utf8");
     await controller.reload();
@@ -62,9 +63,19 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     // extension always forwards the new config to the plugin.
     assert.notEqual(domesticConfig.profileToken, hokToken);
     assert.equal(host.typeScriptServerRestarts, 1);
+    assert.equal(host.typeScriptProjectReloads, 1);
+    assert.deepEqual(
+      host.typeScriptOperations.slice(-4),
+      ["configure", "restart", "configure", "reload"],
+    );
+    assert.deepEqual(
+      host.typeScriptPluginConfigurations.at(-1)?.configuration,
+      domesticConfig,
+    );
 
     await controller.reload();
     assert.equal(host.typeScriptServerRestarts, 1);
+    assert.equal(host.typeScriptProjectReloads, 1);
     controller.dispose();
     state.dispose();
   } finally {
@@ -87,14 +98,21 @@ test("editing the selected Profile restarts the TypeScript server once", async (
     await controller.reload();
     assert.equal(definitions?.AAA, true);
     assert.equal(host.typeScriptServerRestarts, 0);
+    assert.equal(host.typeScriptProjectReloads, 0);
 
     await writeFile(profilePath, "[\"AAA\",\"AAA4\"]", "utf8");
     await controller.reload();
     assert.equal(definitions?.AAA4, true);
     assert.equal(host.typeScriptServerRestarts, 1);
+    assert.equal(host.typeScriptProjectReloads, 1);
+    assert.deepEqual(
+      host.typeScriptOperations.slice(-4),
+      ["configure", "restart", "configure", "reload"],
+    );
 
     await controller.reload();
     assert.equal(host.typeScriptServerRestarts, 1);
+    assert.equal(host.typeScriptProjectReloads, 1);
     controller.dispose();
     state.dispose();
   } finally {
@@ -118,6 +136,7 @@ test("saving an unchanged Profile does not restart the TypeScript server", async
     await controller.reload();
 
     assert.equal(host.typeScriptServerRestarts, 0);
+    assert.equal(host.typeScriptProjectReloads, 0);
     controller.dispose();
     state.dispose();
   } finally {

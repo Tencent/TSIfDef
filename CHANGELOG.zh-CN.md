@@ -4,6 +4,11 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+## v1.0.5 - 2026-09-01
+
+- Profile 变化后按“重启 tsserver、重新下发插件配置、重新加载项目”的顺序刷新。
+  新 server 激活 TSIfDef 后会对已打开文件再做一次诊断，不再需要手工保存或重开文件。
+
 ## v1.0.4 - 2026-09-01
 
 - 将 `tsifdef-tsserver` 模块转发入口作为真实文件打入 VSIX，确保全新安装或强制覆盖

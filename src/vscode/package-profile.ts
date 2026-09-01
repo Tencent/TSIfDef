@@ -65,8 +65,7 @@ export class PackageProfileController implements Disposable {
     if (root === undefined) {
       this.onDefinitions(undefined);
       this.state.setProfile(undefined);
-      await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {});
-      await this.finishReload("none");
+      await this.applyTypeScriptProfile("none", {});
       return;
     }
     let profilePath: string | undefined;
@@ -75,8 +74,7 @@ export class PackageProfileController implements Disposable {
       if (configuration === undefined) {
         this.onDefinitions(undefined);
         this.state.setProfile(undefined);
-        await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {});
-        await this.finishReload("none");
+        await this.applyTypeScriptProfile("none", {});
         return;
       }
       profilePath = configuration.profilePath;
@@ -84,30 +82,39 @@ export class PackageProfileController implements Disposable {
       const token = profileToken(profile.definitions);
       this.onDefinitions(profile.definitions);
       this.state.setProfile(profilePath);
-      await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {
+      const pluginConfiguration = {
         profileFile: profilePath,
         profileToken: token,
-      });
-      await this.finishReload(`${profilePath}:${token}`);
+      };
+      await this.applyTypeScriptProfile(`${profilePath}:${token}`, pluginConfiguration);
     } catch (error) {
       this.onDefinitions(undefined);
       const message = `Failed to load TSIfDef project configuration${profilePath === undefined ? "" : ` '${profilePath}'`}: ${
         error instanceof Error ? error.message : String(error)
       }`;
       this.state.setProfile(profilePath, message);
-      await this.host.configureTypeScriptPlugin("tsifdef-tsserver", {});
-      await this.finishReload("none");
+      await this.applyTypeScriptProfile("none", {});
       this.host.showErrorMessage(message);
     }
   }
 
-  private async finishReload(nextIdentity: string): Promise<void> {
+  private async applyTypeScriptProfile(
+    nextIdentity: string,
+    pluginConfiguration: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
     const changed = this.initialized && this.appliedIdentity !== nextIdentity;
     this.appliedIdentity = nextIdentity;
     this.initialized = true;
-    if (changed) {
-      await this.host.restartTypeScriptServer();
+    await this.host.configureTypeScriptPlugin("tsifdef-tsserver", pluginConfiguration);
+    if (!changed) {
+      return;
     }
+
+    // VSCode 重启 tsserver 时会先恢复已打开文档并请求诊断，之后才恢复插件配置。
+    // 重启后再下发一次配置并重新加载项目，保证打开文件的第二轮诊断经过 TSIfDef。
+    await this.host.restartTypeScriptServer();
+    await this.host.configureTypeScriptPlugin("tsifdef-tsserver", pluginConfiguration);
+    await this.host.reloadTypeScriptProjects();
   }
 
   /**

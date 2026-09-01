@@ -152,6 +152,7 @@ export function createTypeScriptIntegration(
     configuration: Readonly<Record<string, unknown>>,
   ): Promise<void>;
   restartServer(): Promise<void>;
+  reloadProjects(): Promise<void>;
 } {
   return {
     configurePlugin: async (name, configuration) => {
@@ -180,6 +181,16 @@ export function createTypeScriptIntegration(
       }
       try {
         await vscode.commands.executeCommand("typescript.restartTsServer");
+      } catch {
+        // Keep the extension usable without VSCode's built-in tsserver.
+      }
+    },
+    reloadProjects: async () => {
+      if (vscode.extensions.getExtension("vscode.typescript-language-features") === undefined) {
+        return;
+      }
+      try {
+        await vscode.commands.executeCommand("typescript.reloadProjects");
       } catch {
         // Keep the extension usable without VSCode's built-in tsserver.
       }
@@ -268,6 +279,7 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
     showErrorMessage: (message) => void vscode.window.showErrorMessage(message),
     configureTypeScriptPlugin: typeScript.configurePlugin,
     restartTypeScriptServer: typeScript.restartServer,
+    reloadTypeScriptProjects: typeScript.reloadProjects,
     watchProjectConfiguration: (onChange) => {
       const watcher = vscode.workspace.createFileSystemWatcher("**/{package.json,*.json}");
       const subscriptions = [

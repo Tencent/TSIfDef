@@ -4,6 +4,12 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+## v1.0.5 - 2026-09-01
+
+- After a Profile change, restart tsserver, reapply the plugin configuration,
+  and reload projects. This forces a second diagnostic pass for already-open
+  documents after the restarted server has activated TSIfDef.
+
 ## v1.0.4 - 2026-09-01
 
 - Package the `tsifdef-tsserver` module shim as real files in the VSIX so a

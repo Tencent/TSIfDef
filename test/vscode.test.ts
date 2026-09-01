@@ -105,6 +105,7 @@ test("missing TypeScript language service is ignored", async () => {
     profileFile: "Profile.json",
   });
   await integration.restartServer();
+  await integration.reloadProjects();
 
   assert.equal(commandCalls, 0);
 });
@@ -130,6 +131,7 @@ test("unavailable TypeScript language service API is ignored", async () => {
     profileFile: "Profile.json",
   });
   await integration.restartServer();
+  await integration.reloadProjects();
 });
 
 test("available TypeScript language service receives config and restart", async () => {
@@ -162,10 +164,14 @@ test("available TypeScript language service receives config and restart", async 
   const configuration = { profileFile: "Profile.json", profileToken: "abc" };
   await integration.configurePlugin("tsifdef-tsserver", configuration);
   await integration.restartServer();
+  await integration.reloadProjects();
 
   assert.deepEqual(configurations, [{
     name: "tsifdef-tsserver",
     configuration,
   }]);
-  assert.deepEqual(commands, ["typescript.restartTsServer"]);
+  assert.deepEqual(commands, [
+    "typescript.restartTsServer",
+    "typescript.reloadProjects",
+  ]);
 });

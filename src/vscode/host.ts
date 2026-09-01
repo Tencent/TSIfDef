@@ -97,6 +97,8 @@ export interface ExtensionHost {
    * diagnostics in every workspace.
    */
   restartTypeScriptServer(): Promise<void>;
+  /** Reload projects after the restarted server has received plugin config. */
+  reloadTypeScriptProjects(): Promise<void>;
   /** Watch package.json and Profile JSON files that determine editor semantics. */
   watchProjectConfiguration(onChange: () => void): Disposable;
 }
