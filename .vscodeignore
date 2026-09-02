@@ -1,5 +1,6 @@
 .vscode/**
 .claude/**
+.workbuddy/**
 .gitignore
 .npmignore
 .test-dist/**

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>TSIfDef</title>
+  <rect width="128" height="128" rx="28" fill="#17324E"/>
+  <defs>
+    <g id="hash" stroke-width="13" stroke-linecap="round" fill="none">
+      <path d="M52 24 L41 104"/>
+      <path d="M89 24 L78 104"/>
+      <path d="M30 51 L100 51"/>
+      <path d="M28 79 L98 79"/>
+    </g>
+    <clipPath id="left"><rect x="0" y="0" width="64" height="128"/></clipPath>
+    <clipPath id="right"><rect x="64" y="0" width="64" height="128"/></clipPath>
+  </defs>
+  <use href="#hash" stroke="#FFFFFF" clip-path="url(#left)"/>
+  <use href="#hash" stroke="#FFFFFF" stroke-opacity="0.40" clip-path="url(#right)"/>
+</svg>

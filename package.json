@@ -1,6 +1,6 @@
 {
   "name": "tsifdef",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "Source-level conditional compilation for TypeScript",
   "license": "Apache-2.0",
   "repository": {
@@ -11,6 +11,7 @@
   "types": "dist/core/index.d.ts",
   "publisher": "hok",
   "displayName": "TSIfDef",
+  "icon": "assets/icon.png",
   "bin": {
     "tsifdef": "dist/cli/main.js"
   },
