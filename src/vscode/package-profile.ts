@@ -102,16 +102,17 @@ export class PackageProfileController implements Disposable {
     nextIdentity: string,
     pluginConfiguration: Readonly<Record<string, unknown>>,
   ): Promise<void> {
+    const firstValidProfile = !this.initialized && nextIdentity !== "none";
     const changed = this.initialized && this.appliedIdentity !== nextIdentity;
     this.appliedIdentity = nextIdentity;
     this.initialized = true;
     await this.host.configureTypeScriptPlugin("tsifdef-tsserver", pluginConfiguration);
-    if (!changed) {
+    if (!firstValidProfile && !changed) {
       return;
     }
 
-    // VSCode 重启 tsserver 时会先恢复已打开文档并请求诊断，之后才恢复插件配置。
-    // 重启后再下发一次配置并重新加载项目，保证打开文件的第二轮诊断经过 TSIfDef。
+    // VSCode 启动时可能先恢复并诊断已打开文档，再完成插件配置。首次加载有效
+    // Profile 和后续 Profile 变化都走完整刷新，保证已有诊断经过 TSIfDef。
     await this.host.restartTypeScriptServer();
     await this.host.configureTypeScriptPlugin("tsifdef-tsserver", pluginConfiguration);
     await this.host.reloadTypeScriptProjects();

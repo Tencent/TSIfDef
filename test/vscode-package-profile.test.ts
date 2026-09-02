@@ -37,7 +37,6 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     let definitions: MacroDefinitions | undefined;
     const controller = new PackageProfileController(host, state, (next) => { definitions = next; });
     state.activate();
-    controller.activate();
     await controller.reload();
     assert.equal(host.statusItem.text, "$(versions) TSIfDef: HOK.json");
     assert.equal(definitions?.HOK, true);
@@ -46,8 +45,12 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     assert.equal((hokConfig?.configuration as { profileFile?: string }).profileFile, hok);
     const hokToken = (hokConfig?.configuration as { profileToken?: string }).profileToken;
     assert.equal(typeof hokToken, "string");
-    assert.equal(host.typeScriptServerRestarts, 0);
-    assert.equal(host.typeScriptProjectReloads, 0);
+    assert.equal(host.typeScriptServerRestarts, 1);
+    assert.equal(host.typeScriptProjectReloads, 1);
+    assert.deepEqual(
+      host.typeScriptOperations.slice(-4),
+      ["configure", "restart", "configure", "reload"],
+    );
 
     await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profiles/Domestic.json" }), "utf8");
     await controller.reload();
@@ -62,8 +65,8 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     // The token must change with the enabled macro set so the TypeScript
     // extension always forwards the new config to the plugin.
     assert.notEqual(domesticConfig.profileToken, hokToken);
-    assert.equal(host.typeScriptServerRestarts, 1);
-    assert.equal(host.typeScriptProjectReloads, 1);
+    assert.equal(host.typeScriptServerRestarts, 2);
+    assert.equal(host.typeScriptProjectReloads, 2);
     assert.deepEqual(
       host.typeScriptOperations.slice(-4),
       ["configure", "restart", "configure", "reload"],
@@ -74,8 +77,8 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     );
 
     await controller.reload();
-    assert.equal(host.typeScriptServerRestarts, 1);
-    assert.equal(host.typeScriptProjectReloads, 1);
+    assert.equal(host.typeScriptServerRestarts, 2);
+    assert.equal(host.typeScriptProjectReloads, 2);
     controller.dispose();
     state.dispose();
   } finally {
@@ -97,22 +100,22 @@ test("editing the selected Profile restarts the TypeScript server once", async (
 
     await controller.reload();
     assert.equal(definitions?.AAA, true);
-    assert.equal(host.typeScriptServerRestarts, 0);
-    assert.equal(host.typeScriptProjectReloads, 0);
+    assert.equal(host.typeScriptServerRestarts, 1);
+    assert.equal(host.typeScriptProjectReloads, 1);
 
     await writeFile(profilePath, "[\"AAA\",\"AAA4\"]", "utf8");
     await controller.reload();
     assert.equal(definitions?.AAA4, true);
-    assert.equal(host.typeScriptServerRestarts, 1);
-    assert.equal(host.typeScriptProjectReloads, 1);
+    assert.equal(host.typeScriptServerRestarts, 2);
+    assert.equal(host.typeScriptProjectReloads, 2);
     assert.deepEqual(
       host.typeScriptOperations.slice(-4),
       ["configure", "restart", "configure", "reload"],
     );
 
     await controller.reload();
-    assert.equal(host.typeScriptServerRestarts, 1);
-    assert.equal(host.typeScriptProjectReloads, 1);
+    assert.equal(host.typeScriptServerRestarts, 2);
+    assert.equal(host.typeScriptProjectReloads, 2);
     controller.dispose();
     state.dispose();
   } finally {
@@ -120,7 +123,7 @@ test("editing the selected Profile restarts the TypeScript server once", async (
   }
 });
 
-test("saving an unchanged Profile does not restart the TypeScript server", async () => {
+test("saving an unchanged Profile does not restart the TypeScript server again", async () => {
   const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-profile-unchanged-"));
   try {
     const profilePath = join(root, "Profile.json");
@@ -135,8 +138,8 @@ test("saving an unchanged Profile does not restart the TypeScript server", async
     await writeFile(profilePath, "[\n  \"AAA\"\n]\n", "utf8");
     await controller.reload();
 
-    assert.equal(host.typeScriptServerRestarts, 0);
-    assert.equal(host.typeScriptProjectReloads, 0);
+    assert.equal(host.typeScriptServerRestarts, 1);
+    assert.equal(host.typeScriptProjectReloads, 1);
     controller.dispose();
     state.dispose();
   } finally {
@@ -163,6 +166,8 @@ test("ordinary TypeScript project without tsifdef is silently disabled", async (
       name: "tsifdef-tsserver",
       configuration: {},
     });
+    assert.equal(host.typeScriptServerRestarts, 0);
+    assert.equal(host.typeScriptProjectReloads, 0);
     controller.dispose();
     state.dispose();
   } finally {

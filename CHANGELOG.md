@@ -4,6 +4,12 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+## v1.1.1 - 2026-09-02
+
+- Refresh the TypeScript server when the first valid Profile is loaded, so
+  documents restored during VSCode startup do not retain diagnostics produced
+  before the TSIfDef plugin received its configuration.
+
 ## v1.0.5 - 2026-09-01
 
 - After a Profile change, restart tsserver, reapply the plugin configuration,

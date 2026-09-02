@@ -4,6 +4,11 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+## v1.1.1 - 2026-09-02
+
+- 首次加载有效 Profile 时也刷新 TypeScript Server，避免 VSCode 启动恢复的已打开
+  文件保留 TSIfDef 插件配置完成前产生的错误诊断。
+
 ## v1.0.5 - 2026-09-01
 
 - Profile 变化后按“重启 tsserver、重新下发插件配置、重新加载项目”的顺序刷新。
