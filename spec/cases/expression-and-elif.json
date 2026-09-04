@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "name": "expression-and-elif",
+  "lineEnding": "lf",
+  "trailingNewline": false,
+  "bom": false,
+  "defines": [
+    "B"
+  ],
+  "sourceLines": [
+    "#if A",
+    "const selected = \"a\";",
+    "#elif defined(B) && (!C || D)",
+    "const selected = \"b\";",
+    "#else",
+    "const selected = \"fallback\";",
+    "#endif"
+  ],
+  "lineStates": [
+    "directive",
+    "inactive",
+    "directive",
+    "active",
+    "directive",
+    "inactive",
+    "directive"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 0,
+      "argument": "A"
+    },
+    {
+      "kind": "elif",
+      "line": 2,
+      "argument": "defined(B) && (!C || D)"
+    },
+    {
+      "kind": "else",
+      "line": 4,
+      "argument": ""
+    },
+    {
+      "kind": "endif",
+      "line": 6,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

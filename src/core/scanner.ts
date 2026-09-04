@@ -179,7 +179,11 @@ function parseDirectiveLine(
     end: lineOffset + hashIndex + name.length + 1,
   };
 
+  const rawArgument = nameMatch?.[2] ?? "";
   if (!directiveKinds.has(name as DirectiveKind)) {
+    if (isTypeScriptPrivateIdentifier(rawArgument)) {
+      return null;
+    }
     diagnostics.push({
       code: "unknown-directive",
       message: `Unknown directive #${name}.`,
@@ -188,7 +192,6 @@ function parseDirectiveLine(
     return { directive: null, range: lineRange };
   }
 
-  const rawArgument = nameMatch?.[2] ?? "";
   const leadingWhitespace = rawArgument.length - rawArgument.trimStart().length;
   const argument = rawArgument.trim();
   const argumentStart = keywordRange.end + leadingWhitespace;
@@ -207,6 +210,20 @@ function parseDirectiveLine(
     },
     range: lineRange,
   };
+}
+
+/**
+ * A private field or method may begin a physical line with `#name`, which is
+ * indistinguishable from a directive until the following token is inspected.
+ */
+function isTypeScriptPrivateIdentifier(remainder: string): boolean {
+  const continuation = remainder.trimStart();
+  if (continuation.length === 0) {
+    // Keep a bare "#name" as an unknown directive. Private members normally
+    // have a type, initializer, modifier, terminator, or parameter list.
+    return false;
+  }
+  return /^(?:[!?:=;(<]|\bin\b)/.test(continuation);
 }
 
 function checkStructure(

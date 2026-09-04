@@ -5,6 +5,9 @@ Language file: [`README.md`](./README.md)
 TSIfDef 用于 TypeScript 的源码级条件编译。核心宏分析由 CLI、tsserver 插件、
 VSCode 扩展和 ESLint processor 共享实现——任何环境都不自行解释宏规则。
 
+可移植的语法规范和与实现无关的一致性用例放在
+[`spec/`](./spec/README.zh-CN.md) 目录，可以独立用于验证兼容实现。
+
 ## 安装
 
 ```bash

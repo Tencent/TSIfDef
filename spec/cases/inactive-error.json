@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "name": "inactive-error",
+  "lineEnding": "lf",
+  "trailingNewline": false,
+  "bom": false,
+  "defines": [],
+  "sourceLines": [
+    "#if EDITOR",
+    "#error This error is inactive",
+    "#else",
+    "const ok = true;",
+    "#endif"
+  ],
+  "lineStates": [
+    "directive",
+    "directive",
+    "directive",
+    "active",
+    "directive"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 0,
+      "argument": "EDITOR"
+    },
+    {
+      "kind": "error",
+      "line": 1,
+      "argument": "This error is inactive"
+    },
+    {
+      "kind": "else",
+      "line": 2,
+      "argument": ""
+    },
+    {
+      "kind": "endif",
+      "line": 4,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

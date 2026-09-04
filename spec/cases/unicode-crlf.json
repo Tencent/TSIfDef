@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "unicode-crlf",
+  "lineEnding": "crlf",
+  "trailingNewline": true,
+  "bom": false,
+  "defines": [
+    "UNITY_EDITOR"
+  ],
+  "sourceLines": [
+    "const shared = \"中文😀\";",
+    "#if UNITY_ANDROID",
+    "const platform = \"玩家😀\";",
+    "#else",
+    "const platform = \"编辑器😀\";",
+    "#endif"
+  ],
+  "lineStates": [
+    "active",
+    "directive",
+    "inactive",
+    "directive",
+    "active",
+    "directive"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 1,
+      "argument": "UNITY_ANDROID"
+    },
+    {
+      "kind": "else",
+      "line": 3,
+      "argument": ""
+    },
+    {
+      "kind": "endif",
+      "line": 5,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

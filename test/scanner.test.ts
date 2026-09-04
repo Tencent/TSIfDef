@@ -171,6 +171,77 @@ test("consumes unknown directive text without changing lexical state", () => {
   assert.equal(result.directiveRanges.length, 4);
 });
 
+test("does not treat TypeScript private fields and methods as directives", () => {
+  const source = [
+    "class PrivateMembers {",
+    "  #initialized = 1;",
+    "  #typed: string;",
+    "  #assigned!: object;",
+    "  #optional?: boolean;",
+    "  #declaration;",
+    "  #method(): void {}",
+    "  #generic<T>(value: T): T { return value; }",
+    "  has(value: object): boolean {",
+    "    return #initialized in value;",
+    "  }",
+    "}",
+  ].join("\n");
+
+  const result = scanDirectives(source);
+
+  assert.deepEqual(result.directives, []);
+  assert.deepEqual(result.directiveRanges, []);
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test("keeps real directives around TypeScript private members", () => {
+  const source = [
+    "class ConditionalPrivateMembers {",
+    "  #always = true;",
+    "  #if EDITOR",
+    "  #editorOnly = true;",
+    "  #else",
+    "  #playerOnly = true;",
+    "  #endif",
+    "  #afterwards(): void {}",
+    "}",
+  ].join("\n");
+
+  const result = scanDirectives(source);
+
+  assert.deepEqual(result.directives.map((directive) => directive.kind), [
+    "if",
+    "else",
+    "endif",
+  ]);
+  assert.deepEqual(
+    result.directives.map((directive) => directive.argument),
+    ["EDITOR", "", ""],
+  );
+  assert.equal(result.directiveRanges.length, 3);
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test("still reports bare and argument-bearing unknown directives", () => {
+  const source = [
+    "#unknown",
+    "#define FEATURE",
+    "#unknown payload",
+    "#region generated code",
+  ].join("\n");
+
+  const result = scanDirectives(source);
+
+  assert.deepEqual(result.directives, []);
+  assert.equal(result.directiveRanges.length, 4);
+  assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
+    "unknown-directive",
+    "unknown-directive",
+    "unknown-directive",
+    "unknown-directive",
+  ]);
+});
+
 test("handles nested conditionals without structural diagnostics", () => {
   const source = [
     "#if OUTER",

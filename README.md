@@ -6,6 +6,10 @@ TSIfDef is source-level conditional compilation for TypeScript. The core macro
 analysis is shared across the CLI, tsserver plugin, VSCode extension, and ESLint
 processor — no environment reimplements the macro rules.
 
+The portable syntax specification and implementation-neutral conformance
+fixtures live in [`spec/`](./spec/README.md). They can be used independently to
+verify compatible implementations.
+
 ## Install
 
 ```bash

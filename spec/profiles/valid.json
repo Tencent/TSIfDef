@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "valid",
+  "text": "[\"UNITY_EDITOR\",\"UNITY_EDITOR_WIN\"]",
+  "expectedDefines": [
+    "UNITY_EDITOR",
+    "UNITY_EDITOR_WIN"
+  ]
+}

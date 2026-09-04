@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Tencent/TSIfDef/spec/schema/profile-case.schema.json",
+  "title": "TSIfDef Profile conformance case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "name",
+    "text"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string"
+    },
+    "expectedDefines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "expectedError": {
+      "type": "string"
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "expectedDefines"
+      ]
+    },
+    {
+      "required": [
+        "expectedError"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "name": "lexical-and-private-fields",
+  "lineEnding": "lf",
+  "trailingNewline": true,
+  "bom": false,
+  "defines": [
+    "EDITOR"
+  ],
+  "sourceLines": [
+    "const text = \"#if NOT_A_DIRECTIVE\";",
+    "const template = `",
+    "#if STILL_NOT_A_DIRECTIVE",
+    "`;",
+    "class Example {",
+    "  #value = 1;",
+    "  #method<T>(value: T): T { return value; }",
+    "  #if EDITOR",
+    "  editorOnly() { return this.#value; }",
+    "  #else",
+    "  playerOnly() { return 0; }",
+    "  #endif",
+    "}"
+  ],
+  "lineStates": [
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "directive",
+    "active",
+    "directive",
+    "inactive",
+    "directive",
+    "active"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 7,
+      "argument": "EDITOR"
+    },
+    {
+      "kind": "else",
+      "line": 9,
+      "argument": ""
+    },
+    {
+      "kind": "endif",
+      "line": 11,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

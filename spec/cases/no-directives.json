@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "no-directives",
+  "lineEnding": "lf",
+  "trailingNewline": true,
+  "bom": false,
+  "defines": [],
+  "sourceLines": [
+    "class Example {",
+    "  #value = 1;",
+    "  has(other: object) { return #value in other; }",
+    "}"
+  ],
+  "lineStates": [
+    "active",
+    "active",
+    "active",
+    "active"
+  ],
+  "directives": [],
+  "diagnostics": []
+}

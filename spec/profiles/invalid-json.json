@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "name": "invalid-json",
+  "text": "[\"EDITOR\"",
+  "expectedError": "config-invalid-json"
+}

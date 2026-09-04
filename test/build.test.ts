@@ -89,6 +89,48 @@ test("emits active branch and omits inactive branch in output JavaScript", async
   }
 });
 
+test("project build supports TypeScript private members next to directives", async () => {
+  const root = await setup({
+    profile: ["EDITOR"],
+    compilerOptions: {
+      strict: true,
+      outDir: "dist",
+      module: "commonjs",
+      target: "ES2022",
+    },
+    files: {
+      "src/main.ts": [
+        "export class PrivateMembers {",
+        "  #value = 1;",
+        "  #typed!: string;",
+        "  #optional?: boolean;",
+        "  #declaration: unknown;",
+        "  #method<T>(value: T): T { return value; }",
+        "  #if EDITOR",
+        "  active(): number { return this.#method(this.#value); }",
+        "  #else",
+        "  inactive(): string { return this.#typed; }",
+        "  #endif",
+        "  has(value: object): boolean { return #value in value; }",
+        "}",
+      ].join("\n"),
+    },
+  });
+  try {
+    const result = await run(root);
+    assert.equal(result.emitted, true);
+    assert.equal(result.hasErrors, false);
+    const js = await readFile(join(root, "dist", "main.js"), "utf8");
+    assert.match(js, /#value\s*=\s*1/);
+    assert.match(js, /#method/);
+    assert.match(js, /active\(\)/);
+    assert.doesNotMatch(js, /inactive\(\)/);
+    assert.match(js, /#value in value/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("sourcemap sources are relative, portable, and resolve to the original source", async () => {
   const root = await setup({
     profile: ["BROWSER"],

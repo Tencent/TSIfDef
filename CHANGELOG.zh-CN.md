@@ -4,6 +4,13 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+- 增加可移植的 TSIfDef 规范和与实现无关的一致性用例。
+
+## v1.1.2 - 2026-09-03
+
+- 兼容以 `#name` 开头的 TypeScript 私有字段、私有方法和私有品牌检查，不再将其误判
+  为 TSIfDef 指令。
+
 ## v1.1.1 - 2026-09-02
 
 - 首次加载有效 Profile 时也刷新 TypeScript Server，避免 VSCode 启动恢复的已打开

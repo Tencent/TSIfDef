@@ -164,8 +164,17 @@ test("preserves projection invariants for a deterministic generated corpus", () 
     assertBoundedRanges(source, result.directiveRanges);
     assertBoundedRanges(source, result.inactiveRanges);
     assertBoundedRanges(source, result.maskedRanges);
+    assert.equal(
+      Buffer.byteLength(result.projectedText, "utf8"),
+      Buffer.byteLength(source, "utf8"),
+    );
     for (const range of result.maskedRanges) {
-      assert.match(result.projectedText.slice(range.start, range.end), /^[ \r\n]*$/);
+      assert.equal(
+        result.projectedText
+          .slice(range.start, range.end)
+          .replace(/[ \u00A0\u3000\r\n]/g, ""),
+        "",
+      );
     }
     assert.equal(
       projectSource(result.projectedText, { ON: next() % 2 === 0 }).projectedText,

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "bom-and-duplicates",
+  "text": "\uFEFF[\"EDITOR\",\"EDITOR\",\"FEATURE_2\"]",
+  "expectedDefines": [
+    "EDITOR",
+    "FEATURE_2"
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Tencent/TSIfDef/spec/schema/case.schema.json",
+  "title": "TSIfDef conformance case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "name",
+    "lineEnding",
+    "trailingNewline",
+    "bom",
+    "defines",
+    "sourceLines",
+    "lineStates",
+    "directives",
+    "diagnostics"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lineEnding": {
+      "enum": [
+        "lf",
+        "crlf"
+      ]
+    },
+    "trailingNewline": {
+      "type": "boolean"
+    },
+    "bom": {
+      "type": "boolean"
+    },
+    "defines": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      }
+    },
+    "sourceLines": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "lineStates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "active",
+          "inactive",
+          "directive"
+        ]
+      }
+    },
+    "directives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "line",
+          "argument"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "if",
+              "elif",
+              "else",
+              "endif",
+              "error"
+            ]
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "argument": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "start",
+          "end"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "start": {
+            "$ref": "#/$defs/position"
+          },
+          "end": {
+            "$ref": "#/$defs/position"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "character"
+      ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "character": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "name": "basic-if-else",
+  "lineEnding": "lf",
+  "trailingNewline": true,
+  "bom": false,
+  "defines": [
+    "EDITOR"
+  ],
+  "sourceLines": [
+    "const shared = 1;",
+    "#if EDITOR",
+    "const value: string = \"editor\";",
+    "#else",
+    "const value: number = 1;",
+    "#endif",
+    "value;"
+  ],
+  "lineStates": [
+    "active",
+    "directive",
+    "active",
+    "directive",
+    "inactive",
+    "directive",
+    "active"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 1,
+      "argument": "EDITOR"
+    },
+    {
+      "kind": "else",
+      "line": 3,
+      "argument": ""
+    },
+    {
+      "kind": "endif",
+      "line": 5,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

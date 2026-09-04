@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "name": "lexical-lookalikes",
+  "lineEnding": "lf",
+  "trailingNewline": true,
+  "bom": false,
+  "defines": [
+    "REAL_IN_EXPRESSION",
+    "REAL_AFTER_TEMPLATE"
+  ],
+  "sourceLines": [
+    "/* #if SAME_LINE",
+    "#if BLOCK_COMMENT",
+    "*/",
+    "const single = '#if STRING';",
+    "const regex = /#if REGEX[\\/]?/;",
+    "const template = `#if TEMPLATE ${",
+    "#if REAL_IN_EXPRESSION",
+    "value",
+    "#endif",
+    "} #else TEMPLATE`;",
+    "#if REAL_AFTER_TEMPLATE",
+    "const active = true;",
+    "#endif"
+  ],
+  "lineStates": [
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "directive",
+    "active",
+    "directive",
+    "active",
+    "directive",
+    "active",
+    "directive"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 6,
+      "argument": "REAL_IN_EXPRESSION"
+    },
+    {
+      "kind": "endif",
+      "line": 8,
+      "argument": ""
+    },
+    {
+      "kind": "if",
+      "line": 10,
+      "argument": "REAL_AFTER_TEMPLATE"
+    },
+    {
+      "kind": "endif",
+      "line": 12,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

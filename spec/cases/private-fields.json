@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "name": "private-fields",
+  "lineEnding": "lf",
+  "trailingNewline": true,
+  "bom": false,
+  "defines": [
+    "EDITOR"
+  ],
+  "sourceLines": [
+    "class PrivateMembers {",
+    "  #initialized = 1;",
+    "  #typed: string;",
+    "  #assigned!: object;",
+    "  #optional?: boolean;",
+    "  #declaration;",
+    "  #method(): void {}",
+    "  #generic<T>(value: T): T { return value; }",
+    "  #if EDITOR",
+    "  active(): number { return this.#initialized; }",
+    "  #else",
+    "  inactive(): string { return this.#typed; }",
+    "  #endif",
+    "  has(value: object): boolean { return #initialized in value; }",
+    "}"
+  ],
+  "lineStates": [
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "active",
+    "directive",
+    "active",
+    "directive",
+    "inactive",
+    "directive",
+    "active",
+    "active"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 8,
+      "argument": "EDITOR"
+    },
+    {
+      "kind": "else",
+      "line": 10,
+      "argument": ""
+    },
+    {
+      "kind": "endif",
+      "line": 12,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

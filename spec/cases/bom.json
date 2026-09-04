@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "name": "bom",
+  "lineEnding": "lf",
+  "trailingNewline": true,
+  "bom": true,
+  "defines": [
+    "EDITOR"
+  ],
+  "sourceLines": [
+    "#if EDITOR",
+    "const value = 1;",
+    "#endif"
+  ],
+  "lineStates": [
+    "directive",
+    "active",
+    "directive"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 0,
+      "argument": "EDITOR"
+    },
+    {
+      "kind": "endif",
+      "line": 2,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "name": "invalid-name",
+  "text": "[\"EDITOR\",\"NOT-VALID\"]",
+  "expectedError": "config-invalid-name"
+}

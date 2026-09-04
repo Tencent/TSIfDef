@@ -46,6 +46,10 @@ test("preserves CRLF, UTF-16 length, Chinese text, and surrogate offsets", () =>
   const result = projectSource(source, { HOK: false });
 
   assert.equal(result.projectedText.length, source.length);
+  assert.equal(
+    Buffer.byteLength(result.projectedText, "utf8"),
+    Buffer.byteLength(source, "utf8"),
+  );
   assert.deepEqual(newlineOffsets(result.projectedText), newlineOffsets(source));
   assert.equal(result.projectedText.includes('const shared = "中文😀";'), true);
   assert.equal(result.projectedText.includes('const domestic = "国内😀";'), true);
@@ -56,7 +60,7 @@ test("preserves CRLF, UTF-16 length, Chinese text, and surrogate offsets", () =>
   const inactiveTextStart = source.indexOf("王者😀");
   assert.equal(
     result.projectedText.slice(inactiveTextStart, inactiveTextStart + "王者😀".length),
-    " ".repeat("王者😀".length),
+    "\u3000\u3000\u00A0\u00A0",
   );
 });
 
@@ -106,6 +110,41 @@ test("masks unknown directives while preserving their diagnostics", () => {
   assert.equal(result.projectedText.startsWith(" ".repeat("#unknown value".length)), true);
   assert.equal(result.projectedText.includes("const valid = true;"), true);
   assert.equal(result.diagnostics[0]?.code, "unknown-directive");
+});
+
+test("preserves TypeScript private members while projecting conditional branches", () => {
+  const source = [
+    "class PrivateMembers {",
+    "  #value = 1;",
+    "  #typed!: string;",
+    "  #method<T>(value: T): T { return value; }",
+    "  #if EDITOR",
+    "  editor(): number { return this.#value; }",
+    "  #else",
+    "  player(): string { return this.#typed; }",
+    "  #endif",
+    "  has(value: object): boolean { return #value in value; }",
+    "}",
+  ].join("\n");
+  const result = projectSource(source, { EDITOR: true });
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.projectedText.includes("#value = 1"), true);
+  assert.equal(result.projectedText.includes("#typed!: string"), true);
+  assert.equal(result.projectedText.includes("#method<T>"), true);
+  assert.equal(result.projectedText.includes("editor(): number"), true);
+  assert.equal(result.projectedText.includes("player(): string"), false);
+  assert.equal(result.projectedText.includes("#value in value"), true);
+
+  const transpiled = ts.transpileModule(result.projectedText, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+    },
+    fileName: "private-members.ts",
+    reportDiagnostics: true,
+  });
+  assert.deepEqual(transpiled.diagnostics, []);
 });
 
 test("normalizes overlapping ranges and rejects invalid ranges", () => {

@@ -41,7 +41,10 @@ export function projectSource(
   };
 }
 
-/** Replace non-newline UTF-16 code units in the supplied ranges with spaces. */
+/**
+ * Replace non-newline text with whitespace while preserving both UTF-8 byte
+ * offsets and UTF-16 editor offsets.
+ */
 export function maskSourceRanges(
   source: string,
   ranges: readonly SourceRange[],
@@ -52,11 +55,34 @@ export function maskSourceRanges(
 
   for (const range of normalized) {
     chunks.push(source.slice(cursor, range.start));
-    chunks.push(source.slice(range.start, range.end).replace(/[^\r\n]/g, " "));
+    chunks.push(maskText(source.slice(range.start, range.end)));
     cursor = range.end;
   }
   chunks.push(source.slice(cursor));
   return chunks.join("");
+}
+
+function maskText(source: string): string {
+  let result = "";
+  for (const character of source) {
+    if (character === "\r" || character === "\n") {
+      result += character;
+      continue;
+    }
+
+    const codePoint = character.codePointAt(0)!;
+    if (codePoint <= 0x7f) {
+      result += " ";
+    } else if (codePoint <= 0x7ff) {
+      result += "\u00A0";
+    } else if (codePoint <= 0xffff) {
+      result += "\u3000";
+    } else {
+      // Astral code points occupy four UTF-8 bytes and two UTF-16 code units.
+      result += "\u00A0\u00A0";
+    }
+  }
+  return result;
 }
 
 function normalizeRanges(

@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "name": "nested-conditionals",
+  "lineEnding": "lf",
+  "trailingNewline": true,
+  "bom": false,
+  "defines": [
+    "OUTER"
+  ],
+  "sourceLines": [
+    "#if OUTER",
+    "const outer = true;",
+    "#if INNER",
+    "const inner = true;",
+    "#else",
+    "const inner = false;",
+    "#endif",
+    "#elif FALLBACK",
+    "const fallback = true;",
+    "#endif"
+  ],
+  "lineStates": [
+    "directive",
+    "active",
+    "directive",
+    "inactive",
+    "directive",
+    "active",
+    "directive",
+    "directive",
+    "inactive",
+    "directive"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 0,
+      "argument": "OUTER"
+    },
+    {
+      "kind": "if",
+      "line": 2,
+      "argument": "INNER"
+    },
+    {
+      "kind": "else",
+      "line": 4,
+      "argument": ""
+    },
+    {
+      "kind": "endif",
+      "line": 6,
+      "argument": ""
+    },
+    {
+      "kind": "elif",
+      "line": 7,
+      "argument": "FALLBACK"
+    },
+    {
+      "kind": "endif",
+      "line": 9,
+      "argument": ""
+    }
+  ],
+  "diagnostics": []
+}

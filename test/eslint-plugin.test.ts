@@ -62,3 +62,39 @@ test("ESLint processor notices package.json Profile pointer edits in one process
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("ESLint processor preserves TypeScript private members and masks directives", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-eslint-private-"));
+  const sourceFile = join(root, "src", "main.ts");
+  const profilePath = join(root, "Profile.json");
+  const source = [
+    "class PrivateMembers {",
+    "  #value = 1;",
+    "  #typed!: string;",
+    "  #method(): number { return this.#value; }",
+    "  #if EDITOR",
+    "  active(): number { return this.#method(); }",
+    "  #else",
+    "  inactive(): string { return this.#typed; }",
+    "  #endif",
+    "}",
+  ].join("\n");
+  try {
+    await mkdir(dirname(sourceFile), { recursive: true });
+    await writeFile(profilePath, "[\"EDITOR\"]\n", "utf8");
+    await writeFile(
+      join(root, "package.json"),
+      JSON.stringify({ tsifdef: "./Profile.json" }),
+      "utf8",
+    );
+
+    const projected = processors.macros.preprocess(source, sourceFile)[0]!;
+    assert.match(projected, /#value = 1/);
+    assert.match(projected, /#typed!: string/);
+    assert.match(projected, /#method\(\)/);
+    assert.match(projected, /active\(\)/);
+    assert.doesNotMatch(projected, /inactive\(\)/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

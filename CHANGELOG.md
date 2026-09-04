@@ -4,6 +4,14 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+- Add a portable TSIfDef specification and implementation-neutral conformance
+  fixtures.
+
+## v1.1.2 - 2026-09-03
+
+- Do not interpret TypeScript private fields, private methods, or private-brand
+  checks that begin a line with `#name` as TSIfDef directives.
+
 ## v1.1.1 - 2026-09-02
 
 - Refresh the TypeScript server when the first valid Profile is loaded, so

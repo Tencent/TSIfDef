@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "name": "active-error",
+  "lineEnding": "lf",
+  "trailingNewline": false,
+  "bom": false,
+  "defines": [
+    "EDITOR"
+  ],
+  "sourceLines": [
+    "#if EDITOR",
+    "#error Editor branch must not build",
+    "#else",
+    "const ok = true;",
+    "#endif"
+  ],
+  "lineStates": [
+    "directive",
+    "directive",
+    "directive",
+    "inactive",
+    "directive"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 0,
+      "argument": "EDITOR"
+    },
+    {
+      "kind": "error",
+      "line": 1,
+      "argument": "Editor branch must not build"
+    },
+    {
+      "kind": "else",
+      "line": 2,
+      "argument": ""
+    },
+    {
+      "kind": "endif",
+      "line": 4,
+      "argument": ""
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "active-error",
+      "start": {
+        "line": 1,
+        "character": 7
+      },
+      "end": {
+        "line": 1,
+        "character": 35
+      }
+    }
+  ]
+}

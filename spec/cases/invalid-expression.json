@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "name": "invalid-expression",
+  "lineEnding": "lf",
+  "trailingNewline": false,
+  "bom": false,
+  "defines": [],
+  "sourceLines": [
+    "#if (",
+    "const value = 1;",
+    "#endif"
+  ],
+  "lineStates": [
+    "directive",
+    "inactive",
+    "directive"
+  ],
+  "directives": [
+    {
+      "kind": "if",
+      "line": 0,
+      "argument": "("
+    },
+    {
+      "kind": "endif",
+      "line": 2,
+      "argument": ""
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "expected-expression",
+      "start": {
+        "line": 0,
+        "character": 5
+      },
+      "end": {
+        "line": 0,
+        "character": 5
+      }
+    }
+  ]
+}
