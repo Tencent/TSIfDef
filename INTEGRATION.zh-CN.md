@@ -91,7 +91,13 @@ tsifdef build --watch --emit-projection .projection
 
 如果项目使用 ESLint，原始的 `#if` 行本会被报成解析错误。TSIfDef 提供一个 ESLint
 processor，让 ESLint 检查等长投影而非原始文本（位置不变，诊断直接映射回原文）。
-在项目的 ESLint 配置里启用：
+先安装版本一致的 companion 包：
+
+```bash
+npm install -D tsifdef eslint-plugin-tsifdef
+```
+
+离线使用发布产物时，应在同一条命令中安装两个 tgz。然后在项目的 ESLint 配置里启用：
 
 ```jsonc
 // .eslintrc.json
@@ -107,18 +113,14 @@ processor，让 ESLint 检查等长投影而非原始文本（位置不变，诊
 ```
 
 processor 解析 Profile 的方式与 CLI 一致（最近的 `package.json` 里的 `tsifdef`
-指针）。安装 `tsifdef` 会自动建立 `eslint-plugin-tsifdef` 垫片，所以项目只需上面
-这一行 plugin 配置。
+指针）。`eslint-plugin-tsifdef` 是到核心包 processor 的极小显式转发入口；两个包
+保持同版本可以避免行为不匹配。
 
-### Prettier
+### Prettier 与其他文本规则
 
-等长遮盖会把未激活分支替换为空格，这可能让 `eslint-plugin-prettier` 在被遮盖的
-行上报出行尾空白警告。如果觉得吵，关掉 Prettier 规则：
-
-```jsonc
-// .eslintrc.json  （rules）
-"prettier/prettier": "off"
-```
+等长遮盖会把宏指令和未激活分支替换为空格。processor 会删除诊断范围完全来自这些
+合成遮盖字符的消息；只要诊断触及任一真实源码字符（包括真实的行尾空白），就仍然
+保留。因此 `prettier/prettier` 等文本规则应保持开启。
 
 ## 5. 职责分离
 

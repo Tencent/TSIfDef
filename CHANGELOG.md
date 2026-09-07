@@ -4,8 +4,18 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+## v1.1.4 - 2026-09-07
+
+- Ship `eslint-plugin-tsifdef` as a real companion package instead of creating
+  it during `postinstall`; npm could remove the generated forwarder as an
+  extraneous package after lifecycle scripts completed.
+
+## v1.1.3 - 2026-09-07
+
 - Add a portable TSIfDef specification and implementation-neutral conformance
   fixtures.
+- Prevent ESLint rules from reporting diagnostics caused solely by synthetic
+  whitespace in projected directive and inactive-branch ranges.
 
 ## v1.1.2 - 2026-09-03
 

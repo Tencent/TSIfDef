@@ -8,7 +8,7 @@ src/**
 test/**
 examples/**
 scripts/**
-!scripts/postinstall.cjs
+eslint-plugin-package/**
 node_modules/**
 tsconfig*.json
 package-lock.json

@@ -1,0 +1,22 @@
+{
+  "name": "eslint-plugin-tsifdef",
+  "version": "1.1.4",
+  "description": "ESLint processor bridge for TSIfDef",
+  "license": "Apache-2.0",
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tencent/TsIfDef.git",
+    "directory": "eslint-plugin-package"
+  },
+  "main": "index.js",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "peerDependencies": {
+    "tsifdef": "1.1.4"
+  }
+}

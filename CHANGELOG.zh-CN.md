@@ -4,7 +4,16 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+## v1.1.4 - 2026-09-07
+
+- 将 `eslint-plugin-tsifdef` 作为真实 companion 包交付，不再依赖
+  `postinstall` 动态生成；npm 会在生命周期脚本完成后把该转发包判为
+  extraneous 并删除。
+
+## v1.1.3 - 2026-09-07
+
 - 增加可移植的 TSIfDef 规范和与实现无关的一致性用例。
+- 避免 ESLint 规则对宏指令及未激活分支投影产生的合成空白报告伪诊断。
 
 ## v1.1.2 - 2026-09-03
 

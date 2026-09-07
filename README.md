@@ -12,10 +12,21 @@ verify compatible implementations.
 
 ## Install
 
+Add TSIfDef to a TypeScript project:
+
+```bash
+npm install --save-dev tsifdef
+```
+
+To build this repository from source instead:
+
 ```bash
 npm install
 npm run build
 ```
+
+Requirements: Node.js 18.17 or newer, TypeScript 5.5, and VSCode 1.85 or
+newer when using the editor extension.
 
 ## Use in a project
 
@@ -78,10 +89,21 @@ ESLint parses the raw source with its own parser, so without integration a
 ESLint processor that projects the source (equal-length masking) before ESLint
 sees it — the mirror of the tsserver `getScriptSnapshot` hook.
 
-Installing the tgz runs a `postinstall` that drops a tiny forwarder package
-`node_modules/eslint-plugin-tsifdef` (ESLint resolves `plugins: ["tsifdef"]` to
-an `eslint-plugin-tsifdef` package, which npm aliases cannot satisfy). Then add
-one override in the project's `.eslintrc`:
+Install both the core package and its ESLint companion at the same version:
+
+```bash
+npm install --save-dev tsifdef eslint-plugin-tsifdef
+```
+
+For file-based or offline integration, install both release tarballs together:
+
+```bash
+npm install --save-dev ./tsifdef-<version>.tgz ./eslint-plugin-tsifdef-<version>.tgz
+```
+
+The companion is a small, explicit bridge to `tsifdef/eslint-plugin`. Keeping it
+in the dependency graph makes clean installs deterministic; it is not generated
+by a lifecycle script. Add one override in the project's `.eslintrc`:
 
 ```json
 {
@@ -93,16 +115,11 @@ one override in the project's `.eslintrc`:
 ```
 
 Inactive branches are masked, so ESLint lints only the active view; diagnostics
-keep their original line/column because masking preserves length.
-
-Note on Prettier: equal-length masking turns directive lines (`#if`, `#endif`,
-…) into runs of spaces. `tsc` ignores whitespace, but `prettier/prettier` flags
-trailing-space lines. If that noise is unwanted, disable the rule in the
-project's `.eslintrc`:
-
-```json
-"rules": { "prettier/prettier": "off" }
-```
+keep their original line/column because masking preserves length. Diagnostics
+caused solely by the synthetic masked ranges are removed in `postprocess`, while
+diagnostics touching real source text are preserved. This includes text-based
+rules such as `prettier/prettier`, so projects can keep their formatting rules
+enabled.
 
 ## Release
 
@@ -114,11 +131,16 @@ npm version <patch|minor|major|x.y.z> --no-git-tag-version
 npm run release
 ```
 
-That emits:
+That emits and smoke-tests:
 
 - `release/tsifdef-<version>.vsix`
 - `release/tsifdef-<version>.tgz`
+- `release/eslint-plugin-tsifdef-<version>.tgz`
 - `release/manifest.json`
+
+The release check installs the two tarballs into a clean temporary project,
+loads the ESLint processor, runs the CLI, and installs the VSIX into an isolated
+VSCode extensions directory.
 
 The only manually configured version is `package.json` `version`. Build and
 release synchronize generated source and helper-package metadata from it before

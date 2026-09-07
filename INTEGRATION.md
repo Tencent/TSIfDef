@@ -102,7 +102,14 @@ code does not error, and `#if UNKNOWN_MACRO` is treated as `false` rather than
 If the project uses ESLint, raw `#if` lines would otherwise be reported as parse
 errors. TSIfDef ships an ESLint processor that lints the equal-length projection
 instead of the raw text (positions are unchanged, so diagnostics map back
-directly). Enable it in the project's ESLint config:
+directly). Install the version-matched companion package first:
+
+```bash
+npm install -D tsifdef eslint-plugin-tsifdef
+```
+
+When consuming offline release artifacts, install both tarballs in the same
+command. Then enable the processor in the project's ESLint config:
 
 ```jsonc
 // .eslintrc.json
@@ -118,20 +125,17 @@ directly). Enable it in the project's ESLint config:
 ```
 
 The processor resolves the Profile the same way the CLI does (the `tsifdef`
-pointer in the nearest `package.json`). Installing `tsifdef` sets up the
-`eslint-plugin-tsifdef` shim automatically, so a project only needs the plugin
-line above.
+pointer in the nearest `package.json`). `eslint-plugin-tsifdef` is an explicit,
+minimal bridge to the processor exported by the core package; keeping both
+packages at the same version avoids mismatched behavior.
 
-### Prettier
+### Prettier and other text rules
 
-Equal-length masking replaces inactive branches with spaces, which can surface
-trailing-whitespace warnings from `eslint-plugin-prettier` on masked lines. If
-that is noisy, disable the Prettier rule:
-
-```jsonc
-// .eslintrc.json  (rules)
-"prettier/prettier": "off"
-```
+Equal-length masking replaces directive and inactive-branch text with spaces.
+The processor removes diagnostics whose complete reported range comes only from
+those synthetic masked characters. Diagnostics touching any real source text,
+including real trailing whitespace, remain visible. Therefore
+`prettier/prettier` and similar text rules should stay enabled.
 
 ## 5. Separation of concerns
 

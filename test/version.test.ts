@@ -26,9 +26,21 @@ test("generated runtime and helper package versions follow root package.json", a
   const tsserverPackage = JSON.parse(
     await readFile(resolve("tsserver-package", "package.json"), "utf8"),
   ) as { version?: unknown };
+  const eslintPluginPackage = JSON.parse(
+    await readFile(resolve("eslint-plugin-package", "package.json"), "utf8"),
+  ) as { version?: unknown; peerDependencies?: Record<string, unknown> };
+  const packageLock = JSON.parse(await readFile(resolve("package-lock.json"), "utf8")) as {
+    version?: unknown;
+    packages?: Record<string, { version?: unknown } | undefined>;
+  };
 
   assert.equal(VERSION, rootPackage.version);
   assert.equal(tsserverPackage.version, rootPackage.version);
+  assert.equal(eslintPluginPackage.version, rootPackage.version);
+  assert.equal(eslintPluginPackage.peerDependencies?.tsifdef, rootPackage.version);
+  assert.equal(packageLock.version, rootPackage.version);
+  assert.equal(packageLock.packages?.[""]?.version, rootPackage.version);
+  assert.equal(packageLock.packages?.["tsserver-package"]?.version, rootPackage.version);
 });
 
 test("demo package advertises the modern projected build path", async () => {

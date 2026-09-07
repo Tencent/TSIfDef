@@ -10,10 +10,21 @@ VSCode 扩展和 ESLint processor 共享实现——任何环境都不自行解�
 
 ## 安装
 
+在 TypeScript 工程中安装 TSIfDef：
+
+```bash
+npm install --save-dev tsifdef
+```
+
+如果是从源码构建本仓库：
+
 ```bash
 npm install
 npm run build
 ```
+
+运行要求：Node.js 18.17 或更高版本、TypeScript 5.5；使用编辑器扩展时需要
+VSCode 1.85 或更高版本。
 
 ## 在项目里使用
 
@@ -65,9 +76,20 @@ ESLint 用自己的 parser 直接解析原始源码，因此不接入时，`#if`
 `Parsing error: ';' expected`。TSIfDef 自带一个 ESLint processor，在 ESLint 看到
 代码之前先做等长遮盖投影——与 tsserver 劫持 `getScriptSnapshot` 是对称的做法。
 
-安装 tgz 时会运行 `postinstall`，在宿主 `node_modules` 下自动生成一个极小的转发包
-`eslint-plugin-tsifdef`（ESLint 会把 `plugins: ["tsifdef"]` 解析成名为
-`eslint-plugin-tsifdef` 的包，npm alias 无法满足，故用转发包）。然后在工程
+安装同版本的核心包和 ESLint companion 包：
+
+```bash
+npm install --save-dev tsifdef eslint-plugin-tsifdef
+```
+
+使用本地文件或离线接入时，应同时安装两个发布产物：
+
+```bash
+npm install --save-dev ./tsifdef-<version>.tgz ./eslint-plugin-tsifdef-<version>.tgz
+```
+
+companion 包只是到 `tsifdef/eslint-plugin` 的极小显式转发入口。它作为正式依赖参与
+依赖树，保证全新安装结果确定，不再由生命周期脚本临时生成。然后在工程
 `.eslintrc` 里加一段 override：
 
 ```json
@@ -80,15 +102,8 @@ ESLint 用自己的 parser 直接解析原始源码，因此不接入时，`#if`
 ```
 
 未激活分支会被遮盖，ESLint 只检查激活视图；因为等长遮盖保留长度，诊断的行列与
-原始文件一致。
-
-关于 Prettier：等长遮盖会把宏指令行（`#if`、`#endif` 等）替换成一串空格。`tsc`
-不在意空白，但 `prettier/prettier` 会把“行尾空白”报成格式问题。若不想要这类噪音，
-在工程 `.eslintrc` 里关掉该规则：
-
-```json
-"rules": { "prettier/prettier": "off" }
-```
+原始文件一致。`postprocess` 会删除完全由合成遮盖区间引起的诊断，同时保留触及真实
+源码的诊断。包括 `prettier/prettier` 在内的文本规则因此可以保持开启。
 
 ## 发布
 
@@ -100,11 +115,15 @@ npm version <patch|minor|major|x.y.z> --no-git-tag-version
 npm run release
 ```
 
-会输出：
+会生成并完成冒烟验证：
 
 - `release/tsifdef-<version>.vsix`
 - `release/tsifdef-<version>.tgz`
+- `release/eslint-plugin-tsifdef-<version>.tgz`
 - `release/manifest.json`
+
+发布检查会把两个 tgz 安装到全新的临时工程，加载 ESLint processor、运行 CLI，
+并把 VSIX 安装到隔离的 VSCode 扩展目录。
 
 唯一需要人工配置的版本是 `package.json` 的 `version`。构建和发布会在编译前从该
 字段同步生成的源码与辅助包元数据；不要通过修改 `src/version.ts`、
