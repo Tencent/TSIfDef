@@ -76,30 +76,40 @@ ESLint 用自己的 parser 直接解析原始源码，因此不接入时，`#if`
 `Parsing error: ';' expected`。TSIfDef 自带一个 ESLint processor，在 ESLint 看到
 代码之前先做等长遮盖投影——与 tsserver 劫持 `getScriptSnapshot` 是对称的做法。
 
-安装同版本的核心包和 ESLint companion 包：
+将同一个 TSIfDef 包按 ESLint 的标准插件名安装。包内仍然提供 `tsifdef` CLI：
 
 ```bash
-npm install --save-dev tsifdef eslint-plugin-tsifdef
+npm install --save-dev eslint-plugin-tsifdef@npm:tsifdef
 ```
 
-使用本地文件或离线接入时，应同时安装两个发布产物：
+使用本地文件或离线接入时，只需让这一个依赖指向发布 tgz：
 
 ```bash
-npm install --save-dev ./tsifdef-<version>.tgz ./eslint-plugin-tsifdef-<version>.tgz
+npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 ```
 
-companion 包只是到 `tsifdef/eslint-plugin` 的极小显式转发入口。它作为正式依赖参与
-依赖树，保证全新安装结果确定，不再由生命周期脚本临时生成。然后在工程
-`.eslintrc` 里加一段 override：
+统一包的根入口提供 ESLint processor，`eslint-plugin-tsifdef/parser` 提供 parser。
+然后在工程 `.eslintrc` 里加一段 override：
 
 ```json
 {
+  "parser": "@typescript-eslint/parser",
   "plugins": ["tsifdef"],
   "overrides": [
     { "files": ["*.ts", "*.mts", "*.cts", "*.tsx"], "processor": "tsifdef/macros" }
-  ]
+  ],
+  "settings": {
+    "import/parsers": {
+      "eslint-plugin-tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"]
+    }
+  }
 }
 ```
+
+顶层 parser 应保持为 `@typescript-eslint/parser`，这样 VSCode ESLint 默认的
+TypeScript probe 才会校验该文件。TSIfDef parser wrapper 只注册到
+`settings.import/parsers`，用于处理 `import/no-cycle` 等直接读取依赖文件、绕过
+processor 的规则。processor 仍需保留，用于投影主文件并过滤合成遮盖产生的诊断。
 
 未激活分支会被遮盖，ESLint 只检查激活视图；因为等长遮盖保留长度，诊断的行列与
 原始文件一致。`postprocess` 会删除完全由合成遮盖区间引起的诊断，同时保留触及真实
@@ -119,11 +129,10 @@ npm run release
 
 - `release/tsifdef-<version>.vsix`
 - `release/tsifdef-<version>.tgz`
-- `release/eslint-plugin-tsifdef-<version>.tgz`
 - `release/manifest.json`
 
-发布检查会把两个 tgz 安装到全新的临时工程，加载 ESLint processor、运行 CLI，
-并把 VSIX 安装到隔离的 VSCode 扩展目录。
+发布检查会把该 tgz 以 ESLint 插件名安装到全新的临时工程，加载 ESLint processor
+和 parser、运行 CLI，并把 VSIX 安装到隔离的 VSCode 扩展目录。
 
 唯一需要人工配置的版本是 `package.json` 的 `version`。构建和发布会在编译前从该
 字段同步生成的源码与辅助包元数据；不要通过修改 `src/version.ts`、

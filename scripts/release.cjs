@@ -24,7 +24,6 @@ const root = resolve(__dirname, "..");
 const releaseDir = join(root, "release");
 const packageJsonPath = join(root, "package.json");
 const tsserverShimRoot = join(root, "node_modules", "tsifdef-tsserver");
-const eslintPluginRoot = join(root, "eslint-plugin-package");
 const npmCli = process.env.npm_execpath;
 
 function run(command, args, options = {}) {
@@ -241,13 +240,23 @@ async function verifyInstalledVsix(vsixPath, packageJson) {
   }
 }
 
-function verifyInstalledTgz(tgzPath, eslintPluginTgzPath, packageJson) {
+function verifyInstalledTgz(tgzPath, packageJson) {
   const tempRoot = mkdtempSync(join(os.tmpdir(), "tsifdef-tgz-"));
   const projectRoot = join(tempRoot, "project");
   mkdirSync(join(projectRoot, "src"), { recursive: true });
   writeFileSync(
     join(projectRoot, "package.json"),
-    JSON.stringify({ name: "tsifdef-smoke", private: true, tsifdef: "./Profile.json" }, null, 2),
+    JSON.stringify({
+      name: "tsifdef-smoke",
+      private: true,
+      tsifdef: "./Profile.json",
+      devDependencies: {
+        "@typescript-eslint/parser": "5.62.0",
+        eslint: "8.57.1",
+        "eslint-plugin-tsifdef": `file:${tgzPath.replaceAll("\\", "/")}`,
+        typescript: "5.5.4",
+      },
+    }, null, 2),
     "utf8",
   );
   writeFileSync(join(projectRoot, "Profile.json"), '["HOK"]\n', "utf8");
@@ -256,14 +265,30 @@ function verifyInstalledTgz(tgzPath, eslintPluginTgzPath, packageJson) {
     JSON.stringify({ compilerOptions: { target: "ES2022", module: "Node16", moduleResolution: "Node16" }, include: ["src/**/*.ts"] }, null, 2),
     "utf8",
   );
+  writeFileSync(
+    join(projectRoot, ".eslintrc.json"),
+    JSON.stringify({
+      parser: "@typescript-eslint/parser",
+      parserOptions: { ecmaVersion: "latest", sourceType: "module" },
+      plugins: ["tsifdef"],
+      overrides: [
+        {
+          files: ["*.ts"],
+          processor: "tsifdef/macros",
+        },
+      ],
+      rules: {
+        "no-unused-vars": "error",
+      },
+    }, null, 2),
+    "utf8",
+  );
   writeFileSync(join(projectRoot, "src", "main.ts"), "const value = 1;\n", "utf8");
 
   run(process.execPath, [
     npmCli,
     "install",
-    "--no-save",
-    tgzPath,
-    eslintPluginTgzPath,
+    "--ignore-scripts",
   ], { cwd: projectRoot });
 
   const binPath = process.platform === "win32"
@@ -271,20 +296,72 @@ function verifyInstalledTgz(tgzPath, eslintPluginTgzPath, packageJson) {
     : join(projectRoot, "node_modules", ".bin", "tsifdef");
   assertExists(binPath, "tgz CLI shim");
 
-  run(process.execPath, [join(projectRoot, "node_modules", packageJson.name, "dist", "cli", "main.js")], {
+  const installedPackageRoot = join(projectRoot, "node_modules", "eslint-plugin-tsifdef");
+  run(process.execPath, [join(installedPackageRoot, "dist", "cli", "main.js")], {
     cwd: projectRoot,
   });
 
   assertExists(join(projectRoot, ".tsifdef", "Output", "tsconfig.json"), "precompile output");
-  assertExists(join(projectRoot, "node_modules", packageJson.name, "dist", "cli", "main.js"), "installed CLI entry");
+  assertExists(join(installedPackageRoot, "dist", "cli", "main.js"), "installed CLI entry");
   assertPackageVersion(
-    join(projectRoot, "node_modules", "eslint-plugin-tsifdef", "package.json"),
+    join(installedPackageRoot, "package.json"),
     packageJson.version,
-    "installed ESLint helper manifest",
+    "installed package manifest",
   );
-  const eslintPlugin = require(join(projectRoot, "node_modules", "eslint-plugin-tsifdef"));
+  const projectRequire = require("node:module").createRequire(join(projectRoot, "package.json"));
+  const eslintPlugin = projectRequire("eslint-plugin-tsifdef");
   if (typeof eslintPlugin?.processors?.macros !== "object") {
-    throw new Error("Installed ESLint companion package does not expose the macros processor.");
+    throw new Error("Installed package does not expose the macros processor.");
+  }
+  if (eslintPlugin.coreApiVersion !== 1) {
+    throw new Error("Installed package root does not preserve the core API.");
+  }
+  const eslintParser = projectRequire("eslint-plugin-tsifdef/parser");
+  if (typeof eslintParser?.parseForESLint !== "function") {
+    throw new Error("Installed package does not expose the TSIfDef parser wrapper.");
+  }
+  const macroSourcePath = join(projectRoot, "src", "macro.ts");
+  writeFileSync(macroSourcePath, "#if HOK\nexport const active = 1;\n#endif\n", "utf8");
+  const parsed = eslintParser.parseForESLint(readFileSync(macroSourcePath, "utf8"), {
+    filePath: macroSourcePath,
+    ecmaVersion: 2022,
+    sourceType: "module",
+  });
+  if (parsed?.ast?.type !== "Program") {
+    throw new Error("Installed ESLint parser wrapper did not parse projected macro source.");
+  }
+  writeFileSync(
+    macroSourcePath,
+    "#if HOK\nconst unused = 1;\n#else\nconst hidden = 2;\n#endif\n",
+    "utf8",
+  );
+  const eslintPath = join(projectRoot, "node_modules", "eslint", "bin", "eslint.js");
+  const lintResult = spawnSync(
+    process.execPath,
+    [eslintPath, macroSourcePath, "--format", "json"],
+    {
+      cwd: projectRoot,
+      encoding: "utf8",
+      shell: false,
+    },
+  );
+  if (lintResult.error) {
+    throw lintResult.error;
+  }
+  if (lintResult.status !== 1) {
+    throw new Error(
+      `Installed ESLint integration exited with ${String(lintResult.status)}:\n${lintResult.stderr}`,
+    );
+  }
+  const lintReports = parseJson(lintResult.stdout, "installed ESLint smoke output");
+  const messages = lintReports?.[0]?.messages;
+  if (
+    !Array.isArray(messages)
+    || !messages.some(
+      (message) => message.ruleId === "no-unused-vars" && message.line === 2,
+    )
+  ) {
+    throw new Error("Installed package did not lint projected macro source through its processor.");
   }
 }
 
@@ -300,9 +377,24 @@ async function main() {
   }
   const npm = [process.execPath, npmCli];
 
-  run(npm[0], [npm[1], "run", "build"]);
-
   const packageJson = parseJson(readFileSync(packageJsonPath, "utf8"), "package.json");
+  const vsixName = `${packageJson.name}-${packageJson.version}.vsix`;
+  const vsixPath = join(releaseDir, vsixName);
+
+  // `vsce package` runs vscode:prepublish, which performs the one clean build
+  // needed by every artifact. Pack the npm tarballs afterwards so they contain
+  // exactly that verified output instead of cleaning and rebuilding twice.
+  run(npm[0], [
+    npm[1],
+    "exec",
+    "--",
+    "vsce",
+    "package",
+    "--no-dependencies",
+    "--out",
+    vsixPath,
+  ]);
+
   const { VERSION } = require(join(root, "dist", "version.js"));
   if (packageJson.version !== VERSION) {
     throw new Error(`package.json version '${packageJson.version}' does not match VERSION '${VERSION}'.`);
@@ -320,27 +412,7 @@ async function main() {
   if (!Array.isArray(packed) || packed.length !== 1 || typeof packed[0]?.filename !== "string") {
     throw new Error("npm pack did not return a single tarball filename.");
   }
-  const eslintPluginPackOutput = runCapture(npm[0], [
-    npm[1],
-    "pack",
-    eslintPluginRoot,
-    "--json",
-    "--pack-destination",
-    releaseDir,
-  ]);
-  const eslintPluginPacked = parseJson(eslintPluginPackOutput, "ESLint companion npm pack output");
-  if (!Array.isArray(eslintPluginPacked)
-    || eslintPluginPacked.length !== 1
-    || typeof eslintPluginPacked[0]?.filename !== "string") {
-    throw new Error("ESLint companion npm pack did not return a single tarball filename.");
-  }
-
-  run(npm[0], [npm[1], "exec", "--", "vsce", "package", "--out", releaseDir]);
-
   const tgzName = packed[0].filename;
-  const eslintPluginTgzName = eslintPluginPacked[0].filename;
-  const vsixName = `${packageJson.name}-${VERSION}.vsix`;
-  const vsixPath = join(releaseDir, vsixName);
   await appendTsserverShim(vsixPath, packageJson);
   const manifest = {
     package: packageJson.name,
@@ -348,7 +420,6 @@ async function main() {
     revision,
     artifacts: {
       tgz: tgzName,
-      eslintPluginTgz: eslintPluginTgzName,
       vsix: vsixName,
     },
   };
@@ -362,24 +433,15 @@ async function main() {
   if (!tgzName.includes(packageJson.version)) {
     throw new Error(`Tarball name '${tgzName}' does not include version '${packageJson.version}'.`);
   }
-  if (!eslintPluginTgzName.includes(packageJson.version)) {
-    throw new Error(
-      `ESLint companion tarball name '${eslintPluginTgzName}' does not include version '${packageJson.version}'.`,
-    );
-  }
   if (!vsixName.includes(VERSION)) {
     throw new Error(`VSIX name '${vsixName}' does not include version '${VERSION}'.`);
   }
 
   await verifyInstalledVsix(vsixPath, packageJson);
-  verifyInstalledTgz(
-    join(releaseDir, tgzName),
-    join(releaseDir, eslintPluginTgzName),
-    packageJson,
-  );
+  verifyInstalledTgz(join(releaseDir, tgzName), packageJson);
 
   process.stdout.write(
-    `Release artifacts written to ${releaseDir}\n${tgzName}\n${eslintPluginTgzName}\n${vsixName}\n`,
+    `Release artifacts written to ${releaseDir}\n${tgzName}\n${vsixName}\n`,
   );
 }
 

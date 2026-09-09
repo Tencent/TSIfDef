@@ -4,6 +4,19 @@ Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
 
 ## Unreleased
 
+## v1.1.5 - 2026-09-09
+
+- Add a TSIfDef-aware ESLint parser wrapper for rules such as
+  `import/no-cycle` that read dependency files directly and bypass processors.
+- Keep processor-based synthetic-diagnostic filtering while sharing Profile
+  resolution and source projection with the parser wrapper.
+- Keep `@typescript-eslint/parser` as the top-level parser so VSCode ESLint's
+  default TypeScript probe recognizes the file. The TSIfDef parser wrapper is
+  configured only through `settings.import/parsers` for dependency parsing.
+- Consolidate the npm distribution into one tarball. Installing it under the
+  `eslint-plugin-tsifdef` dependency name provides the CLI, core API, ESLint
+  processor, and parser from the same package.
+
 ## v1.1.4 - 2026-09-07
 
 - Ship `eslint-plugin-tsifdef` as a real companion package instead of creating

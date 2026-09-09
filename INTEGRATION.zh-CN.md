@@ -91,30 +91,48 @@ tsifdef build --watch --emit-projection .projection
 
 如果项目使用 ESLint，原始的 `#if` 行本会被报成解析错误。TSIfDef 提供一个 ESLint
 processor，让 ESLint 检查等长投影而非原始文本（位置不变，诊断直接映射回原文）。
-先安装版本一致的 companion 包：
+将同一个 TSIfDef 包按 ESLint 的标准插件名安装：
 
 ```bash
-npm install -D tsifdef eslint-plugin-tsifdef
+npm install -D eslint-plugin-tsifdef@npm:tsifdef
 ```
 
-离线使用发布产物时，应在同一条命令中安装两个 tgz。然后在项目的 ESLint 配置里启用：
+离线使用发布产物时，只需让这个依赖指向单个 tgz：
+
+```bash
+npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
+```
+
+然后在项目的 ESLint 配置里启用：
 
 ```jsonc
 // .eslintrc.json
 {
+  "parser": "@typescript-eslint/parser",
   "plugins": ["tsifdef"],
   "overrides": [
     {
       "files": ["*.ts", "*.mts", "*.cts", "*.tsx"],
       "processor": "tsifdef/macros"
     }
-  ]
+  ],
+  "settings": {
+    "import/parsers": {
+      "eslint-plugin-tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"]
+    }
+  }
 }
 ```
 
+顶层 parser 应保持为 `@typescript-eslint/parser`，这样 VSCode ESLint 默认的
+TypeScript probe 才会校验该文件。TSIfDef parser wrapper 只注册到
+`settings.import/parsers`，用于处理 `import/no-cycle` 等直接读取依赖文件并自行调用
+parser、从而绕过 processor 的规则；processor 仍需保留，用于投影主文件并在
+`postprocess` 中过滤合成遮盖产生的诊断。
+
 processor 解析 Profile 的方式与 CLI 一致（最近的 `package.json` 里的 `tsifdef`
-指针）。`eslint-plugin-tsifdef` 是到核心包 processor 的极小显式转发入口；两个包
-保持同版本可以避免行为不匹配。
+指针）。安装的同一个包同时提供 CLI、核心 API、ESLint processor 和 parser，不再
+维护额外的 companion 包及其版本。
 
 ### Prettier 与其他文本规则
 

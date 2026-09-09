@@ -20,7 +20,6 @@ const versionPath = join(root, "src", "version.ts");
 const packagePath = join(root, "package.json");
 const lockPath = join(root, "package-lock.json");
 const tsserverPackagePath = join(root, "tsserver-package", "package.json");
-const eslintPluginPackagePath = join(root, "eslint-plugin-package", "package.json");
 
 function parseJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -89,23 +88,6 @@ export const VERSION_TAG = \`v\${VERSION}\`;
   if (tsserverPackage.version !== version) {
     tsserverPackage.version = version;
     writeJson(tsserverPackagePath, tsserverPackage);
-  }
-
-  const eslintPluginPackage = parseJson(eslintPluginPackagePath);
-  let eslintPluginChanged = false;
-  if (eslintPluginPackage.version !== version) {
-    eslintPluginPackage.version = version;
-    eslintPluginChanged = true;
-  }
-  if (eslintPluginPackage.peerDependencies?.tsifdef !== version) {
-    eslintPluginPackage.peerDependencies = {
-      ...eslintPluginPackage.peerDependencies,
-      tsifdef: version,
-    };
-    eslintPluginChanged = true;
-  }
-  if (eslintPluginChanged) {
-    writeJson(eslintPluginPackagePath, eslintPluginPackage);
   }
 }
 

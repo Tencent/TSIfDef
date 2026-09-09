@@ -12,6 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-"use strict";
-
-module.exports = require("tsifdef/eslint-plugin");
+export * from "../core/index.js";
+export { processors } from "./plugin.js";

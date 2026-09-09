@@ -4,6 +4,7 @@
 .gitignore
 .npmignore
 .test-dist/**
+.tmp-*/**
 src/**
 test/**
 examples/**

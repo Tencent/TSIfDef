@@ -4,6 +4,18 @@ Language file: [`CHANGELOG.md`](./CHANGELOG.md)
 
 ## 未发布
 
+## v1.1.5 - 2026-09-09
+
+- 增加 TSIfDef-aware ESLint parser wrapper，覆盖 `import/no-cycle` 等直接读取
+  依赖文件、绕过 processor 的规则。
+- 保留 processor 的合成诊断过滤，并让 parser wrapper 与 processor 共用 Profile
+  解析及源码投影逻辑。
+- 顶层 parser 保持为 `@typescript-eslint/parser`，让 VSCode ESLint 默认的
+  TypeScript probe 能识别文件；TSIfDef parser wrapper 仅通过
+  `settings.import/parsers` 处理依赖文件。
+- npm 发布物合并为单个 tgz；以 `eslint-plugin-tsifdef` 依赖名安装后，同一个包
+  同时提供 CLI、核心 API、ESLint processor 和 parser。
+
 ## v1.1.4 - 2026-09-07
 
 - 将 `eslint-plugin-tsifdef` 作为真实 companion 包交付，不再依赖

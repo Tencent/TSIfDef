@@ -4,11 +4,11 @@
 assets/**
 .vscodeignore
 .test-dist/**
+.tmp-*/**
 src/**
 test/**
 examples/**
 scripts/**
-eslint-plugin-package/**
 node_modules/**
 tsconfig*.json
 package-lock.json

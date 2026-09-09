@@ -102,32 +102,52 @@ code does not error, and `#if UNKNOWN_MACRO` is treated as `false` rather than
 If the project uses ESLint, raw `#if` lines would otherwise be reported as parse
 errors. TSIfDef ships an ESLint processor that lints the equal-length projection
 instead of the raw text (positions are unchanged, so diagnostics map back
-directly). Install the version-matched companion package first:
+directly). Install the package under ESLint's conventional plugin name:
 
 ```bash
-npm install -D tsifdef eslint-plugin-tsifdef
+npm install -D eslint-plugin-tsifdef@npm:tsifdef
 ```
 
-When consuming offline release artifacts, install both tarballs in the same
-command. Then enable the processor in the project's ESLint config:
+When consuming an offline release artifact, use the single tarball as that
+dependency:
+
+```bash
+npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
+```
+
+Then enable the processor in the project's ESLint config:
 
 ```jsonc
 // .eslintrc.json
 {
+  "parser": "@typescript-eslint/parser",
   "plugins": ["tsifdef"],
   "overrides": [
     {
       "files": ["*.ts", "*.mts", "*.cts", "*.tsx"],
       "processor": "tsifdef/macros"
     }
-  ]
+  ],
+  "settings": {
+    "import/parsers": {
+      "eslint-plugin-tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"]
+    }
+  }
 }
 ```
 
+Keep `@typescript-eslint/parser` as the top-level parser. VSCode ESLint's
+default TypeScript probe recognizes that parser and will therefore validate the
+file. Register the TSIfDef parser wrapper only in `settings.import/parsers`; it
+is required for rules such as `import/no-cycle` that read dependency files from
+disk and invoke a parser directly, bypassing ESLint processors. Keep the
+processor enabled as well so the primary file is projected and synthetic
+masking diagnostics can be filtered in `postprocess`.
+
 The processor resolves the Profile the same way the CLI does (the `tsifdef`
-pointer in the nearest `package.json`). `eslint-plugin-tsifdef` is an explicit,
-minimal bridge to the processor exported by the core package; keeping both
-packages at the same version avoids mismatched behavior.
+pointer in the nearest `package.json`). The one installed package also provides
+the CLI, core API, ESLint processor, and parser, so there is no companion
+package version to synchronize.
 
 ### Prettier and other text rules
 

@@ -1,6 +1,6 @@
 {
   "name": "tsifdef",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Source-level conditional compilation for TypeScript",
   "license": "Apache-2.0",
   "repository": {
@@ -8,7 +8,7 @@
     "url": "https://github.com/Tencent/TsIfDef.git"
   },
   "main": "dist/vscode/extension.js",
-  "types": "dist/core/index.d.ts",
+  "types": "dist/eslint/package.d.ts",
   "publisher": "hok",
   "displayName": "TSIfDef",
   "icon": "assets/icon.png",
@@ -17,9 +17,9 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/core/index.d.ts",
-      "require": "./dist/core/index.js",
-      "default": "./dist/core/index.js"
+      "types": "./dist/eslint/package.d.ts",
+      "require": "./dist/eslint/package.js",
+      "default": "./dist/eslint/package.js"
     },
     "./core": {
       "types": "./dist/core/index.d.ts",
@@ -30,6 +30,16 @@
       "types": "./dist/eslint/plugin.d.ts",
       "require": "./dist/eslint/plugin.js",
       "default": "./dist/eslint/plugin.js"
+    },
+    "./eslint-parser": {
+      "types": "./dist/eslint/parser.d.ts",
+      "require": "./dist/eslint/parser.js",
+      "default": "./dist/eslint/parser.js"
+    },
+    "./parser": {
+      "types": "./dist/eslint/parser.d.ts",
+      "require": "./dist/eslint/parser.js",
+      "default": "./dist/eslint/parser.js"
     }
   },
   "engines": {
@@ -63,10 +73,21 @@
   },
   "devDependencies": {
     "@types/node": "22.15.3",
+    "@typescript-eslint/parser": "5.62.0",
     "@vscode/vsce": "3.9.2",
+    "eslint": "8.57.1",
+    "eslint-plugin-import": "2.32.0",
     "tsifdef-tsserver": "file:./tsserver-package",
     "yauzl": "^3.4.0",
     "yazl": "^2.5.1"
+  },
+  "peerDependencies": {
+    "@typescript-eslint/parser": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@typescript-eslint/parser": {
+      "optional": true
+    }
   },
   "dependencies": {
     "typescript": "5.5.4"

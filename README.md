@@ -89,30 +89,44 @@ ESLint parses the raw source with its own parser, so without integration a
 ESLint processor that projects the source (equal-length masking) before ESLint
 sees it — the mirror of the tsserver `getScriptSnapshot` hook.
 
-Install both the core package and its ESLint companion at the same version:
+Install the single TSIfDef package under ESLint's conventional plugin name.
+The package still exposes the `tsifdef` CLI:
 
 ```bash
-npm install --save-dev tsifdef eslint-plugin-tsifdef
+npm install --save-dev eslint-plugin-tsifdef@npm:tsifdef
 ```
 
-For file-based or offline integration, install both release tarballs together:
+For file-based or offline integration, point that one dependency at the release
+tarball:
 
 ```bash
-npm install --save-dev ./tsifdef-<version>.tgz ./eslint-plugin-tsifdef-<version>.tgz
+npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 ```
 
-The companion is a small, explicit bridge to `tsifdef/eslint-plugin`. Keeping it
-in the dependency graph makes clean installs deterministic; it is not generated
-by a lifecycle script. Add one override in the project's `.eslintrc`:
+The unified package exposes its processor at the package root and its parser at
+`eslint-plugin-tsifdef/parser`. Add one override in the project's `.eslintrc`:
 
 ```json
 {
+  "parser": "@typescript-eslint/parser",
   "plugins": ["tsifdef"],
   "overrides": [
     { "files": ["*.ts", "*.mts", "*.cts", "*.tsx"], "processor": "tsifdef/macros" }
-  ]
+  ],
+  "settings": {
+    "import/parsers": {
+      "eslint-plugin-tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"]
+    }
+  }
 }
 ```
+
+Keep `@typescript-eslint/parser` as the top-level parser. VSCode ESLint's default
+TypeScript probe recognizes that parser and will therefore validate the file.
+The TSIfDef parser wrapper is registered only in `settings.import/parsers`; it
+projects dependency files for rules such as `import/no-cycle` that read them
+directly and bypass processors. Keep the processor as well: it projects the
+primary file and filters diagnostics caused by synthetic masking.
 
 Inactive branches are masked, so ESLint lints only the active view; diagnostics
 keep their original line/column because masking preserves length. Diagnostics
@@ -135,12 +149,11 @@ That emits and smoke-tests:
 
 - `release/tsifdef-<version>.vsix`
 - `release/tsifdef-<version>.tgz`
-- `release/eslint-plugin-tsifdef-<version>.tgz`
 - `release/manifest.json`
 
-The release check installs the two tarballs into a clean temporary project,
-loads the ESLint processor, runs the CLI, and installs the VSIX into an isolated
-VSCode extensions directory.
+The release check installs the tarball under the ESLint plugin alias in a clean
+temporary project, loads the ESLint processor and parser, runs the CLI, and
+installs the VSIX into an isolated VSCode extensions directory.
 
 The only manually configured version is `package.json` `version`. Build and
 release synchronize generated source and helper-package metadata from it before
