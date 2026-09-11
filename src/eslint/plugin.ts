@@ -276,28 +276,66 @@ interface FlatConfig {
   };
 }
 
+/**
+ * The legacy `.eslintrc` schema rejects a top-level `files` key, so the flat
+ * config cannot be reused for `extends: ["plugin:tsifdef/recommended"]`. The
+ * same targeting is expressed through `overrides` instead. Legacy resolves the
+ * plugin as `eslint-plugin-tsifdef`, so `import/parsers` must be keyed by that
+ * full package name rather than the flat-config short name.
+ */
+interface LegacyConfig {
+  readonly plugins: readonly string[];
+  readonly overrides: readonly {
+    readonly files: readonly string[];
+    readonly processor: string;
+  }[];
+  readonly settings: {
+    readonly "import/parsers": {
+      readonly "eslint-plugin-tsifdef/parser": readonly string[];
+    };
+  };
+}
+
 interface EslintPlugin {
   readonly meta: { readonly name: string; readonly version: string };
   readonly processors: typeof processors;
-  readonly configs: Record<string, FlatConfig>;
+  readonly configs: Record<string, FlatConfig | LegacyConfig>;
 }
 
+const MACRO_FILE_GLOBS = ["**/*.{ts,tsx,mts,cts}"];
+const MACRO_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts"];
+
 export const meta = { name: "tsifdef", version: VERSION };
-export const configs: Record<string, FlatConfig> = {};
+export const configs: Record<string, FlatConfig | LegacyConfig> = {};
 
 const plugin: EslintPlugin = { meta, processors, configs };
-const recommended: FlatConfig = {
-  files: ["**/*.{ts,tsx,mts,cts}"],
+const flatRecommended: FlatConfig = {
+  files: MACRO_FILE_GLOBS,
   plugins: { tsifdef: plugin },
   processor: "tsifdef/macros",
   settings: {
     "import/parsers": {
-      "tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"],
+      "tsifdef/parser": MACRO_EXTENSIONS,
     },
   },
 };
 
-configs.recommended = recommended;
-configs["flat/recommended"] = recommended;
+const legacyRecommended: LegacyConfig = {
+  plugins: ["tsifdef"],
+  overrides: [
+    {
+      files: ["*.ts", "*.tsx", "*.mts", "*.cts"],
+      processor: "tsifdef/macros",
+    },
+  ],
+  settings: {
+    "import/parsers": {
+      "eslint-plugin-tsifdef/parser": MACRO_EXTENSIONS,
+    },
+  },
+};
+
+configs.recommended = legacyRecommended;
+configs["flat/recommended"] = flatRecommended;
 
 export default plugin;

@@ -14,6 +14,11 @@
 - Pass files containing no directives through untouched and cache that verdict.
   Large generated `.d.ts` files were projected on every request; one 25 MB file
   cost over 100 ms per call and lost its change range for no benefit.
+- Fix `extends: ["plugin:tsifdef/recommended"]` under legacy `.eslintrc`. The
+  package entry did not re-export `configs`, so ESLint reported the config as
+  missing; once exported, the shared flat config was rejected with `Unexpected
+  top-level property "files"`. Legacy now gets its own `overrides`-shaped
+  config, and `configs["flat/recommended"]` is unchanged.
 
 ## v1.1.6 - 2026-09-11
 

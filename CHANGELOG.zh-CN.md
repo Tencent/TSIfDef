@@ -12,6 +12,10 @@
   扫描。
 - 不含指令的文件原样透传，并缓存该判定。此前大型生成的 `.d.ts` 每次请求都会被
   投影：一个 25 MB 的文件单次耗时超过 100 ms，且白白丢掉了变更范围。
+- 修复旧版 `.eslintrc` 下的 `extends: ["plugin:tsifdef/recommended"]`。包入口
+  未再导出 `configs`，ESLint 报告找不到该配置；补上导出后，复用的 Flat Config
+  又因 `Unexpected top-level property "files"` 被拒。现在旧版拥有独立的
+  `overrides` 形态配置，`configs["flat/recommended"]` 保持不变。
 
 ## v1.1.6 - 2026-09-11
 

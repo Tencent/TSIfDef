@@ -128,6 +128,16 @@ npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 // .eslintrc.json
 {
   "parser": "@typescript-eslint/parser",
+  "extends": ["plugin:tsifdef/recommended"]
+}
+```
+
+这一行同时配好 plugin、processor 和 `import/parsers`。若要手动展开：
+
+```jsonc
+// .eslintrc.json
+{
+  "parser": "@typescript-eslint/parser",
   "plugins": ["tsifdef"],
   "overrides": [
     {

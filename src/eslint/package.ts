@@ -19,3 +19,9 @@ export {
   meta as eslintPluginMeta,
   processors,
 } from "./plugin.js";
+
+// The legacy `.eslintrc` system resolves a plugin by package name, which lands
+// on this entry rather than on `./eslint-plugin`. It then reads `configs`,
+// `processors`, and `meta` off the module, so `extends: ["plugin:tsifdef/
+// recommended"]` only works if those names are present here too.
+export { configs, meta } from "./plugin.js";

@@ -22,6 +22,19 @@ import test from "node:test";
 import plugin, { configs, meta, processors } from "../src/eslint/plugin.js";
 import { VERSION } from "../src/version.js";
 
+interface FlatShape {
+  readonly files: readonly string[];
+  readonly plugins: { readonly tsifdef: unknown };
+  readonly processor: string;
+  readonly settings: Record<string, unknown>;
+}
+
+interface LegacyShape {
+  readonly plugins: readonly string[];
+  readonly overrides: readonly { readonly files: readonly string[]; readonly processor: string }[];
+  readonly settings: Record<string, unknown>;
+}
+
 const moduleRequire = createRequire(__filename);
 
 interface LintMessage {
@@ -75,15 +88,35 @@ test("ESLint plugin exports metadata and a reusable flat config", () => {
   assert.equal(plugin.meta, meta);
   assert.equal(plugin.processors, processors);
   assert.equal(plugin.configs, configs);
-  assert.equal(configs.recommended, configs["flat/recommended"]);
-  assert.equal(configs.recommended?.plugins.tsifdef, plugin);
-  assert.equal(configs.recommended?.processor, "tsifdef/macros");
-  assert.deepEqual(configs.recommended?.settings["import/parsers"], {
+  const flat = configs["flat/recommended"] as FlatShape;
+  assert.equal(flat.plugins.tsifdef, plugin);
+  assert.equal(flat.processor, "tsifdef/macros");
+  assert.deepEqual(flat.files, ["**/*.{ts,tsx,mts,cts}"]);
+  assert.deepEqual(flat.settings["import/parsers"], {
     "tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"],
   });
   assert.deepEqual(processors.macros.meta, {
     name: "tsifdef/macros",
     version: VERSION,
+  });
+});
+
+/**
+ * The legacy `.eslintrc` schema rejects a top-level `files` key, so reusing the
+ * flat config for `extends: ["plugin:tsifdef/recommended"]` made ESLint 8 abort
+ * with "Unexpected top-level property \"files\"".
+ */
+test("the legacy recommended config uses the eslintrc shape", () => {
+  const legacy = configs.recommended as LegacyShape;
+  assert.equal((legacy as { files?: unknown }).files, undefined);
+  assert.deepEqual(legacy.plugins, ["tsifdef"]);
+  assert.deepEqual(legacy.overrides, [
+    { files: ["*.ts", "*.tsx", "*.mts", "*.cts"], processor: "tsifdef/macros" },
+  ]);
+  // Legacy resolves the plugin as eslint-plugin-tsifdef, so import/parsers must
+  // be keyed by the full package name rather than the flat-config short name.
+  assert.deepEqual(legacy.settings["import/parsers"], {
+    "eslint-plugin-tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"],
   });
 });
 

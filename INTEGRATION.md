@@ -135,6 +135,17 @@ npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 // .eslintrc.json
 {
   "parser": "@typescript-eslint/parser",
+  "extends": ["plugin:tsifdef/recommended"]
+}
+```
+
+That sets the plugin, the processor, and the `import/parsers` setting. To wire
+them up by hand instead:
+
+```jsonc
+// .eslintrc.json
+{
+  "parser": "@typescript-eslint/parser",
   "plugins": ["tsifdef"],
   "overrides": [
     {
