@@ -3,6 +3,8 @@
 ## v1.1.5 - 2026-09-09
 
 - Add GitHub Actions workflows for tests, builds, and verified GitHub Releases.
+- Generate bilingual release notes and allow maintainers to replace an
+  existing release and tag for the current version.
 - Publish the installable npm tarball and VSIX together on the Releases page.
 - Add the public product documentation, contribution guide, security policy,
   and neutral macro examples.

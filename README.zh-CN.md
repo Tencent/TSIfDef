@@ -17,6 +17,16 @@
 > **TSIfDef 为 TypeScript 提供可靠的 `#if` 条件编译。**
 > 一套源码构建多个产品，并让编译器、编辑器和 ESLint 始终使用同一份激活代码。
 
+```typescript
+#if BROWSER
+export const runtime = "browser";
+#elif NODE
+export const runtime = "node";
+#else
+#error Select a supported runtime
+#endif
+```
+
 [![下载](https://img.shields.io/badge/下载-最新版本-blue.svg?style=for-the-badge)](https://github.com/Tencent/TSIfDef/releases/latest)
 
 ## 快速开始
@@ -46,17 +56,7 @@ npm install --save-dev ./tsifdef-1.1.5.tgz
 }
 ```
 
-直接在原始 TypeScript 文件中编写条件代码：
-
-```ts
-#if BROWSER
-export const runtime = "browser";
-#elif NODE
-export const runtime = "node";
-#else
-#error Select a supported runtime
-#endif
-```
+直接在原始 TypeScript 文件中编写条件代码，如上方示例所示。
 
 运行项目构建：
 

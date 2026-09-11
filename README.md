@@ -18,6 +18,16 @@
 > Build multiple products from one source tree while the compiler, editor, and
 > ESLint always see the same active code.
 
+```typescript
+#if BROWSER
+export const runtime = "browser";
+#elif NODE
+export const runtime = "node";
+#else
+#error Select a supported runtime
+#endif
+```
+
 [![Download](https://img.shields.io/badge/Download-Latest_Release-blue.svg?style=for-the-badge)](https://github.com/Tencent/TSIfDef/releases/latest)
 
 ## Quick Start
@@ -48,17 +58,8 @@ Point `package.json` at that Profile and use TSIfDef as the compiler entry:
 }
 ```
 
-Write conditional TypeScript directly in the original source file:
-
-```ts
-#if BROWSER
-export const runtime = "browser";
-#elif NODE
-export const runtime = "node";
-#else
-#error Select a supported runtime
-#endif
-```
+Write conditional TypeScript directly in the original source file, as shown
+in the example above.
 
 Run the normal project build:
 
