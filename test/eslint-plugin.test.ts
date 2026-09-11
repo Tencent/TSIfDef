@@ -104,10 +104,12 @@ test("ESLint plugin exports metadata and a reusable flat config", () => {
 /**
  * The legacy `.eslintrc` schema rejects a top-level `files` key, so reusing the
  * flat config for `extends: ["plugin:tsifdef/recommended"]` made ESLint 8 abort
- * with "Unexpected top-level property \"files\"".
+ * with "Unexpected top-level property \"files\"". The legacy shape is published
+ * under its own name here; on the package entry that `.eslintrc` resolves, it
+ * is also what `recommended` maps to.
  */
 test("the legacy recommended config uses the eslintrc shape", () => {
-  const legacy = configs.recommended as LegacyShape;
+  const legacy = configs["legacy/recommended"] as LegacyShape;
   assert.equal((legacy as { files?: unknown }).files, undefined);
   assert.deepEqual(legacy.plugins, ["tsifdef"]);
   assert.deepEqual(legacy.overrides, [
@@ -118,6 +120,38 @@ test("the legacy recommended config uses the eslintrc shape", () => {
   assert.deepEqual(legacy.settings["import/parsers"], {
     "eslint-plugin-tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"],
   });
+});
+
+/**
+ * `configs.recommended` on the flat entry has meant the flat config since
+ * 1.1.6. Handing a flat config the eslintrc shape makes ESLint 9 reject the
+ * whole config, so this alias must not drift.
+ */
+test("recommended stays the flat config on the flat plugin entry", () => {
+  assert.equal(configs.recommended, configs["flat/recommended"]);
+  assert.ok("files" in (configs.recommended as object));
+});
+
+/**
+ * Legacy `.eslintrc` resolves a plugin by package name, landing on the package
+ * entry rather than on ./eslint-plugin. That entry must therefore carry
+ * configs/meta at all -- without them ESLint reports "couldn't find the config
+ * plugin:tsifdef/recommended" -- and its `recommended` must be the eslintrc
+ * shape.
+ */
+test("the package entry serves the legacy shape as recommended", async () => {
+  const entry = (await import("../src/eslint/package.js")) as unknown as {
+    readonly configs: Record<string, unknown>;
+    readonly meta: unknown;
+    readonly processors: unknown;
+  };
+  assert.ok(entry.configs, "package entry must export configs");
+  assert.ok(entry.meta, "package entry must export meta");
+  assert.ok(entry.processors, "package entry must export processors");
+  assert.equal("files" in (entry.configs.recommended as object), false);
+  assert.equal(entry.configs.recommended, configs["legacy/recommended"]);
+  // The flat shape stays reachable through the alias package name.
+  assert.equal(entry.configs["flat/recommended"], configs["flat/recommended"]);
 });
 
 for (const [label, eslintPackage, parserPackage] of eslintMatrix) {

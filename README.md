@@ -2,13 +2,13 @@
   <img src="assets/icon.png" alt="TSIfDef icon" width="128">
 </p>
 
-# TSIfDef 1.1.7
+# TSIfDef 1.1.8
 
 **English** | [简体中文](./README.zh-CN.md)
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-brightgreen.svg?style=flat)](./LICENSE)
 [![Release](https://img.shields.io/github/v/release/Tencent/TSIfDef?style=flat&label=release)](https://github.com/Tencent/TSIfDef/releases/latest)
-[![Changelog](https://img.shields.io/badge/changelog-1.1.7-orange.svg?style=flat)](./CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/changelog-1.1.8-orange.svg?style=flat)](./CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
 [![Test](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml)

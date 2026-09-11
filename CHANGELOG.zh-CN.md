@@ -1,6 +1,6 @@
 # 更新日志
 
-## v1.1.7 - 2026-09-11
+## v1.1.8 - 2026-09-11
 
 - 修复 tsserver 插件导致的编辑卡顿：投影快照此前由
   `ts.ScriptSnapshot.fromString` 构造，其 `getChangeRange` 恒返回 `undefined`，
@@ -14,8 +14,10 @@
   投影：一个 25 MB 的文件单次耗时超过 100 ms，且白白丢掉了变更范围。
 - 修复旧版 `.eslintrc` 下的 `extends: ["plugin:tsifdef/recommended"]`。包入口
   未再导出 `configs`，ESLint 报告找不到该配置；补上导出后，复用的 Flat Config
-  又因 `Unexpected top-level property "files"` 被拒。现在旧版拥有独立的
-  `overrides` 形态配置，`configs["flat/recommended"]` 保持不变。
+  又因 `Unexpected top-level property "files"` 被拒。现在旧版形态以
+  `legacy/recommended` 发布，`.eslintrc` 解析到的包入口将其作为 `recommended`
+  提供；而 `tsifdef/eslint-plugin` 上的 `configs.recommended` 仍是 Flat Config，
+  现有 Flat 配置不受影响。
 
 ## v1.1.6 - 2026-09-11
 

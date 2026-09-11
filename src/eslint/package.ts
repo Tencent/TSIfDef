@@ -20,8 +20,19 @@ export {
   processors,
 } from "./plugin.js";
 
+import { configs as pluginConfigs, legacyRecommended, meta as pluginMeta } from "./plugin.js";
+
 // The legacy `.eslintrc` system resolves a plugin by package name, which lands
 // on this entry rather than on `./eslint-plugin`. It then reads `configs`,
 // `processors`, and `meta` off the module, so `extends: ["plugin:tsifdef/
 // recommended"]` only works if those names are present here too.
-export { configs, meta } from "./plugin.js";
+//
+// `recommended` must be the eslintrc shape here: the legacy schema rejects a
+// top-level `files` key. The flat shape stays reachable under the same names
+// it has on the flat entry, so a flat config that reaches this entry through
+// the `eslint-plugin-tsifdef` alias still works.
+export const meta = pluginMeta;
+export const configs = {
+  ...pluginConfigs,
+  recommended: legacyRecommended,
+};

@@ -265,7 +265,7 @@ export const processors = {
   },
 };
 
-interface FlatConfig {
+export interface FlatConfig {
   readonly files: readonly string[];
   readonly plugins: { readonly tsifdef: EslintPlugin };
   readonly processor: string;
@@ -283,7 +283,7 @@ interface FlatConfig {
  * plugin as `eslint-plugin-tsifdef`, so `import/parsers` must be keyed by that
  * full package name rather than the flat-config short name.
  */
-interface LegacyConfig {
+export interface LegacyConfig {
   readonly plugins: readonly string[];
   readonly overrides: readonly {
     readonly files: readonly string[];
@@ -320,7 +320,7 @@ const flatRecommended: FlatConfig = {
   },
 };
 
-const legacyRecommended: LegacyConfig = {
+export const legacyRecommended: LegacyConfig = {
   plugins: ["tsifdef"],
   overrides: [
     {
@@ -335,7 +335,13 @@ const legacyRecommended: LegacyConfig = {
   },
 };
 
-configs.recommended = legacyRecommended;
+// This entry is what flat configs import as `tsifdef/eslint-plugin`, where
+// `recommended` has always meant the flat config. Keep it that way: changing
+// its shape makes ESLint 9 reject the config outright. The legacy shape is
+// reachable here under an explicit name, and is what `configs.recommended`
+// resolves to on the package entry that `.eslintrc` loads.
+configs.recommended = flatRecommended;
 configs["flat/recommended"] = flatRecommended;
+configs["legacy/recommended"] = legacyRecommended;
 
 export default plugin;

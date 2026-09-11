@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.1.7 - 2026-09-11
+## v1.1.8 - 2026-09-11
 
 - Restore incremental reparsing in the tsserver plugin. Projected snapshots were
   built with `ts.ScriptSnapshot.fromString`, whose `getChangeRange` always
@@ -17,8 +17,10 @@
 - Fix `extends: ["plugin:tsifdef/recommended"]` under legacy `.eslintrc`. The
   package entry did not re-export `configs`, so ESLint reported the config as
   missing; once exported, the shared flat config was rejected with `Unexpected
-  top-level property "files"`. Legacy now gets its own `overrides`-shaped
-  config, and `configs["flat/recommended"]` is unchanged.
+  top-level property "files"`. The legacy shape is now published as
+  `legacy/recommended`, and the package entry that `.eslintrc` resolves serves
+  it as `recommended`. On `tsifdef/eslint-plugin`, `configs.recommended` still
+  means the flat config, so existing flat configs are unaffected.
 
 ## v1.1.6 - 2026-09-11
 
