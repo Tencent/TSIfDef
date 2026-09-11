@@ -65,8 +65,17 @@ override it. Switching Profiles triggers a full rebuild automatically.
 
 Two pieces make `#if` gray out and stop erroring:
 
-1. **VSCode extension** — install the TSIfDef VSIX. It grays out and folds
-   inactive branches and shows the active Profile in the status bar.
+1. **VSCode extension** — grays out and folds inactive branches and shows the
+   active Profile in the status bar. Install it whichever way suits the editor:
+
+   - **Marketplace** — search **TSIfDef** in the Extensions view
+     (`Ctrl+Shift+X`) and install the entry from **Tencent TiMi Studio Group**,
+     or run `code --install-extension timi-studio.tsifdef`.
+   - **VSIX** — for editors that do not reach the VS Code Marketplace, download
+     `tsifdef-<version>.vsix` from the
+     [latest release](https://github.com/Tencent/TSIfDef/releases/latest), then
+     run `code --install-extension tsifdef-<version>.vsix` or use
+     **⋯ → Install from VSIX** in the Extensions view.
 2. **tsserver plugin** — ships inside that VSIX and makes the language service
    ignore inactive code. It loads through the workspace TypeScript version, so
    point the workspace at its local TypeScript:

@@ -73,12 +73,29 @@ TypeScript 只会看到激活分支；源码路径、诊断、声明文件和 so
 
 ## 编辑器支持
 
-从 [GitHub Releases](https://github.com/Tencent/TSIfDef/releases/latest) 下载
-`.vsix`，安装到 VS Code、CodeBuddy 或 CodeBuddy CN。项目的 `package.json`
-需要包含 `tsifdef` Profile 指针。
+扩展会置灰并折叠未激活代码，在状态栏显示当前 Profile，并让 TypeScript 语言服务
+与构建过程使用同一份激活代码。需要 VS Code 1.85 或更高版本。
 
-扩展会在状态栏显示当前 Profile，置灰和折叠未激活代码，提供宏诊断，并让
-TypeScript 语言服务与构建过程使用同一份激活代码。
+**从市场安装**——打开扩展面板（`Ctrl+Shift+X`，macOS 为 `Cmd+Shift+X`），搜索
+**TSIfDef**，在发布者为 **Tencent TiMi Studio Group** 的条目上点击 **安装**。也可以在终端执行：
+
+```bash
+code --install-extension timi-studio.tsifdef
+```
+
+**从 VSIX 安装**——适用于访问不到 VS Code 市场的编辑器（如 CodeBuddy）。从
+[最新版本](https://github.com/Tencent/TSIfDef/releases/latest) 下载
+`tsifdef-<version>.vsix`，然后执行
+
+```bash
+code --install-extension tsifdef-<version>.vsix
+```
+
+或在扩展面板使用 **⋯ → 从 VSIX 安装**。
+
+之后打开一个 `package.json` 中包含 `tsifdef` Profile 指针的项目。要让未激活代码
+不再报错还需要一项设置，因为内置的 tsserver 插件通过工作区 TypeScript 版本加载
+——见[编辑器接入](./INTEGRATION.zh-CN.md#3-编辑器vscode)。
 
 ## ESLint
 

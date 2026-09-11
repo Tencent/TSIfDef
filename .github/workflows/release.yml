@@ -11,10 +11,6 @@ on:
         description: Publish to the VS Code Marketplace
         type: boolean
         default: true
-      open_vsx:
-        description: Publish to Open VSX
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -38,13 +34,13 @@ jobs:
     name: Publish release
     needs: build
     runs-on: ubuntu-latest
-    # The `secrets` context is not available in a step-level `if`, so the two
-    # Marketplace tokens are lifted into `env` here. That is what lets a channel
-    # skip itself when its credential has not been configured yet. npm needs no
-    # entry: it authenticates over OIDC instead of a stored token.
+    # The `secrets` context is not available in a step-level `if`, so the
+    # Marketplace token is lifted into `env` here. That is what lets the channel
+    # skip itself when no token is configured: the VSIX is attached to the
+    # GitHub release either way and can be uploaded by hand. npm needs no entry:
+    # it authenticates over OIDC instead of a stored token.
     env:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -160,7 +156,7 @@ jobs:
       # Each registry below is published independently and skips itself when that
       # channel already carries this version. Marketplace access can land later
       # than npm access, so re-running this workflow has to finish the remaining
-      # channels without forcing a version bump.
+      # channel without forcing a version bump.
 
       - name: Publish to npm
         if: ${{ inputs.npm }}
@@ -190,23 +186,3 @@ jobs:
           # `--skip-duplicate` makes a re-run that already published this version
           # a no-op, so a later channel can be finished without a version bump.
           npx vsce publish --packagePath "release/${name}-${version}.vsix" --skip-duplicate
-
-      - name: Publish to Open VSX
-        if: ${{ inputs.open_vsx }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="${{ steps.release.outputs.version }}"
-          name="$(node -p "require('./package.json').name")"
-          publisher="$(node -p "require('./package.json').publisher")"
-
-          # ovsx switches itself to trusted publishing when a CI system offers an
-          # OIDC token and no access token is given, so passing OVSX_PAT only when
-          # one exists is what selects between the two. `--skip-duplicate` makes a
-          # re-run that already published this version a no-op.
-          if [[ -n "${OVSX_PAT:-}" ]]; then
-            npx ovsx create-namespace "$publisher" -p "$OVSX_PAT" || true
-            npx ovsx publish "release/${name}-${version}.vsix" -p "$OVSX_PAT" --skip-duplicate
-          else
-            npx ovsx publish "release/${name}-${version}.vsix" --skip-duplicate
-          fi

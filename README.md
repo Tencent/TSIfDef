@@ -76,13 +76,33 @@ declarations, and source maps still point to the original files.
 
 ## Editor Support
 
-Download the `.vsix` from [GitHub Releases](https://github.com/Tencent/TSIfDef/releases/latest)
-and install it in VS Code, CodeBuddy, or CodeBuddy CN. Open a project whose
-`package.json` contains the `tsifdef` Profile pointer.
+The extension dims and folds inactive code, shows the active Profile in the
+status bar, and keeps the TypeScript language service on the same active source
+the build uses. Requires VS Code 1.85 or newer.
 
-The extension shows the active Profile in the status bar, dims inactive code,
-provides folding and diagnostics, and keeps the TypeScript language service on
-the same active source used by the build.
+**From the Marketplace** — open the Extensions view (`Ctrl+Shift+X`, or
+`Cmd+Shift+X` on macOS), search for **TSIfDef**, and click **Install** on the
+entry published by **Tencent TiMi Studio Group**. Equivalently, from a terminal:
+
+```bash
+code --install-extension timi-studio.tsifdef
+```
+
+**From a VSIX** — for editors that do not reach the VS Code Marketplace, such as
+CodeBuddy, download `tsifdef-<version>.vsix` from
+[the latest release](https://github.com/Tencent/TSIfDef/releases/latest) and
+either run
+
+```bash
+code --install-extension tsifdef-<version>.vsix
+```
+
+or, in the Extensions view, use **⋯ → Install from VSIX**.
+
+Then open a project whose `package.json` contains the `tsifdef` Profile pointer.
+One more setting is needed for inactive code to stop erroring, because the
+bundled tsserver plugin loads through the workspace TypeScript version — see
+[Editor setup](./INTEGRATION.md#3-editor-vscode).
 
 ## ESLint
 

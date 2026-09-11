@@ -62,8 +62,17 @@ Profile 会自动触发全量重编。不支持 `outFile` 和 composite referenc
 
 让 `#if` 置灰、不再报错需要两部分：
 
-1. **VSCode 扩展**——安装 TSIfDef VSIX。它置灰并折叠未激活分支，并在状态栏显示
-   当前 Profile。
+1. **VSCode 扩展**——置灰并折叠未激活分支，并在状态栏显示当前 Profile。按编辑器
+   情况任选一种安装方式：
+
+   - **市场安装**——在扩展面板（`Ctrl+Shift+X`）搜索 **TSIfDef**，安装发布者为
+     **Tencent TiMi Studio Group** 的条目；或执行
+     `code --install-extension timi-studio.tsifdef`。
+   - **VSIX 安装**——适用于访问不到 VS Code 市场的编辑器。从
+     [最新版本](https://github.com/Tencent/TSIfDef/releases/latest) 下载
+     `tsifdef-<version>.vsix`，执行
+     `code --install-extension tsifdef-<version>.vsix`，或在扩展面板使用
+     **⋯ → 从 VSIX 安装**。
 2. **tsserver 插件**——随该 VSIX 一起发布，让语言服务忽略未激活代码。它通过
    工作区 TypeScript 版本加载，因此需要将工作区指向其本地 TypeScript：
 
