@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" alt="TSIfDef 图标" width="128">
+  <img src="https://raw.githubusercontent.com/Tencent/TSIfDef/main/assets/icon.png" alt="TSIfDef 图标" width="128">
 </p>
 
 # TSIfDef 1.1.8
