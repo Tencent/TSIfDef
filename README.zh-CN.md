@@ -31,11 +31,10 @@ export const runtime = "node";
 
 ## 快速开始
 
-从 [GitHub Releases](https://github.com/Tencent/TSIfDef/releases/latest) 下载
-`tsifdef-1.1.5.tgz`，然后安装到 TypeScript 项目：
+将 TSIfDef 安装为开发依赖：
 
 ```bash
-npm install --save-dev ./tsifdef-1.1.5.tgz
+npm install -D tsifdef
 ```
 
 创建 Profile，列出本次构建启用的宏：
@@ -88,30 +87,20 @@ VSIX 只包含编辑器加载 tsserver 插件所需的轻量转发入口，不�
 
 ## ESLint
 
-将同一个发布包按 ESLint 的标准插件名安装：
+同一个 `tsifdef` 包已经包含 ESLint processor 和 parser wrapper，无需安装第二个
+TSIfDef 包。将推荐配置加入现有 TypeScript Flat Config：
 
-```bash
-npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-1.1.5.tgz
+```javascript
+import tsifdef from "tsifdef/eslint-plugin";
+
+export default [
+  // 项目现有的 TypeScript ESLint 配置，
+  tsifdef.configs["flat/recommended"],
+];
 ```
 
-在 `.eslintrc` 中配置 processor 和 parser wrapper：
-
-```json
-{
-  "parser": "@typescript-eslint/parser",
-  "plugins": ["tsifdef"],
-  "overrides": [
-    { "files": ["*.ts", "*.mts", "*.cts", "*.tsx"], "processor": "tsifdef/macros" }
-  ],
-  "settings": {
-    "import/parsers": {
-      "eslint-plugin-tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"]
-    }
-  }
-}
-```
-
-未激活分支会在解析前被遮盖，因此 ESLint 只检查激活代码，同时保留原始行列位置。
+未激活分支会在解析前被遮盖，因此 ESLint 只检查激活代码，同时保留原始行列位置。旧版
+`.eslintrc` 接入方式见[接入指南](./INTEGRATION.zh-CN.md)。
 
 ## 构建行为
 

@@ -91,19 +91,46 @@ tsifdef build --watch --emit-projection .projection
 
 如果项目使用 ESLint，原始的 `#if` 行本会被报成解析错误。TSIfDef 提供一个 ESLint
 processor，让 ESLint 检查等长投影而非原始文本（位置不变，诊断直接映射回原文）。
-将同一个 TSIfDef 包按 ESLint 的标准插件名安装：
+它已经包含在构建所安装的 `tsifdef` 包中，无需安装第二个 TSIfDef 包。
+
+将推荐配置放在项目现有的 TypeScript Flat Config 之后：
+
+```javascript
+// eslint.config.mjs
+import tsParser from "@typescript-eslint/parser";
+import tsifdef from "tsifdef/eslint-plugin";
+
+export default [
+  {
+    files: ["**/*.{ts,tsx,mts,cts}"],
+    languageOptions: { parser: tsParser },
+  },
+  tsifdef.configs["flat/recommended"],
+];
+```
+
+推荐配置会为 TypeScript 文件注册 `tsifdef/macros`，并将依赖文件解析映射到
+`tsifdef/parser`。顶层仍使用项目正常的 `@typescript-eslint/parser`，让编辑器集成
+能够识别 TypeScript 校验；`import/no-cycle` 等绕过 processor、直接读取依赖文件的
+规则会使用 TSIfDef wrapper。
+
+TSIfDef 支持 ESLint 8.57 和 9，并支持其中相互兼容的 `@typescript-eslint/parser`
+5 至 8。两者均为 optional peer dependency，具体版本仍由宿主项目管理。
+
+### 旧版 `.eslintrc`
+
+旧配置系统会把 `tsifdef` 解析为名为 `eslint-plugin-tsifdef` 的包，因此需要将同一个
+npm 包安装到该别名：
 
 ```bash
 npm install -D eslint-plugin-tsifdef@npm:tsifdef
 ```
 
-离线使用发布产物时，只需让这个依赖指向单个 tgz：
+离线使用发布产物时，让该别名指向 tgz：
 
 ```bash
 npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 ```
-
-然后在项目的 ESLint 配置里启用：
 
 ```jsonc
 // .eslintrc.json
@@ -124,12 +151,6 @@ npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 }
 ```
 
-顶层 parser 应保持为 `@typescript-eslint/parser`，这样 VSCode ESLint 默认的
-TypeScript probe 才会校验该文件。TSIfDef parser wrapper 只注册到
-`settings.import/parsers`，用于处理 `import/no-cycle` 等直接读取依赖文件并自行调用
-parser、从而绕过 processor 的规则；processor 仍需保留，用于投影主文件并在
-`postprocess` 中过滤合成遮盖产生的诊断。
-
 processor 解析 Profile 的方式与 CLI 一致（最近的 `package.json` 里的 `tsifdef`
 指针）。安装的同一个包同时提供 CLI、核心 API、ESLint processor 和 parser，不再
 维护额外的 companion 包及其版本。
@@ -139,6 +160,13 @@ processor 解析 Profile 的方式与 CLI 一致（最近的 `package.json` 里�
 等长遮盖会把宏指令和未激活分支替换为空格。processor 会删除诊断范围完全来自这些
 合成遮盖字符的消息；只要诊断触及任一真实源码字符（包括真实的行尾空白），就仍然
 保留。因此 `prettier/prettier` 等文本规则应保持开启。
+
+### 自动修复与快速修复
+
+processor 保持 ESLint 自动修复可用，因此含宏文件中的编辑器快速修复和
+`eslint --fix` 均正常工作。每条修复会被单独校验：若其替换范围与宏指令或非活跃
+分支重叠，则丢弃该修复——因为应用它会覆盖规则从未见过的 `#if` 代码。此时诊断
+本身仍会报告，只是没有自动修复项。完全落在活跃代码内的修复原样保留。
 
 ## 5. 职责分离
 

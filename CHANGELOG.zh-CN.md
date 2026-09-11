@@ -1,5 +1,16 @@
 # 更新日志
 
+## v1.1.6 - 2026-09-11
+
+- 修复启用 processor 后 ESLint 自动修复（autofix）和建议失效的问题。此前
+  processor 声明 `supportsAutofix: false`，导致 ESLint 关闭该文件**所有规则**的
+  自动修复，编辑器快速修复随之消失。现改为逐条过滤：仅丢弃与宏指令或非活跃分支
+  重叠的修复，其余修复全部保留。
+- 增加可复用的 ESLint Flat Config，并补充插件和 processor 元数据。
+- 支持通过 `npm install -D tsifdef` 一次安装 CLI、核心 API、ESLint processor 和
+  parser wrapper。
+- 验证 ESLint 8/9 与 `@typescript-eslint/parser` 5-8 的受支持组合。
+
 ## v1.1.5 - 2026-09-09
 
 - 增加测试、构建和 GitHub Release 发布工作流。

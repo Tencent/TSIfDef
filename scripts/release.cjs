@@ -248,7 +248,7 @@ function verifyInstalledTgz(tgzPath, packageJson) {
       devDependencies: {
         "@typescript-eslint/parser": "5.62.0",
         eslint: "8.57.1",
-        "eslint-plugin-tsifdef": `file:${tgzPath.replaceAll("\\", "/")}`,
+        tsifdef: `file:${tgzPath.replaceAll("\\", "/")}`,
         typescript: "5.5.4",
       },
     }, null, 2),
@@ -261,21 +261,21 @@ function verifyInstalledTgz(tgzPath, packageJson) {
     "utf8",
   );
   writeFileSync(
-    join(projectRoot, ".eslintrc.json"),
-    JSON.stringify({
-      parser: "@typescript-eslint/parser",
-      parserOptions: { ecmaVersion: "latest", sourceType: "module" },
-      plugins: ["tsifdef"],
-      overrides: [
-        {
-          files: ["*.ts"],
-          processor: "tsifdef/macros",
-        },
-      ],
-      rules: {
-        "no-unused-vars": "error",
-      },
-    }, null, 2),
+    join(projectRoot, "eslint.config.mjs"),
+    [
+      'import tsParser from "@typescript-eslint/parser";',
+      'import tsifdef from "tsifdef/eslint-plugin";',
+      "",
+      "export default [",
+      "  {",
+      '    files: ["**/*.{ts,tsx,mts,cts}"],',
+      "    languageOptions: { parser: tsParser },",
+      '    rules: { "no-unused-vars": "error" },',
+      "  },",
+      '  tsifdef.configs["flat/recommended"],',
+      "];",
+      "",
+    ].join("\n"),
     "utf8",
   );
   writeFileSync(join(projectRoot, "src", "main.ts"), "const value = 1;\n", "utf8");
@@ -291,7 +291,7 @@ function verifyInstalledTgz(tgzPath, packageJson) {
     : join(projectRoot, "node_modules", ".bin", "tsifdef");
   assertExists(binPath, "tgz CLI shim");
 
-  const installedPackageRoot = join(projectRoot, "node_modules", "eslint-plugin-tsifdef");
+  const installedPackageRoot = join(projectRoot, "node_modules", "tsifdef");
   run(process.execPath, [join(installedPackageRoot, "dist", "cli", "main.js")], {
     cwd: projectRoot,
   });
@@ -304,14 +304,18 @@ function verifyInstalledTgz(tgzPath, packageJson) {
     "installed package manifest",
   );
   const projectRequire = require("node:module").createRequire(join(projectRoot, "package.json"));
-  const eslintPlugin = projectRequire("eslint-plugin-tsifdef");
+  const eslintPlugin = projectRequire("tsifdef/eslint-plugin");
   if (typeof eslintPlugin?.processors?.macros !== "object") {
     throw new Error("Installed package does not expose the macros processor.");
   }
-  if (eslintPlugin.coreApiVersion !== 1) {
+  if (eslintPlugin?.configs?.["flat/recommended"]?.processor !== "tsifdef/macros") {
+    throw new Error("Installed package does not expose the recommended flat config.");
+  }
+  const packageApi = projectRequire("tsifdef");
+  if (packageApi.coreApiVersion !== 1) {
     throw new Error("Installed package root does not preserve the core API.");
   }
-  const eslintParser = projectRequire("eslint-plugin-tsifdef/parser");
+  const eslintParser = projectRequire("tsifdef/parser");
   if (typeof eslintParser?.parseForESLint !== "function") {
     throw new Error("Installed package does not expose the TSIfDef parser wrapper.");
   }
@@ -337,6 +341,7 @@ function verifyInstalledTgz(tgzPath, packageJson) {
     {
       cwd: projectRoot,
       encoding: "utf8",
+      env: { ...process.env, ESLINT_USE_FLAT_CONFIG: "true" },
       shell: false,
     },
   );

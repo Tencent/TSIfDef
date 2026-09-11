@@ -16,16 +16,45 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
 import test from "node:test";
 
-import { processors } from "../src/eslint/plugin.js";
+import plugin, { configs, meta, processors } from "../src/eslint/plugin.js";
+import { VERSION } from "../src/version.js";
+
+const moduleRequire = createRequire(__filename);
+
+interface LintMessage {
+  readonly fatal?: boolean;
+  readonly message: string;
+}
+
+interface Linter {
+  verify(
+    source: string,
+    config: readonly unknown[],
+    options: { readonly filename: string },
+  ): readonly LintMessage[];
+}
+
+interface LinterConstructor {
+  new (options: { readonly configType: "flat" }): Linter;
+}
+
+const eslintMatrix = [
+  ["ESLint 8 with parser 5", "eslint", "@typescript-eslint/parser"],
+  ["ESLint 8 with parser 6", "eslint", "typescript-eslint-parser6"],
+  ["ESLint 8 with parser 7", "eslint", "typescript-eslint-parser7"],
+  ["ESLint 8 with parser 8", "eslint", "typescript-eslint-parser8"],
+  ["ESLint 9 with parser 8", "eslint9", "typescript-eslint-parser8"],
+] as const;
 
 async function setupProject(): Promise<{
   readonly root: string;
   readonly sourceFile: string;
   readonly packagePath: string;
 }> {
-  const root = await mkdtemp(join(tmpdir(), "tsifdef-eslint-"));
+  const root = await mkdtemp(join(process.cwd(), ".tsifdef-eslint-"));
   const sourceFile = join(root, "src", "main.ts");
   await mkdir(dirname(sourceFile), { recursive: true });
   await mkdir(join(root, "profiles"), { recursive: true });
@@ -39,6 +68,60 @@ async function setupProject(): Promise<{
   const packagePath = join(root, "package.json");
   await writeFile(packagePath, JSON.stringify({ tsifdef: "./profiles/BROWSER.json" }), "utf8");
   return { root, sourceFile, packagePath };
+}
+
+test("ESLint plugin exports metadata and a reusable flat config", () => {
+  assert.deepEqual(meta, { name: "tsifdef", version: VERSION });
+  assert.equal(plugin.meta, meta);
+  assert.equal(plugin.processors, processors);
+  assert.equal(plugin.configs, configs);
+  assert.equal(configs.recommended, configs["flat/recommended"]);
+  assert.equal(configs.recommended?.plugins.tsifdef, plugin);
+  assert.equal(configs.recommended?.processor, "tsifdef/macros");
+  assert.deepEqual(configs.recommended?.settings["import/parsers"], {
+    "tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"],
+  });
+  assert.deepEqual(processors.macros.meta, {
+    name: "tsifdef/macros",
+    version: VERSION,
+  });
+});
+
+for (const [label, eslintPackage, parserPackage] of eslintMatrix) {
+  test(`flat config projects TypeScript with ${label}`, async () => {
+    const { root, sourceFile } = await setupProject();
+    const source = [
+      "#if BROWSER",
+      "const selected: string = 'browser';",
+      "#else",
+      "const selected: = ;",
+      "#endif",
+      "selected;",
+      "",
+    ].join("\n");
+    try {
+      const { Linter } = moduleRequire(eslintPackage) as { readonly Linter: LinterConstructor };
+      const parser = moduleRequire(parserPackage) as unknown;
+      const linter = new Linter({ configType: "flat" });
+      const messages = linter.verify(
+        source,
+        [
+          configs["flat/recommended"],
+          {
+            files: ["**/*.{ts,tsx,mts,cts}"],
+            languageOptions: {
+              parser,
+              parserOptions: { ecmaVersion: "latest", sourceType: "module" },
+            },
+          },
+        ],
+        { filename: sourceFile },
+      );
+      assert.deepEqual(messages, []);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 }
 
 test("ESLint processor notices package.json Profile pointer edits in one process", async () => {
@@ -319,8 +402,7 @@ test("ESLint processor filters GameInit-style directive and branch diagnostics",
   }
 });
 
-test("ESLint processor does not filter diagnostics when no Profile is configured", async () => {
-  const root = await mkdtemp(join(tmpdir(), "tsifdef-eslint-no-profile-"));
+test("ESLint processor does not filter diagnostics when no Profile is configured", async () => {  const root = await mkdtemp(join(tmpdir(), "tsifdef-eslint-no-profile-"));
   const sourceFile = join(root, "src", "main.ts");
   const source = "#if EDITOR\nconst value = 1;\n#endif\n";
   try {
@@ -338,4 +420,166 @@ test("ESLint processor does not filter diagnostics when no Profile is configured
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+for (const [label, eslintPackage, parserPackage] of eslintMatrix) {
+  test(`autofix survives the processor with ${label}`, async () => {
+    const { root, sourceFile } = await setupProject();
+    const source = [
+      "#if BROWSER",
+      "const active = 1",
+      "#else",
+      "const inactive = 2",
+      "#endif",
+      "active;",
+      "",
+    ].join("\n");
+    try {
+      const { Linter } = moduleRequire(eslintPackage) as { readonly Linter: LinterConstructor };
+      const parser = moduleRequire(parserPackage) as unknown;
+      const linter = new Linter({ configType: "flat" });
+      const messages = linter.verify(
+        source,
+        [
+          configs["flat/recommended"],
+          {
+            files: ["**/*.{ts,tsx,mts,cts}"],
+            languageOptions: {
+              parser,
+              parserOptions: { ecmaVersion: "latest", sourceType: "module" },
+            },
+            rules: { semi: ["error", "always"] },
+          },
+        ],
+        { filename: sourceFile },
+      );
+
+      // The active branch keeps its autofix; the masked branch reports nothing.
+      assert.equal(messages.length, 1);
+      const [message] = messages as readonly (LintMessage & {
+        readonly line?: number;
+        readonly fix?: { readonly range: readonly [number, number]; readonly text: string };
+      })[];
+      assert.equal(message?.line, 2);
+      assert.ok(message?.fix, "expected the active-branch fix to survive the processor");
+      const [start, end] = message!.fix!.range;
+      assert.equal(source.slice(0, start).endsWith("const active = 1"), true);
+      assert.equal(start, end);
+      assert.equal(message!.fix!.text, ";");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
+test("ESLint processor keeps active fixes and drops fixes that touch masked text", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-eslint-fixes-"));
+  const sourceFile = join(root, "src", "main.ts");
+  const profilePath = join(root, "Profile.json");
+  const source = [
+    "const before = 1",
+    "#if EDITOR",
+    "const active = 2",
+    "#else",
+    "const inactive = 3",
+    "#endif",
+    "const after = 4",
+    "",
+  ].join("\n");
+  try {
+    await mkdir(dirname(sourceFile), { recursive: true });
+    await writeFile(profilePath, "[\"EDITOR\"]\n", "utf8");
+    await writeFile(
+      join(root, "package.json"),
+      JSON.stringify({ tsifdef: "./Profile.json" }),
+      "utf8",
+    );
+
+    processors.macros.preprocess(source, sourceFile);
+
+    const directiveStart = source.indexOf("#if EDITOR");
+    const inactiveStart = source.indexOf("const inactive = 3");
+    const activeStart = source.indexOf("const active = 2");
+    const afterStart = source.indexOf("const after = 4");
+
+    const messages = [
+      {
+        ruleId: "semi",
+        message: "active fix is preserved",
+        line: 3,
+        column: 17,
+        fix: { range: [activeStart + 16, activeStart + 16] as [number, number], text: ";" },
+      },
+      {
+        ruleId: "semi",
+        message: "leading active fix is preserved",
+        line: 1,
+        column: 17,
+        fix: { range: [16, 16] as [number, number], text: ";" },
+      },
+      {
+        ruleId: "custom/spanning",
+        message: "fix spanning a masked directive is dropped",
+        line: 1,
+        column: 1,
+        fix: { range: [0, afterStart] as [number, number], text: "rewritten" },
+      },
+      {
+        ruleId: "custom/inside-inactive",
+        message: "fix inside an inactive branch is dropped",
+        line: 7,
+        column: 1,
+        fix: {
+          range: [inactiveStart, inactiveStart + 5] as [number, number],
+          text: "let",
+        },
+      },
+      {
+        ruleId: "custom/insertion-in-mask",
+        message: "insertion point inside masked text is dropped",
+        line: 7,
+        column: 1,
+        fix: {
+          range: [directiveStart + 2, directiveStart + 2] as [number, number],
+          text: "x",
+        },
+      },
+      {
+        ruleId: "custom/suggestions",
+        message: "unsafe suggestions are pruned",
+        line: 7,
+        column: 1,
+        suggestions: [
+          { desc: "safe", fix: { range: [afterStart, afterStart + 5] as [number, number], text: "let" } },
+          { desc: "unsafe", fix: { range: [inactiveStart, afterStart] as [number, number], text: "" } },
+        ],
+      },
+    ];
+
+    const processed = processors.macros.postprocess([messages], sourceFile);
+    const byMessage = new Map(processed.map((entry) => [entry.message as string, entry]));
+
+    assert.ok(byMessage.get("active fix is preserved")?.fix, "active fix must survive");
+    assert.ok(byMessage.get("leading active fix is preserved")?.fix, "pre-macro fix must survive");
+    assert.equal(byMessage.get("fix spanning a masked directive is dropped")?.fix, undefined);
+    assert.equal(byMessage.get("fix inside an inactive branch is dropped")?.fix, undefined);
+    assert.equal(byMessage.get("insertion point inside masked text is dropped")?.fix, undefined);
+
+    // Every diagnostic is anchored in active code, so none is filtered as
+    // synthetic: only the unsafe fixes are removed, never the reports.
+    assert.deepEqual(
+      processed.map((entry) => entry.message),
+      messages.map((entry) => entry.message),
+    );
+
+    const pruned = byMessage.get("unsafe suggestions are pruned");
+    assert.equal(pruned?.suggestions?.length, 1);
+    assert.equal(pruned?.suggestions?.[0]?.desc, "safe");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("ESLint processor exposes autofix support to ESLint", () => {
+  assert.equal(processors.macros.supportsAutofix, true);
 });

@@ -13,4 +13,9 @@
 // limitations under the License.
 
 export * from "../core/index.js";
-export { processors } from "./plugin.js";
+export {
+  configs as eslintConfigs,
+  default as eslintPlugin,
+  meta as eslintPluginMeta,
+  processors,
+} from "./plugin.js";

@@ -65,24 +65,50 @@ async function setup(): Promise<{ root: string; sourceFile: string; dependencyFi
   return { root, sourceFile, dependencyFile };
 }
 
-test("ESLint parser wrapper projects raw macro source before parsing", async () => {
-  const { root, dependencyFile } = await setup();
-  try {
-    const source = await readFile(dependencyFile, "utf8");
-    const result = parseForESLint(source, {
-      filePath: dependencyFile,
-      ecmaVersion: 2022,
-      sourceType: "module",
-      range: true,
-      loc: true,
-      tokens: true,
-      comment: true,
-    });
-    assert.equal((result.ast as { type?: unknown }).type, "Program");
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
+async function selectParser(root: string, parserPackage: string): Promise<void> {
+  const adapterRoot = join(root, "node_modules", "@typescript-eslint", "parser");
+  const parserPath = moduleRequire.resolve(parserPackage);
+  await mkdir(adapterRoot, { recursive: true });
+  await writeFile(
+    join(adapterRoot, "package.json"),
+    JSON.stringify({ name: "@typescript-eslint/parser", main: "index.cjs" }),
+    "utf8",
+  );
+  await writeFile(
+    join(adapterRoot, "index.cjs"),
+    `module.exports = require(${JSON.stringify(parserPath)});\n`,
+    "utf8",
+  );
+}
+
+const parserMatrix = [
+  ["parser 5", "@typescript-eslint/parser"],
+  ["parser 6", "typescript-eslint-parser6"],
+  ["parser 7", "typescript-eslint-parser7"],
+  ["parser 8", "typescript-eslint-parser8"],
+] as const;
+
+for (const [label, parserPackage] of parserMatrix) {
+  test(`ESLint parser wrapper projects raw macro source with ${label}`, async () => {
+    const { root, dependencyFile } = await setup();
+    try {
+      await selectParser(root, parserPackage);
+      const source = await readFile(dependencyFile, "utf8");
+      const result = parseForESLint(source, {
+        filePath: dependencyFile,
+        ecmaVersion: 2022,
+        sourceType: "module",
+        range: true,
+        loc: true,
+        tokens: true,
+        comment: true,
+      });
+      assert.equal((result.ast as { type?: unknown }).type, "Program");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
 
 test("eslint-plugin-import side-channel parsing uses the TSIfDef parser wrapper", async () => {
   const { root, sourceFile } = await setup();

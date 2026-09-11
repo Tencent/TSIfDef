@@ -1,6 +1,6 @@
 {
   "name": "tsifdef",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Source-level conditional compilation for TypeScript",
   "license": "Apache-2.0",
   "repository": {
@@ -101,16 +101,24 @@
     "@typescript-eslint/parser": "5.62.0",
     "@vscode/vsce": "3.9.2",
     "eslint": "8.57.1",
+    "eslint9": "npm:eslint@9.39.5",
     "eslint-plugin-import": "2.32.0",
+    "typescript-eslint-parser6": "npm:@typescript-eslint/parser@6.21.0",
+    "typescript-eslint-parser7": "npm:@typescript-eslint/parser@7.18.0",
+    "typescript-eslint-parser8": "npm:@typescript-eslint/parser@8.70.0",
     "tsifdef-tsserver": "file:./scripts/packaging/tsserver",
     "yauzl": "^3.4.0",
     "yazl": "^2.5.1"
   },
   "peerDependencies": {
-    "@typescript-eslint/parser": ">=5.0.0"
+    "@typescript-eslint/parser": "^5.62.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
+    "eslint": "^8.57.0 || ^9.0.0"
   },
   "peerDependenciesMeta": {
     "@typescript-eslint/parser": {
+      "optional": true
+    },
+    "eslint": {
       "optional": true
     }
   },

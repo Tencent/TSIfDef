@@ -15,6 +15,7 @@
 import { resolve } from "node:path";
 
 import type { SourceRange } from "../core/index.js";
+import { VERSION } from "../version.js";
 import { projectSourceForEslint } from "./projection.js";
 
 // TSIfDef ESLint processor
@@ -25,14 +26,20 @@ import { projectSourceForEslint } from "./projection.js";
 // masking preserves line and column coordinates, so postprocess can return
 // diagnostics without remapping their positions.
 //
-// Usage (in the project's .eslintrc):
-//   { "plugins": ["tsifdef"],
-//     "overrides": [{ "files": ["*.ts","*.mts"], "processor": "tsifdef/macros" }] }
-//
 // Profile resolution matches the CLI and tsserver: search upward from the
 // checked file for a package.json with a "tsifdef" pointer to a JSON array of
 // enabled macro names. If none is found, fall back to the original text so lint
 // is not blocked.
+
+interface LintFix {
+  readonly range: readonly [number, number];
+  readonly text: string;
+}
+
+interface LintSuggestion {
+  readonly fix?: LintFix;
+  [key: string]: unknown;
+}
 
 interface LintMessage {
   readonly ruleId?: string | null;
@@ -41,6 +48,8 @@ interface LintMessage {
   readonly column?: number;
   readonly endLine?: number;
   readonly endColumn?: number;
+  readonly fix?: LintFix;
+  readonly suggestions?: readonly LintSuggestion[];
   [key: string]: unknown;
 }
 
@@ -169,9 +178,70 @@ function isSyntheticDiagnostic(
   return !/[^\r\n]/u.test(context.source.slice(cursor, end));
 }
 
+/**
+ * A fix is safe only when its replacement range touches no masked character.
+ *
+ * Equal-length masking keeps projected offsets identical to source offsets, so a
+ * fix range that avoids every masked range rewrites exactly the active text the
+ * rule saw. A fix that overlaps masking would splice the user's `#if` directives
+ * or inactive branches into the replacement text and silently destroy them, so
+ * it is dropped. Zero-length insertions are treated as a single point: they are
+ * unsafe only when the insertion point falls strictly inside a masked range.
+ */
+function isSafeFix(fix: LintFix, context: ProjectionContext): boolean {
+  const range = fix.range;
+  if (!Array.isArray(range) || range.length !== 2) {
+    return false;
+  }
+  const [start, end] = range;
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start) {
+    return false;
+  }
+  return !context.maskedRanges.some((masked) =>
+    start === end
+      ? start > masked.start && start < masked.end
+      : start < masked.end && end > masked.start,
+  );
+}
+
+/**
+ * Strip only the unsafe fixes, keeping the diagnostic itself so the problem is
+ * still reported even when TSIfDef cannot offer a safe automatic repair.
+ */
+function withSafeFixes(message: LintMessage, context: ProjectionContext): LintMessage {
+  const fixIsUnsafe = message.fix !== undefined && !isSafeFix(message.fix, context);
+  const suggestions = message.suggestions;
+  const safeSuggestions =
+    suggestions === undefined
+      ? undefined
+      : suggestions.filter(
+        (suggestion) => suggestion.fix === undefined || isSafeFix(suggestion.fix, context),
+      );
+  const suggestionsChanged =
+    suggestions !== undefined && safeSuggestions!.length !== suggestions.length;
+
+  if (!fixIsUnsafe && !suggestionsChanged) {
+    return message;
+  }
+
+  const next: Record<string, unknown> = { ...message };
+  if (fixIsUnsafe) {
+    delete next.fix;
+  }
+  if (suggestionsChanged) {
+    next.suggestions = safeSuggestions;
+  }
+  return next as LintMessage;
+}
+
 export const processors = {
   macros: {
-    supportsAutofix: false,
+    meta: { name: "tsifdef/macros", version: VERSION },
+    // Autofix stays enabled so unrelated rules keep their quick fixes; ESLint
+    // disables fixes for every rule in the file when this is false. Fixes that
+    // would overwrite masked directives or inactive branches are removed
+    // individually in postprocess instead.
+    supportsAutofix: true,
     preprocess(text: string, filename: string): string[] {
       // Equal-length masking replaces inactive branches and directive lines
       // with spaces while preserving CR/LF characters and total length.
@@ -183,13 +253,51 @@ export const processors = {
       // The equal-length projection preserves diagnostic line and column positions.
       // Discard only diagnostics whose reported range contains no visible source
       // outside TSIfDef's synthetic masking; all active-source diagnostics survive.
+      // Surviving diagnostics keep only the fixes that stay clear of masked text.
       const flattened = messages.flat();
       const context = takeProjection(filename);
       return context === undefined
         ? flattened
-        : flattened.filter((message) => !isSyntheticDiagnostic(message, context));
+        : flattened
+          .filter((message) => !isSyntheticDiagnostic(message, context))
+          .map((message) => withSafeFixes(message, context));
     },
   },
 };
 
-export default { processors };
+interface FlatConfig {
+  readonly files: readonly string[];
+  readonly plugins: { readonly tsifdef: EslintPlugin };
+  readonly processor: string;
+  readonly settings: {
+    readonly "import/parsers": {
+      readonly "tsifdef/parser": readonly string[];
+    };
+  };
+}
+
+interface EslintPlugin {
+  readonly meta: { readonly name: string; readonly version: string };
+  readonly processors: typeof processors;
+  readonly configs: Record<string, FlatConfig>;
+}
+
+export const meta = { name: "tsifdef", version: VERSION };
+export const configs: Record<string, FlatConfig> = {};
+
+const plugin: EslintPlugin = { meta, processors, configs };
+const recommended: FlatConfig = {
+  files: ["**/*.{ts,tsx,mts,cts}"],
+  plugins: { tsifdef: plugin },
+  processor: "tsifdef/macros",
+  settings: {
+    "import/parsers": {
+      "tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"],
+    },
+  },
+};
+
+configs.recommended = recommended;
+configs["flat/recommended"] = recommended;
+
+export default plugin;

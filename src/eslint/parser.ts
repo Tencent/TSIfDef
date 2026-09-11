@@ -73,6 +73,6 @@ export function parse(code: string, options?: ParserOptions): unknown {
   return loadTypeScriptEslintParser(filePath).parse(projected, options);
 }
 
-export const meta = { name: "eslint-plugin-tsifdef/parser", version: VERSION };
+export const meta = { name: "tsifdef/parser", version: VERSION };
 
 export default { parse, parseForESLint, meta };

@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.6 - 2026-09-11
+
+- Keep ESLint autofix and suggestions working in files that use the processor.
+  The processor previously set `supportsAutofix: false`, which made ESLint drop
+  fixes for *every* rule in the file, so editor quick fixes disappeared. Fixes
+  are now filtered individually: those overlapping masked directives or inactive
+  branches are removed, and all others are preserved.
+- Add a reusable ESLint flat config with plugin and processor metadata.
+- Support one-package installation with `npm install -D tsifdef` for the CLI,
+  core API, ESLint processor, and parser wrapper.
+- Verify supported ESLint 8/9 and `@typescript-eslint/parser` 5-8 combinations.
+
 ## v1.1.5 - 2026-09-09
 
 - Add GitHub Actions workflows for tests, builds, and verified GitHub Releases.

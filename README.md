@@ -32,12 +32,10 @@ export const runtime = "node";
 
 ## Quick Start
 
-Download `tsifdef-1.1.5.tgz` from
-[GitHub Releases](https://github.com/Tencent/TSIfDef/releases/latest), then
-install it in your TypeScript project:
+Install TSIfDef as a development dependency:
 
 ```bash
-npm install --save-dev ./tsifdef-1.1.5.tgz
+npm install -D tsifdef
 ```
 
 Create a Profile containing the macros enabled for this build:
@@ -93,31 +91,22 @@ not install another TypeScript runtime into the host project.
 
 ## ESLint
 
-Install the same release tarball under ESLint's conventional plugin name:
+The same `tsifdef` package includes the ESLint processor and parser wrapper; no
+second TSIfDef package is required. Add its recommended config to an existing
+TypeScript flat config:
 
-```bash
-npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-1.1.5.tgz
-```
+```javascript
+import tsifdef from "tsifdef/eslint-plugin";
 
-Add the processor and parser wrapper to `.eslintrc`:
-
-```json
-{
-  "parser": "@typescript-eslint/parser",
-  "plugins": ["tsifdef"],
-  "overrides": [
-    { "files": ["*.ts", "*.mts", "*.cts", "*.tsx"], "processor": "tsifdef/macros" }
-  ],
-  "settings": {
-    "import/parsers": {
-      "eslint-plugin-tsifdef/parser": [".ts", ".tsx", ".mts", ".cts"]
-    }
-  }
-}
+export default [
+  // Your existing TypeScript ESLint config,
+  tsifdef.configs["flat/recommended"],
+];
 ```
 
 Inactive branches are masked before parsing, so ESLint reports against the
-active source while preserving the original line and column positions.
+active source while preserving the original line and column positions. Legacy
+`.eslintrc` setup is documented in the [Integration Guide](./INTEGRATION.md).
 
 ## Build Behavior
 

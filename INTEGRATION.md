@@ -102,20 +102,49 @@ code does not error, and `#if UNKNOWN_MACRO` is treated as `false` rather than
 If the project uses ESLint, raw `#if` lines would otherwise be reported as parse
 errors. TSIfDef ships an ESLint processor that lints the equal-length projection
 instead of the raw text (positions are unchanged, so diagnostics map back
-directly). Install the package under ESLint's conventional plugin name:
+directly). It is already included in the `tsifdef` package installed for the
+build; no second TSIfDef package is required.
+
+Add the recommended config after the project's existing TypeScript flat config:
+
+```javascript
+// eslint.config.mjs
+import tsParser from "@typescript-eslint/parser";
+import tsifdef from "tsifdef/eslint-plugin";
+
+export default [
+  {
+    files: ["**/*.{ts,tsx,mts,cts}"],
+    languageOptions: { parser: tsParser },
+  },
+  tsifdef.configs["flat/recommended"],
+];
+```
+
+The recommended config registers `tsifdef/macros` for TypeScript files and maps
+dependency parsing to `tsifdef/parser`. Keep the project's normal
+`@typescript-eslint/parser` as the top-level parser so editor integrations can
+recognize TypeScript validation. The wrapper is used by rules such as
+`import/no-cycle` that read dependency files directly and bypass processors.
+
+TSIfDef supports ESLint 8.57 and 9 with `@typescript-eslint/parser` 5 through 8
+where those projects support each other. Both packages remain optional peer
+dependencies, so the host project controls their versions.
+
+### Legacy `.eslintrc`
+
+The legacy config system resolves `tsifdef` as a package named
+`eslint-plugin-tsifdef`. Install the same npm package under that alias:
 
 ```bash
 npm install -D eslint-plugin-tsifdef@npm:tsifdef
 ```
 
-When consuming an offline release artifact, use the single tarball as that
-dependency:
+For an offline release artifact, point the alias at the tarball instead:
 
 ```bash
 npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 ```
-
-Then enable the processor in the project's ESLint config:
 
 ```jsonc
 // .eslintrc.json
@@ -136,14 +165,6 @@ Then enable the processor in the project's ESLint config:
 }
 ```
 
-Keep `@typescript-eslint/parser` as the top-level parser. VSCode ESLint's
-default TypeScript probe recognizes that parser and will therefore validate the
-file. Register the TSIfDef parser wrapper only in `settings.import/parsers`; it
-is required for rules such as `import/no-cycle` that read dependency files from
-disk and invoke a parser directly, bypassing ESLint processors. Keep the
-processor enabled as well so the primary file is projected and synthetic
-masking diagnostics can be filtered in `postprocess`.
-
 The processor resolves the Profile the same way the CLI does (the `tsifdef`
 pointer in the nearest `package.json`). The one installed package also provides
 the CLI, core API, ESLint processor, and parser, so there is no companion
@@ -156,6 +177,15 @@ The processor removes diagnostics whose complete reported range comes only from
 those synthetic masked characters. Diagnostics touching any real source text,
 including real trailing whitespace, remain visible. Therefore
 `prettier/prettier` and similar text rules should stay enabled.
+
+### Autofix and quick fixes
+
+The processor keeps ESLint autofix enabled, so editor quick fixes and
+`eslint --fix` work normally in files that use macros. Each fix is checked
+individually: a fix whose replacement range overlaps a masked directive or an
+inactive branch is discarded, because applying it would overwrite the `#if`
+lines the rule never saw. The diagnostic itself is still reported, only without
+an automatic repair. Fixes confined to active code are applied unchanged.
 
 ## 5. Separation of concerns
 
