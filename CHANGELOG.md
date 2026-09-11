@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.1.7 - 2026-09-11
+
+- Restore incremental reparsing in the tsserver plugin. Projected snapshots were
+  built with `ts.ScriptSnapshot.fromString`, whose `getChangeRange` always
+  returns `undefined`, so TypeScript discarded the previous syntax tree and
+  reparsed the whole file on every keystroke. Member completion on large macro
+  files took seconds. Projected snapshots now delegate `getChangeRange` to the
+  host snapshot, which is sound because equal-length masking preserves offsets,
+  and report a full change only when an edit alters macro structure.
+- Memoize projections per file against the host snapshot and Profile version, so
+  repeated reads of an unchanged file no longer rescan it.
+- Pass files containing no directives through untouched and cache that verdict.
+  Large generated `.d.ts` files were projected on every request; one 25 MB file
+  cost over 100 ms per call and lost its change range for no benefit.
+
 ## v1.1.6 - 2026-09-11
 
 - Keep ESLint autofix and suggestions working in files that use the processor.

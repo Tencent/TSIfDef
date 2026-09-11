@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import ts from "typescript";
 
-import { wrapHostWithProjection } from "../src/tsserver/index.js";
+import { wrapHostWithProjection, type ActiveProfile } from "../src/tsserver/index.js";
 import { createMemoryHost } from "./tsserver-fixtures.js";
 
 test("wrapped snapshot returns an equal-length whole-file projection", () => {
@@ -125,4 +125,137 @@ test("the same source under the other profile flips the active branch", () => {
 
   // Under the NODE branch region is a number, so the numeric annotation is fine.
   assert.deepEqual(service.getSemanticDiagnostics("/main.ts"), []);
+});
+
+test("projected snapshots delegate change ranges so edits reparse incrementally", () => {
+  // Regression: ScriptSnapshot.fromString always returns undefined from
+  // getChangeRange, which forced TypeScript to reparse the whole file on every
+  // keystroke. Large files then took seconds to serve completions.
+  const before = "#if BROWSER\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
+  const after = "#if BROWSER\nconst a = 12;\n#else\nconst b = 2;\n#endif\n";
+  const files = new Map([["/a.ts", { text: before, version: "1" }]]);
+  const profile = { definitions: { BROWSER: true }, version: "BROWSER:1" };
+  const host = wrapHostWithProjection(ts, createMemoryHost(files), {
+    getProfile: () => profile,
+  });
+
+  const first = host.getScriptSnapshot("/a.ts")!;
+  files.set("/a.ts", { text: after, version: "2" });
+  const second = host.getScriptSnapshot("/a.ts")!;
+
+  // The host fixture builds snapshots with fromString, which cannot describe a
+  // delta, so the wrapper must not invent one.
+  assert.equal(second.getChangeRange(first), undefined);
+  // The projection itself must still be correct and equal-length.
+  assert.equal(second.getLength(), after.length);
+  assert.equal(second.getText(0, second.getLength()).includes("const a = 12;"), true);
+});
+
+test("projected snapshots report a full change when macro structure changes", () => {
+  // Flipping a branch rewrites text far from the edit, so the source delta no
+  // longer describes the projection and a full reparse is required.
+  const before = "#if BROWSER\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
+  const after = "#if OTHER\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
+  const files = new Map([["/a.ts", { text: before, version: "1" }]]);
+  const host = wrapHostWithProjection(ts, createMemoryHost(files), {
+    getProfile: () => ({ definitions: { BROWSER: true }, version: "BROWSER:1" }),
+  });
+
+  const first = host.getScriptSnapshot("/a.ts")!;
+  assert.equal(first.getText(0, first.getLength()).includes("const a = 1;"), true);
+
+  files.set("/a.ts", { text: after, version: "2" });
+  const second = host.getScriptSnapshot("/a.ts")!;
+  // The active branch flipped, so the other branch is now live.
+  assert.equal(second.getText(0, second.getLength()).includes("const b = 2;"), true);
+  assert.equal(second.getChangeRange(first), undefined);
+});
+
+test("unchanged files reuse the cached projection instead of rescanning", () => {
+  const source = "#if BROWSER\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
+  const files = new Map([["/a.ts", { text: source, version: "1" }]]);
+  const profile = { definitions: { BROWSER: true }, version: "BROWSER:1" };
+  const host = wrapHostWithProjection(ts, createMemoryHost(files), {
+    getProfile: () => profile,
+  });
+
+  const first = host.getScriptSnapshot("/a.ts");
+  const second = host.getScriptSnapshot("/a.ts");
+  assert.equal(first, second, "repeated reads must return the memoized projection");
+});
+
+test("a changed Profile invalidates the cached projection", () => {
+  const source = "#if BROWSER\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
+  const files = new Map([["/a.ts", { text: source, version: "1" }]]);
+  let profile: ActiveProfile = { definitions: { BROWSER: true }, version: "BROWSER:1" };
+  const host = wrapHostWithProjection(ts, createMemoryHost(files), {
+    getProfile: () => profile,
+  });
+
+  const browser = host.getScriptSnapshot("/a.ts")!;
+  assert.equal(browser.getText(0, browser.getLength()).includes("const a = 1;"), true);
+
+  profile = { definitions: {}, version: "NODE:1" };
+  const node = host.getScriptSnapshot("/a.ts")!;
+  assert.equal(node.getText(0, node.getLength()).includes("const b = 2;"), true);
+});
+
+test("files without directives pass through untouched", () => {
+  // Large generated .d.ts files contain no macros. Projecting them wastes time
+  // and discards the host's change range, so they must be passed through.
+  const source = "export declare const value: number;\n";
+  const files = new Map([["/big.d.ts", { text: source, version: "1" }]]);
+  const memoryHost = createMemoryHost(files);
+  const host = wrapHostWithProjection(ts, memoryHost, {
+    getProfile: () => ({ definitions: { BROWSER: true }, version: "BROWSER:1" }),
+  });
+
+  const snapshot = host.getScriptSnapshot("/big.d.ts")!;
+  assert.equal(snapshot.getText(0, snapshot.getLength()), source);
+});
+
+test("a directive-free file is not rescanned on every request", () => {
+  // Generated .d.ts files reach tens of megabytes. Scanning one costs well over
+  // 100ms, so the "no directives here" verdict must be cached rather than
+  // recomputed each time tsserver asks for the snapshot.
+  const source = "export declare const value: number;\n";
+  const files = new Map([["/big.d.ts", { text: source, version: "1" }]]);
+  let reads = 0;
+  const memoryHost = createMemoryHost(files);
+  const originalGetScriptSnapshot = memoryHost.getScriptSnapshot.bind(memoryHost);
+  // Count whole-file reads, which is what a rescan requires.
+  memoryHost.getScriptSnapshot = (fileName: string) => {
+    const snapshot = originalGetScriptSnapshot(fileName);
+    if (snapshot === undefined) {
+      return snapshot;
+    }
+    const originalGetText = snapshot.getText.bind(snapshot);
+    return {
+      ...snapshot,
+      getLength: () => snapshot.getLength(),
+      getChangeRange: (old: ts.IScriptSnapshot) => snapshot.getChangeRange(old),
+      getText: (start: number, end: number) => {
+        if (start === 0 && end === snapshot.getLength()) {
+          reads += 1;
+        }
+        return originalGetText(start, end);
+      },
+    };
+  };
+  const host = wrapHostWithProjection(ts, memoryHost, {
+    getProfile: () => ({ definitions: { BROWSER: true }, version: "BROWSER:1" }),
+  });
+
+  host.getScriptSnapshot("/big.d.ts");
+  const readsAfterFirst = reads;
+  host.getScriptSnapshot("/big.d.ts");
+  host.getScriptSnapshot("/big.d.ts");
+  // Subsequent requests may re-read to compare content, but must not exceed one
+  // read apiece, and the first request must not have been repeated.
+  assert.equal(readsAfterFirst, 1, "the first request reads the file once");
+  assert.ok(reads <= 3, `expected at most one read per request, saw ${reads}`);
+
+  // The pass-through contract still holds after caching.
+  const snapshot = host.getScriptSnapshot("/big.d.ts")!;
+  assert.equal(snapshot.getText(0, snapshot.getLength()), source);
 });

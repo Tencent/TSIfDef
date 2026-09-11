@@ -87,6 +87,9 @@ tsifdef build --watch --emit-projection .projection
 安装扩展并设置 tsdk 后，运行 `TypeScript: Restart TS Server`。之后 `#if`/`#else`
 块会置灰、未激活代码不报错，`#if UNKNOWN_MACRO` 按 `false` 处理而非“未知宏”。
 
+升级扩展后同样需要执行 `TypeScript: Restart TS Server`：正在运行的 server 会一直
+使用先前加载的插件，直到重启为止。
+
 ## 4. ESLint
 
 如果项目使用 ESLint，原始的 `#if` 行本会被报成解析错误。TSIfDef 提供一个 ESLint

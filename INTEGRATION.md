@@ -97,6 +97,9 @@ After installing the extension and setting the tsdk, run
 code does not error, and `#if UNKNOWN_MACRO` is treated as `false` rather than
 "unknown macro".
 
+Run `TypeScript: Restart TS Server` after upgrading the extension as well; the
+running server keeps the previously loaded plugin until it restarts.
+
 ## 4. ESLint
 
 If the project uses ESLint, raw `#if` lines would otherwise be reported as parse
