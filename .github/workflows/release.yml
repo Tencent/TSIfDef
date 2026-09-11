@@ -2,6 +2,19 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      npm:
+        description: Publish to npm
+        type: boolean
+        default: true
+      vscode_marketplace:
+        description: Publish to the VS Code Marketplace
+        type: boolean
+        default: true
+      open_vsx:
+        description: Publish to Open VSX
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -19,9 +32,16 @@ jobs:
     uses: ./.github/workflows/build.yml
 
   publish:
-    name: Publish GitHub Release
+    name: Publish release
     needs: build
     runs-on: ubuntu-latest
+    # The `secrets` context is not available in a step-level `if`, so the tokens
+    # are lifted into `env` here. That is what lets a channel skip itself when
+    # its credential has not been configured yet.
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -33,6 +53,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # Point npm at the public registry explicitly. A developer machine may
+          # default to an internal mirror, and publishing there instead of to
+          # npmjs.com would be silent.
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: npm ci
@@ -81,6 +105,7 @@ jobs:
           echo "notes_file=$notes_file" >> "$GITHUB_OUTPUT"
 
       - name: Create immutable release tag
+        id: tag
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -88,11 +113,10 @@ jobs:
           set -euo pipefail
           tag="${{ steps.release.outputs.tag }}"
 
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "::error::Release $tag already exists. Increment the package version before publishing again."
-            exit 1
-          fi
-
+          # A tag that already points somewhere else means this version was built
+          # from different code, which is the case immutability has to reject.
+          # A tag on this very commit is just a re-run, so let it through: the
+          # publish steps below each skip a channel that already has this version.
           if git rev-parse "refs/tags/$tag" >/dev/null 2>&1; then
             target="$(git rev-list -n 1 "$tag")"
             if [[ "$target" != "$GITHUB_SHA" ]]; then
@@ -106,7 +130,14 @@ jobs:
             git push origin "$tag"
           fi
 
-      - name: Publish release
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub release
+        if: steps.tag.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -120,3 +151,62 @@ jobs:
             --verify-tag \
             --title "TSIfDef ${{ steps.release.outputs.version }}" \
             --notes-file "${{ steps.release.outputs.notes_file }}"
+
+      # Each registry below is published independently and skips itself when that
+      # channel already carries this version. Marketplace access can land later
+      # than npm access, so re-running this workflow has to finish the remaining
+      # channels without forcing a version bump.
+
+      - name: Publish to npm
+        if: ${{ inputs.npm && env.NPM_TOKEN != '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.release.outputs.version }}"
+          name="$(node -p "require('./package.json').name")"
+
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already on npm; skipping."
+            exit 0
+          fi
+
+          npm publish "release/${name}-${version}.tgz" --access public
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ inputs.vscode_marketplace && env.VSCE_PAT != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.release.outputs.version }}"
+          name="$(node -p "require('./package.json').name")"
+          publisher="$(node -p "require('./package.json').publisher")"
+
+          if npx vsce show "$publisher.$name" --json 2>/dev/null \
+            | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.exit(JSON.parse(d).versions.some(v=>v.version===process.argv[1])?0:1)}catch{process.exit(1)}})' "$version"; then
+            echo "$publisher.$name $version is already on the Marketplace; skipping."
+            exit 0
+          fi
+
+          npx vsce publish --packagePath "release/${name}-${version}.vsix"
+
+      - name: Publish to Open VSX
+        if: ${{ inputs.open_vsx && env.OVSX_PAT != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.release.outputs.version }}"
+          name="$(node -p "require('./package.json').name")"
+          publisher="$(node -p "require('./package.json').publisher")"
+
+          status="$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://open-vsx.org/api/$publisher/$name/$version")"
+          if [[ "$status" == "200" ]]; then
+            echo "$publisher.$name $version is already on Open VSX; skipping."
+            exit 0
+          fi
+
+          # Creating a namespace that already exists is not an error worth failing on.
+          npx ovsx create-namespace "$publisher" -p "$OVSX_PAT" || true
+          npx ovsx publish "release/${name}-${version}.vsix" -p "$OVSX_PAT"

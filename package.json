@@ -103,6 +103,7 @@
     "eslint": "8.57.1",
     "eslint9": "npm:eslint@9.39.5",
     "eslint-plugin-import": "2.32.0",
+    "ovsx": "1.2.0",
     "typescript-eslint-parser6": "npm:@typescript-eslint/parser@6.21.0",
     "typescript-eslint-parser7": "npm:@typescript-eslint/parser@7.18.0",
     "typescript-eslint-parser8": "npm:@typescript-eslint/parser@8.70.0",
