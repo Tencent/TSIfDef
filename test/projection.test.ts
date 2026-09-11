@@ -35,15 +35,15 @@ function newlineOffsets(source: string): number[] {
 test("preserves CRLF, UTF-16 length, Chinese text, and surrogate offsets", () => {
   const source = [
     'const shared = "中文😀";',
-    "#if HOK",
-    'const hok = "王者😀";',
+    "#if BROWSER",
+    'const browser = "王者😀";',
     "#else",
-    'const domestic = "国内😀";',
+    'const node = "国内😀";',
     "#endif",
     "",
   ].join("\r\n");
 
-  const result = projectSource(source, { HOK: false });
+  const result = projectSource(source, { BROWSER: false });
 
   assert.equal(result.projectedText.length, source.length);
   assert.equal(
@@ -52,7 +52,7 @@ test("preserves CRLF, UTF-16 length, Chinese text, and surrogate offsets", () =>
   );
   assert.deepEqual(newlineOffsets(result.projectedText), newlineOffsets(source));
   assert.equal(result.projectedText.includes('const shared = "中文😀";'), true);
-  assert.equal(result.projectedText.includes('const domestic = "国内😀";'), true);
+  assert.equal(result.projectedText.includes('const node = "国内😀";'), true);
   assert.equal(result.projectedText.includes("#if"), false);
   assert.equal(result.projectedText.includes("#else"), false);
   assert.equal(result.projectedText.includes("#endif"), false);
@@ -66,15 +66,15 @@ test("preserves CRLF, UTF-16 length, Chinese text, and surrogate offsets", () =>
 
 test("produces a TypeScript 5.5.4 parseable active view", () => {
   const source = [
-    "#if HOK",
-    "const region: string = 'hok';",
+    "#if BROWSER",
+    "const region: string = 'browser';",
     "#else",
     "const region: number = 1;",
     "#endif",
     "region;",
   ].join("\n");
 
-  const projected = projectSource(source, { HOK: true }).projectedText;
+  const projected = projectSource(source, { BROWSER: true }).projectedText;
   const transpiled = ts.transpileModule(
     projected,
     {

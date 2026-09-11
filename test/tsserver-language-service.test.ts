@@ -18,34 +18,34 @@ import ts from "typescript";
 
 import { createWrappedService, offsetOf, type MemoryFile } from "./tsserver-fixtures.js";
 
-const HOK = { definitions: { HOK: true }, version: "HOK:1" } as const;
+const BROWSER = { definitions: { BROWSER: true }, version: "BROWSER:1" } as const;
 
 test("completion at an active position excludes inactive-branch identifiers", () => {
   assert.equal(ts.version, "5.5.4");
   const source = [
-    "#if HOK",
-    "const hokOnly = 1;",
+    "#if BROWSER",
+    "const browserOnly = 1;",
     "#else",
-    "const domesticOnly = 2;",
+    "const nodeOnly = 2;",
     "#endif",
-    "const ref = hokOnly;",
+    "const ref = browserOnly;",
     "",
   ].join("\n");
   const files = new Map<string, MemoryFile>([["/main.ts", { text: source, version: "1" }]]);
-  const { service } = createWrappedService(files, HOK);
+  const { service } = createWrappedService(files, BROWSER);
 
   // Query at the original-document offset where `ref` is assigned.
-  const offset = offsetOf(files, "/main.ts", "hokOnly;") ;
+  const offset = offsetOf(files, "/main.ts", "browserOnly;") ;
   const completions = service.getCompletionsAtPosition("/main.ts", offset, undefined);
   const names = new Set(completions?.entries.map((entry) => entry.name) ?? []);
-  assert.equal(names.has("hokOnly"), true);
-  assert.equal(names.has("domesticOnly"), false);
+  assert.equal(names.has("browserOnly"), true);
+  assert.equal(names.has("nodeOnly"), false);
 });
 
 test("definition resolves to the active declaration at original offsets", () => {
   const source = [
-    "#if HOK",
-    "const region = 'hok';",
+    "#if BROWSER",
+    "const region = 'browser';",
     "#else",
     "const region = 42;",
     "#endif",
@@ -53,7 +53,7 @@ test("definition resolves to the active declaration at original offsets", () => 
     "",
   ].join("\n");
   const files = new Map<string, MemoryFile>([["/main.ts", { text: source, version: "1" }]]);
-  const { service } = createWrappedService(files, HOK);
+  const { service } = createWrappedService(files, BROWSER);
 
   // Use position of `region` inside `const ref = region;`.
   const useOffset = offsetOf(files, "/main.ts", "region;");
@@ -62,15 +62,15 @@ test("definition resolves to the active declaration at original offsets", () => 
   const span = definitions![0]!.textSpan;
   // The definition must point at the active (string) declaration, which in the
   // original document is the first `region` occurrence.
-  assert.equal(span.start, offsetOf(files, "/main.ts", "region = 'hok'"));
+  assert.equal(span.start, offsetOf(files, "/main.ts", "region = 'browser'"));
   // And never at the inactive numeric declaration.
   assert.notEqual(span.start, files.get("/main.ts")!.text.indexOf("region = 42"));
 });
 
 test("find-all-references reports only active occurrences across files", () => {
   const lib = [
-    "#if HOK",
-    "export const flag = 'hok';",
+    "#if BROWSER",
+    "export const flag = 'browser';",
     "#else",
     "export const flag = 0;",
     "#endif",
@@ -81,7 +81,7 @@ test("find-all-references reports only active occurrences across files", () => {
     ["/lib.ts", { text: lib, version: "1" }],
     ["/main.ts", { text: main, version: "1" }],
   ]);
-  const { service } = createWrappedService(files, HOK);
+  const { service } = createWrappedService(files, BROWSER);
 
   const queryOffset = offsetOf(files, "/main.ts", "flag;");
   const references = service.getReferencesAtPosition("/main.ts", queryOffset) ?? [];
@@ -100,7 +100,7 @@ test("find-all-references reports only active occurrences across files", () => {
 
 test("rename edits only active occurrences at original offsets", () => {
   const source = [
-    "#if HOK",
+    "#if BROWSER",
     "let value = 1;",
     "value = value + 1;",
     "#else",
@@ -109,7 +109,7 @@ test("rename edits only active occurrences at original offsets", () => {
     "",
   ].join("\n");
   const files = new Map<string, MemoryFile>([["/main.ts", { text: source, version: "1" }]]);
-  const { service } = createWrappedService(files, HOK);
+  const { service } = createWrappedService(files, BROWSER);
 
   const declarationOffset = offsetOf(files, "/main.ts", "value = 1") ;
   const locations = service.findRenameLocations("/main.ts", declarationOffset, false, false, {}) ?? [];
@@ -127,13 +127,13 @@ test("a quick fix is offered for active-branch code at original offsets", () => 
   // The active branch contains a real type error; quick-fix lookup must operate
   // on original-document spans without crossing into masked directive text.
   const source = [
-    "#if HOK",
+    "#if BROWSER",
     "const message: string = 123;",
     "#endif",
     "",
   ].join("\n");
   const files = new Map<string, MemoryFile>([["/main.ts", { text: source, version: "1" }]]);
-  const { service } = createWrappedService(files, HOK);
+  const { service } = createWrappedService(files, BROWSER);
 
   const start = offsetOf(files, "/main.ts", "message");
   const end = start + "message".length;

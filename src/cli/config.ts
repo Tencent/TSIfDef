@@ -137,7 +137,7 @@ export async function loadProfileFile(path: string): Promise<ProfileFile> {
   return parseProfileFile(text, resolvedPath);
 }
 
-/** Parse the D029 schema: a JSON array of enabled macro names. */
+/** Parse a Profile JSON array of enabled macro names. */
 export function parseProfileFile(text: string, path: string): ProfileFile {
   let value: unknown;
   try {

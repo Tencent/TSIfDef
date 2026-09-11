@@ -31,21 +31,21 @@ function resolution(profile: ActiveProfile | undefined): ProfileResolution {
 
 test("reload updates the profile only when its version changes", () => {
   const profiles: Array<ActiveProfile | undefined> = [
-    { definitions: { HOK: true }, version: "HOK:1" },
-    { definitions: { HOK: true }, version: "HOK:1" }, // unchanged
-    { definitions: { HOK: false }, version: "DOMESTIC:1" }, // changed
+    { definitions: { BROWSER: true }, version: "BROWSER:1" },
+    { definitions: { BROWSER: true }, version: "BROWSER:1" }, // unchanged
+    { definitions: { BROWSER: false }, version: "NODE:1" }, // changed
   ];
   let index = 0;
   const controller = new ProfileProjectionController({
     resolve: () => resolution(profiles[Math.min(index, profiles.length - 1)]),
   });
 
-  assert.equal(controller.getProfile()?.version, "HOK:1");
+  assert.equal(controller.getProfile()?.version, "BROWSER:1");
   index = 1;
   assert.equal(controller.reload(), false);
   index = 2;
   assert.equal(controller.reload(), true);
-  assert.equal(controller.getProfile()?.version, "DOMESTIC:1");
+  assert.equal(controller.getProfile()?.version, "NODE:1");
 });
 
 test("reload updates across none<->selected transitions", () => {
@@ -55,7 +55,7 @@ test("reload updates across none<->selected transitions", () => {
   });
   assert.equal(controller.getProfile(), undefined);
 
-  value = { definitions: { HOK: true }, version: "HOK:1" };
+  value = { definitions: { BROWSER: true }, version: "BROWSER:1" };
   assert.equal(controller.reload(), true);
 
   // Same selection again: no change.
@@ -67,21 +67,21 @@ test("reload updates across none<->selected transitions", () => {
 });
 
 test("a transient unavailable resolution keeps the current profile", () => {
-  let next: ProfileResolution = { kind: "profile", profile: { definitions: { HOK: true }, version: "HOK:1" } };
+  let next: ProfileResolution = { kind: "profile", profile: { definitions: { BROWSER: true }, version: "BROWSER:1" } };
   const controller = new ProfileProjectionController({
     resolve: () => next,
   });
-  assert.equal(controller.getProfile()?.version, "HOK:1");
+  assert.equal(controller.getProfile()?.version, "BROWSER:1");
 
   // A momentary read miss (atomic write) must not flap the profile to none.
   next = { kind: "unavailable" };
   assert.equal(controller.reload(), false);
-  assert.equal(controller.getProfile()?.version, "HOK:1");
+  assert.equal(controller.getProfile()?.version, "BROWSER:1");
 
   // Once the real new content is readable, it takes effect.
-  next = { kind: "profile", profile: { definitions: { HOK: false }, version: "DOMESTIC:1" } };
+  next = { kind: "profile", profile: { definitions: { BROWSER: false }, version: "NODE:1" } };
   assert.equal(controller.reload(), true);
-  assert.equal(controller.getProfile()?.version, "DOMESTIC:1");
+  assert.equal(controller.getProfile()?.version, "NODE:1");
 });
 
 function memoryHost(
@@ -93,8 +93,8 @@ function memoryHost(
 test("switching the profile flips diagnostics on the same TypeScript 5.5.4 service", () => {
   assert.equal(ts.version, "5.5.4");
   const source = [
-    "#if HOK",
-    "export const region: string = 'hok';",
+    "#if BROWSER",
+    "export const region: string = 'browser';",
     "#else",
     "export const region: number = 42;",
     "#endif",
@@ -106,7 +106,7 @@ test("switching the profile flips diagnostics on the same TypeScript 5.5.4 servi
   // The controller is the single source of truth for the active profile; the
   // host reads it live, so changing it (and the script version) invalidates the
   // cached AST without recreating the language service.
-  let active: ActiveProfile | undefined = { definitions: { HOK: true }, version: "HOK:1" };
+  let active: ActiveProfile | undefined = { definitions: { BROWSER: true }, version: "BROWSER:1" };
   const controller = new ProfileProjectionController({
     resolve: () => resolution(active),
   });
@@ -115,12 +115,12 @@ test("switching the profile flips diagnostics on the same TypeScript 5.5.4 servi
   });
   const service = ts.createLanguageService(host, ts.createDocumentRegistry());
 
-  // Under HOK, region is a string and `usesRegion: string` is valid.
+  // Under BROWSER, region is a string and `usesRegion: string` is valid.
   assert.deepEqual(service.getSemanticDiagnostics("/main.ts"), []);
 
-  // Switch to the non-HOK profile: region becomes a number, so assigning it to a
+  // Switch to the NODE profile: region becomes a number, so assigning it to a
   // string annotation is now an error. The version change drives reprojection.
-  active = { definitions: { HOK: false }, version: "DOMESTIC:1" };
+  active = { definitions: { BROWSER: false }, version: "NODE:1" };
   controller.reload();
   const afterSwitch = service.getSemanticDiagnostics("/main.ts");
   assert.equal(afterSwitch.length >= 1, true);

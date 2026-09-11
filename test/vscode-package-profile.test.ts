@@ -26,11 +26,11 @@ test("package.json Profile changes update status, definitions, and tsserver", as
   const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-package-"));
   try {
     await mkdir(join(root, "Profiles"), { recursive: true });
-    const hok = join(root, "Profiles", "HOK.json");
-    const domestic = join(root, "Profiles", "Domestic.json");
-    await writeFile(hok, "[\"HOK\"]", "utf8");
-    await writeFile(domestic, "[\"DOMESTIC\"]", "utf8");
-    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profiles/HOK.json" }), "utf8");
+    const browser = join(root, "Profiles", "BROWSER.json");
+    const node = join(root, "Profiles", "NODE.json");
+    await writeFile(browser, "[\"BROWSER\"]", "utf8");
+    await writeFile(node, "[\"NODE\"]", "utf8");
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profiles/BROWSER.json" }), "utf8");
 
     const host = new FakeHost({ root });
     const state = new ProfileStateController(host);
@@ -38,13 +38,13 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     const controller = new PackageProfileController(host, state, (next) => { definitions = next; });
     state.activate();
     await controller.reload();
-    assert.equal(host.statusItem.text, "$(versions) TSIfDef: HOK.json");
-    assert.equal(definitions?.HOK, true);
-    const hokConfig = host.typeScriptPluginConfigurations.at(-1);
-    assert.equal(hokConfig?.name, "tsifdef-tsserver");
-    assert.equal((hokConfig?.configuration as { profileFile?: string }).profileFile, hok);
-    const hokToken = (hokConfig?.configuration as { profileToken?: string }).profileToken;
-    assert.equal(typeof hokToken, "string");
+    assert.equal(host.statusItem.text, "$(versions) TSIfDef: BROWSER.json");
+    assert.equal(definitions?.BROWSER, true);
+    const browserConfig = host.typeScriptPluginConfigurations.at(-1);
+    assert.equal(browserConfig?.name, "tsifdef-tsserver");
+    assert.equal((browserConfig?.configuration as { profileFile?: string }).profileFile, browser);
+    const browserToken = (browserConfig?.configuration as { profileToken?: string }).profileToken;
+    assert.equal(typeof browserToken, "string");
     assert.equal(host.typeScriptServerRestarts, 1);
     assert.equal(host.typeScriptProjectReloads, 1);
     assert.deepEqual(
@@ -52,19 +52,19 @@ test("package.json Profile changes update status, definitions, and tsserver", as
       ["configure", "restart", "configure", "reload"],
     );
 
-    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profiles/Domestic.json" }), "utf8");
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profiles/NODE.json" }), "utf8");
     await controller.reload();
-    assert.equal(host.statusItem.text, "$(versions) TSIfDef: Domestic.json");
-    assert.equal(definitions?.DOMESTIC, true);
-    assert.equal(definitions?.HOK, undefined);
-    const domesticConfig = host.typeScriptPluginConfigurations.at(-1)?.configuration as {
+    assert.equal(host.statusItem.text, "$(versions) TSIfDef: NODE.json");
+    assert.equal(definitions?.NODE, true);
+    assert.equal(definitions?.BROWSER, undefined);
+    const nodeConfig = host.typeScriptPluginConfigurations.at(-1)?.configuration as {
       profileFile?: string;
       profileToken?: string;
     };
-    assert.equal(domesticConfig.profileFile, domestic);
+    assert.equal(nodeConfig.profileFile, node);
     // The token must change with the enabled macro set so the TypeScript
     // extension always forwards the new config to the plugin.
-    assert.notEqual(domesticConfig.profileToken, hokToken);
+    assert.notEqual(nodeConfig.profileToken, browserToken);
     assert.equal(host.typeScriptServerRestarts, 2);
     assert.equal(host.typeScriptProjectReloads, 2);
     assert.deepEqual(
@@ -73,7 +73,7 @@ test("package.json Profile changes update status, definitions, and tsserver", as
     );
     assert.deepEqual(
       host.typeScriptPluginConfigurations.at(-1)?.configuration,
-      domesticConfig,
+      nodeConfig,
     );
 
     await controller.reload();

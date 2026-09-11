@@ -24,7 +24,7 @@ test("generated runtime package versions follow root package.json", async () => 
     version?: unknown;
   };
   const tsserverPackage = JSON.parse(
-    await readFile(resolve("tsserver-package", "package.json"), "utf8"),
+    await readFile(resolve("scripts", "packaging", "tsserver", "package.json"), "utf8"),
   ) as { version?: unknown };
   const packageLock = JSON.parse(await readFile(resolve("package-lock.json"), "utf8")) as {
     version?: unknown;
@@ -35,7 +35,7 @@ test("generated runtime package versions follow root package.json", async () => 
   assert.equal(tsserverPackage.version, rootPackage.version);
   assert.equal(packageLock.version, rootPackage.version);
   assert.equal(packageLock.packages?.[""]?.version, rootPackage.version);
-  assert.equal(packageLock.packages?.["tsserver-package"]?.version, rootPackage.version);
+  assert.equal(packageLock.packages?.["scripts/packaging/tsserver"]?.version, rootPackage.version);
 });
 
 test("demo package advertises the modern projected build path", async () => {

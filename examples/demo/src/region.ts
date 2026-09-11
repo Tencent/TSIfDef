@@ -16,7 +16,7 @@
 // seen by the type checker, so there is no duplicate-declaration error and
 // `region` resolves to the active branch's type.
 #if TEST_A
-export const region: string = "hok";
+export const region: string = "browser";
 export const profileName = "TEST_A" as const;
 export function describeRegion(): string {
   return `Region ${region.toUpperCase()}`;

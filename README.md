@@ -1,6 +1,16 @@
-# TSIfDef
+<p align="center">
+  <img src="assets/icon.png" alt="BqLog Banner" width="50%">
+</p>
 
-Chinese documentation: [README.zh-CN.md](https://github.com/Tencent/TsIfDef/blob/main/README.zh-CN.md)
+# TSIfDef  1.1.5
+
+**English** | [简体中文](./README.zh-CN.md)
+
+[Homepage](https://github.com/Tencent/TSIfDef) ·
+[`Changelog`](./CHANGELOG.md) ·
+[`Integration guide`](./INTEGRATION.md) ·
+[`Contributing`](./CONTRIBUTING.md) ·
+[`Security`](./SECURITY.md)
 
 TSIfDef is source-level conditional compilation for TypeScript. The core macro
 analysis is shared across the CLI, tsserver plugin, VSCode extension, and ESLint

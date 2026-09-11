@@ -62,19 +62,19 @@ function pluginInfo(
 
 test("plugin resolves the selected Profile file and projects", async () => {
   await withProject(async (root) => {
-    await writeFile(join(root, "HOK.json"), "[\"HOK\"]", "utf8");
+    await writeFile(join(root, "BROWSER.json"), "[\"BROWSER\"]", "utf8");
     const file = join(root, "main.ts");
-    const source = "#if HOK\nexport const value: number = 1;\n#else\nexport const value: string = 'x';\n#endif\n";
+    const source = "#if BROWSER\nexport const value: number = 1;\n#else\nexport const value: string = 'x';\n#endif\n";
 
     const files = new Map([[file, { text: source, version: "1" }]]);
     const host = createMemoryHost(files);
     const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
-    const info = pluginInfo(root, host, languageService, { profileFile: "HOK.json" });
+    const info = pluginInfo(root, host, languageService, { profileFile: "BROWSER.json" });
 
     const plugin = init({ typescript: ts });
     const wrapped = plugin.create(info);
 
-    // The HOK branch is active; the snapshot the service sees is the projection.
+    // The BROWSER branch is active; the snapshot the service sees is the projection.
     const snapshot = host.getScriptSnapshot(file)!;
     const projected = snapshot.getText(0, snapshot.getLength());
     assert.equal(projected.includes("value: number = 1"), true);
@@ -88,55 +88,47 @@ test("plugin resolves the selected Profile file and projects", async () => {
 
 test("plugin reprojects when VSCode sends a different profile", async () => {
   await withProject(async (root) => {
-    const hokPath = join(root, "HOK.json");
-    const domesticPath = join(root, "Domestic.json");
-    await writeFile(hokPath, "[\"HOK\"]", "utf8");
-    await writeFile(domesticPath, "[]", "utf8");
+    const browserPath = join(root, "BROWSER.json");
+    const nodePath = join(root, "NODE.json");
+    await writeFile(browserPath, "[\"BROWSER\"]", "utf8");
+    await writeFile(nodePath, "[]", "utf8");
     const file = join(root, "main.ts");
-    const source = "#if HOK\nconst selected = 'hok';\n#else\nconst selected = 'domestic';\n#endif\n";
+    const source = "#if BROWSER\nconst selected = 'browser';\n#else\nconst selected = 'node';\n#endif\n";
     const host = createMemoryHost(new Map([[file, { text: source, version: "1" }]]));
     const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
     const plugin = init({ typescript: ts });
     plugin.create(pluginInfo(root, host, languageService, {
-      profileFile: hokPath,
+      profileFile: browserPath,
     }));
 
-    assert.match(host.getScriptSnapshot(file)!.getText(0, source.length), /selected = 'hok'/);
-    plugin.onConfigurationChanged?.({ profileFile: domesticPath });
+    assert.match(host.getScriptSnapshot(file)!.getText(0, source.length), /selected = 'browser'/);
+    plugin.onConfigurationChanged?.({ profileFile: nodePath });
     const projected = host.getScriptSnapshot(file)!.getText(0, source.length);
-    assert.match(projected, /selected = 'domestic'/);
-    assert.doesNotMatch(projected, /selected = 'hok'/);
+    assert.match(projected, /selected = 'node'/);
+    assert.doesNotMatch(projected, /selected = 'browser'/);
   });
 });
 
 test("plugin leaves the service untouched when no profile is selected", async () => {
   await withProject(async (root) => {
-    // No macros directory and no profile config or env: projection disabled.
+    // No Profile is selected, so projection remains disabled.
     const file = join(root, "main.ts");
     const source = "const plain = 1;\n";
     const files = new Map([[file, { text: source, version: "1" }]]);
     const host = createMemoryHost(files);
     const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
-    const previousEnv = process.env.HOK_TS_PROFILE;
-    delete process.env.HOK_TS_PROFILE;
-    try {
-      const info = pluginInfo(root, host, languageService, {});
-      const plugin = init({ typescript: ts });
-      plugin.create(info);
-      assert.equal(host.getScriptVersion(file), "1");
-      assert.equal(host.getScriptSnapshot(file)!.getText(0, source.length), source);
-    } finally {
-      if (previousEnv !== undefined) {
-        process.env.HOK_TS_PROFILE = previousEnv;
-      }
-    }
+    const info = pluginInfo(root, host, languageService, {});
+    const plugin = init({ typescript: ts });
+    plugin.create(info);
+    assert.equal(host.getScriptVersion(file), "1");
+    assert.equal(host.getScriptSnapshot(file)!.getText(0, source.length), source);
   });
 });
 
 test("plugin closes the Profile directory watcher on dispose", async () => {
   await withProject(async (root) => {
-    const profilePath = join(root, "HOK.json");
-    await writeFile(profilePath, "[\"HOK\"]", "utf8");
+    const profilePath = join(root, "BROWSER.json");
+    await writeFile(profilePath, "[\"BROWSER\"]", "utf8");
     const file = join(root, "main.ts");
     const host = createMemoryHost(new Map([[file, { text: "const value = 1;\n", version: "1" }]]));
     const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());

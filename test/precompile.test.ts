@@ -26,7 +26,7 @@ test("precompile derives roots and imports from the original TypeScript Program"
   const root = await mkdtemp(join(tmpdir(), "tsifdef-precompile-"));
   try {
     await mkdir(join(root, "src"), { recursive: true });
-    await writeFile(join(root, "HOK.json"), "[\"HOK\"]", "utf8");
+    await writeFile(join(root, "BROWSER.json"), "[\"BROWSER\"]", "utf8");
     await writeFile(join(root, "tsconfig.json"), JSON.stringify({
       compilerOptions: {
         strict: true,
@@ -37,12 +37,12 @@ test("precompile derives roots and imports from the original TypeScript Program"
       include: ["src/**/*.ts"],
     }), "utf8");
     await writeFile(join(root, "src", "main.ts"), "import { value } from '@app/dep';\nvalue.toFixed();\n", "utf8");
-    await writeFile(join(root, "src", "dep.ts"), "#if HOK\nexport const value = 1;\n#else\nexport const value = 'x';\n#endif\n", "utf8");
+    await writeFile(join(root, "src", "dep.ts"), "#if BROWSER\nexport const value = 1;\n#else\nexport const value = 'x';\n#endif\n", "utf8");
 
     const result = await precompileProject({
       projectRoot: root,
       project: "tsconfig.json",
-      profile: await loadProfileFile(join(root, "HOK.json")),
+      profile: await loadProfileFile(join(root, "BROWSER.json")),
     });
     assert.deepEqual(result.manifest.files.map((file) => file.source), ["src/dep.ts", "src/main.ts"]);
     assert.equal(result.manifest.files.every((file) => file.sourceHash.length === 64), true);

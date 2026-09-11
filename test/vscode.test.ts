@@ -28,12 +28,12 @@ test("renders the package-selected Profile file and full-path tooltip", () => {
   const host = new FakeHost();
   const controller = new ProfileStateController(host);
   controller.activate();
-  const profile = join("C:\\project", "Profiles", "HOK.json");
+  const profile = join("C:\\project", "Profiles", "BROWSER.json");
   controller.setProfile(profile);
 
-  assert.equal(host.statusItem.text, "$(versions) TSIfDef: HOK.json");
+  assert.equal(host.statusItem.text, "$(versions) TSIfDef: BROWSER.json");
   assert.match(host.statusItem.tooltip ?? "", /package\.json/);
-  assert.match(host.statusItem.tooltip ?? "", /HOK\.json/);
+  assert.match(host.statusItem.tooltip ?? "", /BROWSER\.json/);
   assert.deepEqual(controller.effectiveProfile(), { profile, source: "package.json" });
   controller.dispose();
 });
@@ -44,8 +44,8 @@ test("shows missing and unavailable package Profile states", () => {
   controller.activate();
   assert.equal(host.statusItem.text, "$(versions) TSIfDef: none");
 
-  controller.setProfile("C:\\project\\Profiles\\HOK.json", "Profile file was not found");
-  assert.equal(host.statusItem.text, "$(error) TSIfDef: HOK.json (unavailable)");
+  controller.setProfile("C:\\project\\Profiles\\BROWSER.json", "Profile file was not found");
+  assert.equal(host.statusItem.text, "$(error) TSIfDef: BROWSER.json (unavailable)");
   assert.equal(host.statusItem.tooltip, "Profile file was not found");
   controller.dispose();
 });
@@ -54,7 +54,7 @@ test("active Profile command returns the package-selected absolute path", async 
   const host = new FakeHost();
   const controller = new ProfileStateController(host);
   controller.activate();
-  const profile = "C:\\project\\Profiles\\HOK.json";
+  const profile = "C:\\project\\Profiles\\BROWSER.json";
   controller.setProfile(profile);
   assert.equal(await host.commands.get(activeProfileCommand)?.(), profile);
   controller.dispose();

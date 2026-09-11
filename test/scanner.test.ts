@@ -20,8 +20,8 @@ import { scanDirectives } from "../src/core/index.js";
 test("scans C-style directives and preserves UTF-16 ranges", () => {
   const source = [
     "const label = '中文😀';",
-    "  #if HOK",
-    "#elif DOMESTIC",
+    "  #if BROWSER",
+    "#elif NODE",
     "#else",
     "#error Unknown region",
     "#endif",
@@ -43,17 +43,17 @@ test("scans C-style directives and preserves UTF-16 ranges", () => {
   assert.ok(first);
   assert.equal(first.line, 1);
   assert.deepEqual(first.range, {
-    start: source.indexOf("  #if HOK"),
-    end: source.indexOf("  #if HOK") + "  #if HOK".length,
+    start: source.indexOf("  #if BROWSER"),
+    end: source.indexOf("  #if BROWSER") + "  #if BROWSER".length,
   });
   assert.deepEqual(first.keywordRange, {
-    start: source.indexOf("#if HOK"),
-    end: source.indexOf("#if HOK") + "#if".length,
+    start: source.indexOf("#if BROWSER"),
+    end: source.indexOf("#if BROWSER") + "#if".length,
   });
-  assert.equal(first.argument, "HOK");
+  assert.equal(first.argument, "BROWSER");
   assert.deepEqual(first.argumentRange, {
-    start: source.indexOf("HOK"),
-    end: source.indexOf("HOK") + 3,
+    start: source.indexOf("BROWSER"),
+    end: source.indexOf("BROWSER") + "BROWSER".length,
   });
 });
 
@@ -98,8 +98,8 @@ test("does not let regex literals change lexical state", () => {
 test("recognizes directives inside a template expression", () => {
   const source = [
     "const value = `${",
-    "#if HOK",
-    "hokValue",
+    "#if BROWSER",
+    "browserValue",
     "#endif",
     "}`;",
   ].join("\n");

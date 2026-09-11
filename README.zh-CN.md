@@ -1,6 +1,16 @@
-# TSIfDef
+<p align="center">
+  <img src="assets/icon.png" alt="BqLog Banner" width="50%">
+</p>
 
-Language file: [`README.md`](./README.md)
+# TSIfDef 1.1.5
+
+[English](./README.md) | **简体中文**
+
+[项目主页](https://github.com/Tencent/TSIfDef) ·
+[`更新日志`](./CHANGELOG.zh-CN.md) ·
+[`接入指南`](./INTEGRATION.zh-CN.md) ·
+[`参与贡献`](./CONTRIBUTING.md) ·
+[`安全策略`](./SECURITY.md)
 
 TSIfDef 用于 TypeScript 的源码级条件编译。核心宏分析由 CLI、tsserver 插件、
 VSCode 扩展和 ESLint processor 共享实现——任何环境都不自行解释宏规则。

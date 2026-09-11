@@ -29,36 +29,36 @@ async function setupProject(): Promise<{
   const sourceFile = join(root, "src", "main.ts");
   await mkdir(dirname(sourceFile), { recursive: true });
   await mkdir(join(root, "profiles"), { recursive: true });
-  await writeFile(join(root, "profiles", "HOK.json"), "[\"HOK\"]\n", "utf8");
-  await writeFile(join(root, "profiles", "Domestic.json"), "[]\n", "utf8");
+  await writeFile(join(root, "profiles", "BROWSER.json"), "[\"BROWSER\"]\n", "utf8");
+  await writeFile(join(root, "profiles", "NODE.json"), "[]\n", "utf8");
   await writeFile(
     sourceFile,
-    "#if HOK\nconst selected = 'hok';\n#else\nconst selected = 'domestic';\n#endif\n",
+    "#if BROWSER\nconst selected = 'browser';\n#else\nconst selected = 'node';\n#endif\n",
     "utf8",
   );
   const packagePath = join(root, "package.json");
-  await writeFile(packagePath, JSON.stringify({ tsifdef: "./profiles/HOK.json" }), "utf8");
+  await writeFile(packagePath, JSON.stringify({ tsifdef: "./profiles/BROWSER.json" }), "utf8");
   return { root, sourceFile, packagePath };
 }
 
 test("ESLint processor notices package.json Profile pointer edits in one process", async () => {
   const { root, sourceFile, packagePath } = await setupProject();
-  const source = "#if HOK\nconst selected = 'hok';\n#else\nconst selected = 'domestic';\n#endif\n";
+  const source = "#if BROWSER\nconst selected = 'browser';\n#else\nconst selected = 'node';\n#endif\n";
   try {
     const first = processors.macros.preprocess(source, sourceFile)[0]!;
-    assert.match(first, /selected = 'hok'/);
-    assert.doesNotMatch(first, /selected = 'domestic'/);
+    assert.match(first, /selected = 'browser'/);
+    assert.doesNotMatch(first, /selected = 'node'/);
     processors.macros.postprocess([[]], sourceFile);
 
     await writeFile(
       packagePath,
-      JSON.stringify({ tsifdef: "./profiles/Domestic.json" }),
+      JSON.stringify({ tsifdef: "./profiles/NODE.json" }),
       "utf8",
     );
 
     const second = processors.macros.preprocess(source, sourceFile)[0]!;
-    assert.match(second, /selected = 'domestic'/);
-    assert.doesNotMatch(second, /selected = 'hok'/);
+    assert.match(second, /selected = 'node'/);
+    assert.doesNotMatch(second, /selected = 'browser'/);
     processors.macros.postprocess([[]], sourceFile);
   } finally {
     await rm(root, { recursive: true, force: true });

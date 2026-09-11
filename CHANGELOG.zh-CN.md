@@ -1,9 +1,5 @@
 # 更新日志
 
-Language file: [`CHANGELOG.md`](./CHANGELOG.md)
-
-## 未发布
-
 ## v1.1.5 - 2026-09-09
 
 - 增加 TSIfDef-aware ESLint parser wrapper，覆盖 `import/no-cycle` 等直接读取

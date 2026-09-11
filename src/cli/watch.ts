@@ -54,7 +54,7 @@ const macroFilePattern = /(?:\.d)?\.(?:ts|tsx|mts|cts)$/i;
  * Watch mode for projected compilation. A `createWatchCompilerHost` drives
  * incremental rebuilds with the same equal-length masking as one-shot builds.
  * The Profile file is watched separately; any change tears down the current
- * WatchProgram and rebuilds it in full under the new Profile (SPEC §8.2).
+ * WatchProgram and rebuilds it in full under the new Profile.
  */
 export async function watchProject(options: WatchOptions): Promise<WatchHandle> {
   const ts = (await import("typescript")).default;

@@ -19,7 +19,7 @@ const root = resolve(__dirname, "..");
 const versionPath = join(root, "src", "version.ts");
 const packagePath = join(root, "package.json");
 const lockPath = join(root, "package-lock.json");
-const tsserverPackagePath = join(root, "tsserver-package", "package.json");
+const tsserverPackagePath = join(root, "scripts", "packaging", "tsserver", "package.json");
 
 function parseJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -71,10 +71,10 @@ export const VERSION_TAG = \`v\${VERSION}\`;
     }
     if (
       lockJson.packages
-      && lockJson.packages["tsserver-package"]
-      && lockJson.packages["tsserver-package"].version !== version
+      && lockJson.packages["scripts/packaging/tsserver"]
+      && lockJson.packages["scripts/packaging/tsserver"].version !== version
     ) {
-      lockJson.packages["tsserver-package"].version = version;
+      lockJson.packages["scripts/packaging/tsserver"].version = version;
       changed = true;
     }
     if (lockJson.packages?.[""]?.hasInstallScript === true) {

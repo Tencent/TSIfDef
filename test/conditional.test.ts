@@ -23,32 +23,32 @@ function isInactive(offset: number, ranges: readonly SourceRange[]): boolean {
 
 test("evaluates nested if, elif, and else branches", () => {
   const source = [
-    "#if HOK",
-    "hokCode();",
+    "#if BROWSER",
+    "browserCode();",
     "#if FEATURE",
     "featureCode();",
     "#else",
     "withoutFeature();",
     "#endif",
-    "#elif DOMESTIC",
-    "domesticCode();",
+    "#elif NODE",
+    "nodeCode();",
     "#else",
     "fallbackCode();",
     "#endif",
   ].join("\n");
 
   const result = analyzeConditionals(source, {
-    HOK: true,
-    DOMESTIC: false,
+    BROWSER: true,
+    NODE: false,
     FEATURE: false,
   });
 
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.directiveRanges.length, 7);
-  assert.equal(isInactive(source.indexOf("hokCode"), result.inactiveRanges), false);
+  assert.equal(isInactive(source.indexOf("browserCode"), result.inactiveRanges), false);
   assert.equal(isInactive(source.indexOf("featureCode"), result.inactiveRanges), true);
   assert.equal(isInactive(source.indexOf("withoutFeature"), result.inactiveRanges), false);
-  assert.equal(isInactive(source.indexOf("domesticCode"), result.inactiveRanges), true);
+  assert.equal(isInactive(source.indexOf("nodeCode"), result.inactiveRanges), true);
   assert.equal(isInactive(source.indexOf("fallbackCode"), result.inactiveRanges), true);
 });
 
@@ -69,19 +69,19 @@ test("treats absent macros as false inside inactive parent branches", () => {
 
 test("reports only active error directives", () => {
   const source = [
-    "#if HOK",
-    "#error HOK build is blocked",
+    "#if BROWSER",
+    "#error BROWSER build is blocked",
     "#else",
     "#error hidden error",
     "#endif",
   ].join("\n");
 
-  const result = analyzeConditionals(source, { HOK: true });
+  const result = analyzeConditionals(source, { BROWSER: true });
 
   const errors = result.diagnostics.filter((diagnostic) => diagnostic.code === "active-error");
   assert.equal(errors.length, 1);
-  assert.equal(errors[0]?.message, "HOK build is blocked");
-  assert.equal(source.slice(errors[0]!.range.start, errors[0]!.range.end), "HOK build is blocked");
+  assert.equal(errors[0]?.message, "BROWSER build is blocked");
+  assert.equal(source.slice(errors[0]!.range.start, errors[0]!.range.end), "BROWSER build is blocked");
 });
 
 test("composes structural, expression, and directive diagnostics", () => {

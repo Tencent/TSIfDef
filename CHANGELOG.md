@@ -1,9 +1,5 @@
 # Changelog
 
-Language file: [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md)
-
-## Unreleased
-
 ## v1.1.5 - 2026-09-09
 
 - Add a TSIfDef-aware ESLint parser wrapper for rules such as

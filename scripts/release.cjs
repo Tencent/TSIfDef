@@ -213,11 +213,6 @@ async function verifyInstalledVsix(vsixPath, packageJson) {
   const shimManifest = join(shimRoot, "package.json");
   const shimEntry = join(shimRoot, "index.js");
   assertPackageVersion(
-    join(installedRoot, "tsserver-package", "package.json"),
-    packageJson.version,
-    "VSIX tsserver-package manifest",
-  );
-  assertPackageVersion(
     shimManifest,
     packageJson.version,
     "VSIX tsserver plugin shim manifest",
@@ -259,7 +254,7 @@ function verifyInstalledTgz(tgzPath, packageJson) {
     }, null, 2),
     "utf8",
   );
-  writeFileSync(join(projectRoot, "Profile.json"), '["HOK"]\n', "utf8");
+  writeFileSync(join(projectRoot, "Profile.json"), '["BROWSER"]\n', "utf8");
   writeFileSync(
     join(projectRoot, "tsconfig.json"),
     JSON.stringify({ compilerOptions: { target: "ES2022", module: "Node16", moduleResolution: "Node16" }, include: ["src/**/*.ts"] }, null, 2),
@@ -321,7 +316,7 @@ function verifyInstalledTgz(tgzPath, packageJson) {
     throw new Error("Installed package does not expose the TSIfDef parser wrapper.");
   }
   const macroSourcePath = join(projectRoot, "src", "macro.ts");
-  writeFileSync(macroSourcePath, "#if HOK\nexport const active = 1;\n#endif\n", "utf8");
+  writeFileSync(macroSourcePath, "#if BROWSER\nexport const active = 1;\n#endif\n", "utf8");
   const parsed = eslintParser.parseForESLint(readFileSync(macroSourcePath, "utf8"), {
     filePath: macroSourcePath,
     ecmaVersion: 2022,
@@ -332,7 +327,7 @@ function verifyInstalledTgz(tgzPath, packageJson) {
   }
   writeFileSync(
     macroSourcePath,
-    "#if HOK\nconst unused = 1;\n#else\nconst hidden = 2;\n#endif\n",
+    "#if BROWSER\nconst unused = 1;\n#else\nconst hidden = 2;\n#endif\n",
     "utf8",
   );
   const eslintPath = join(projectRoot, "node_modules", "eslint", "bin", "eslint.js");

@@ -45,8 +45,8 @@ test("PositionMapper maps offsets across CRLF, LF, and surrogate pairs", () => {
 test("analyzeDocument reuses core analysis for diagnostics and inactive ranges", () => {
   const source = [
     "const shared = 1;",
-    "#if HOK",
-    "const onlyHok = 2;",
+    "#if BROWSER",
+    "const onlyBrowser = 2;",
     "#else",
     "const onlyOther = 3;",
     "#endif",
@@ -55,9 +55,9 @@ test("analyzeDocument reuses core analysis for diagnostics and inactive ranges",
     "",
   ].join("\n");
 
-  const analysis = analyzeDocument(source, { HOK: true });
+  const analysis = analyzeDocument(source, { BROWSER: true });
 
-  // The #else branch is inactive under HOK and must be grayed.
+  // The #else branch is inactive under BROWSER and must be grayed.
   assert.equal(analysis.inactiveRanges.length >= 1, true);
   const inactive = analysis.inactiveRanges[0]!;
   assert.equal(inactive.start.line <= 4, true);
@@ -68,12 +68,12 @@ test("analyzeDocument reuses core analysis for diagnostics and inactive ranges",
   assert.equal(analysis.inactiveRanges.some((range) => range.start.line <= 6), true);
 });
 
-const hok: MacroDefinitions = { HOK: true };
+const browser: MacroDefinitions = { BROWSER: true };
 
 test("presentation publishes diagnostics and decorations for open macro documents", () => {
-  const source = "#if HOK\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
+  const source = "#if BROWSER\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
   const host = new FakeHost({ documents: [macroDocument("file:///a.ts", source)] });
-  const controller = new MacroPresentationController(host, () => hok);
+  const controller = new MacroPresentationController(host, () => browser);
   controller.activate();
 
   assert.equal(host.diagnostics.has("file:///a.ts"), true);
@@ -87,7 +87,7 @@ test("presentation publishes diagnostics and decorations for open macro document
 
 test("presentation clears everything when no profile is selected", () => {
   const host = new FakeHost({
-    documents: [macroDocument("file:///a.ts", "#if HOK\n#endif\n")],
+    documents: [macroDocument("file:///a.ts", "#if BROWSER\n#endif\n")],
   });
   const controller = new MacroPresentationController(host, () => undefined);
   controller.activate();
@@ -99,9 +99,9 @@ test("presentation clears everything when no profile is selected", () => {
 
 test("presentation skips non-macro documents", () => {
   const host = new FakeHost({
-    documents: [{ uri: "file:///a.js", isMacroDocument: false, getText: () => "#if HOK\n#endif\n" }],
+    documents: [{ uri: "file:///a.js", isMacroDocument: false, getText: () => "#if BROWSER\n#endif\n" }],
   });
-  const controller = new MacroPresentationController(host, () => hok);
+  const controller = new MacroPresentationController(host, () => browser);
   controller.activate();
 
   assert.equal(host.diagnostics.has("file:///a.js"), false);
@@ -109,8 +109,8 @@ test("presentation skips non-macro documents", () => {
 });
 
 test("refresh drops documents that are no longer open", () => {
-  const host = new FakeHost({ documents: [macroDocument("file:///a.ts", "#if HOK\n#endif\n")] });
-  const controller = new MacroPresentationController(host, () => hok);
+  const host = new FakeHost({ documents: [macroDocument("file:///a.ts", "#if BROWSER\n#endif\n")] });
+  const controller = new MacroPresentationController(host, () => browser);
   controller.activate();
   assert.equal(host.diagnostics.has("file:///a.ts"), true);
 
@@ -123,10 +123,10 @@ test("refresh drops documents that are no longer open", () => {
 
 test("refreshDocument reanalyzes a single edited document", () => {
   const host = new FakeHost();
-  const controller = new MacroPresentationController(host, () => hok);
+  const controller = new MacroPresentationController(host, () => browser);
   controller.activate();
 
-  controller.refreshDocument(macroDocument("file:///edit.ts", "#if HOK\nconst a = 1;\n#else\nx\n#endif\n"));
+  controller.refreshDocument(macroDocument("file:///edit.ts", "#if BROWSER\nconst a = 1;\n#else\nx\n#endif\n"));
   assert.equal(host.diagnostics.has("file:///edit.ts"), true);
   assert.equal((host.decorations.get("file:///edit.ts")?.ranges.length ?? 0) >= 1, true);
 
@@ -137,18 +137,18 @@ test("refreshDocument reanalyzes a single edited document", () => {
 });
 
 test("a changed profile reanalyzes with the new definitions", () => {
-  const source = "#if HOK\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
-  let definitions: MacroDefinitions = { HOK: true };
+  const source = "#if BROWSER\nconst a = 1;\n#else\nconst b = 2;\n#endif\n";
+  let definitions: MacroDefinitions = { BROWSER: true };
   const host = new FakeHost({ documents: [macroDocument("file:///a.ts", source)] });
   const controller = new MacroPresentationController(host, () => definitions);
   controller.activate();
-  const hokInactive = host.decorations.get("file:///a.ts")!.ranges[0]!;
+  const browserInactive = host.decorations.get("file:///a.ts")!.ranges[0]!;
 
-  definitions = { HOK: false };
+  definitions = { BROWSER: false };
   controller.refresh();
   const otherInactive = host.decorations.get("file:///a.ts")!.ranges[0]!;
 
   // The inactive branch moves from the #else block to the #if block.
-  assert.notDeepEqual(hokInactive, otherInactive);
+  assert.notDeepEqual(browserInactive, otherInactive);
   controller.dispose();
 });

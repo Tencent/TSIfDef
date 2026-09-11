@@ -5,8 +5,33 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Tencent/TsIfDef.git"
+    "url": "https://github.com/Tencent/TSIfDef.git"
   },
+  "homepage": "https://github.com/Tencent/TSIfDef#readme",
+  "bugs": {
+    "url": "https://github.com/Tencent/TSIfDef/issues"
+  },
+  "keywords": [
+    "typescript",
+    "conditional-compilation",
+    "preprocessor",
+    "vscode",
+    "eslint"
+  ],
+  "files": [
+    "assets/",
+    "dist/**/*.d.ts",
+    "dist/**/*.js",
+    "CHANGELOG.md",
+    "CHANGELOG.zh-CN.md",
+    "CONTRIBUTING.md",
+    "INTEGRATION.md",
+    "INTEGRATION.zh-CN.md",
+    "LICENSE",
+    "README.md",
+    "README.zh-CN.md",
+    "SECURITY.md"
+  ],
   "main": "dist/vscode/extension.js",
   "types": "dist/eslint/package.d.ts",
   "publisher": "hok",
@@ -77,7 +102,7 @@
     "@vscode/vsce": "3.9.2",
     "eslint": "8.57.1",
     "eslint-plugin-import": "2.32.0",
-    "tsifdef-tsserver": "file:./tsserver-package",
+    "tsifdef-tsserver": "file:./scripts/packaging/tsserver",
     "yauzl": "^3.4.0",
     "yazl": "^2.5.1"
   },
