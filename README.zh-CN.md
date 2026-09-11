@@ -96,8 +96,9 @@ export default [
 ];
 ```
 
-ESLint 只检查激活代码，诊断保留原始行列位置，自动修复和快速修复均正常工作。旧版
-`.eslintrc` 接入方式见[接入指南](./INTEGRATION.zh-CN.md)。
+ESLint 只检查激活代码，诊断保留原始行列位置，自动修复和快速修复均正常工作。不需要
+关闭任何规则——`prettier/prettier` 等格式化规则保持开启即可，只会对激活代码生效。
+旧版 `.eslintrc` 接入方式见[接入指南](./INTEGRATION.zh-CN.md)。
 
 ## 构建行为
 

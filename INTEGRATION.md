@@ -110,9 +110,11 @@ export default [
 Keep the project's normal `@typescript-eslint/parser` as the top-level parser so
 editor integrations still recognize TypeScript validation.
 
-Rules behave as usual: diagnostics report at their real positions, autofix and
-editor quick fixes work, and text rules such as `prettier/prettier` should stay
-enabled. Only a fix that would overwrite a `#if` line is skipped — its
+No rules need to be turned off. Diagnostics report at their real line and
+column, autofix and editor quick fixes work, and formatting rules such as
+`prettier/prettier` stay enabled: inactive branches never produce formatting
+complaints, while real issues in active code are still reported normally. The
+only thing TSIfDef withholds is a fix that would overwrite a `#if` line — that
 diagnostic is still reported, just without the automatic repair.
 
 TSIfDef supports ESLint 8.57 and 9 with `@typescript-eslint/parser` 5 through 8.

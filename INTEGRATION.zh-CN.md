@@ -105,9 +105,10 @@ export default [
 顶层仍使用项目正常的 `@typescript-eslint/parser`，让编辑器集成能够识别 TypeScript
 校验。
 
-规则行为与平时一致：诊断报在真实位置，自动修复和编辑器快速修复正常工作，
-`prettier/prettier` 等文本规则应保持开启。只有会覆盖 `#if` 行的修复会被跳过——
-其诊断仍然照常报告，只是没有自动修复项。
+不需要关闭任何规则。诊断报在真实行列位置，自动修复和编辑器快速修复正常工作，
+`prettier/prettier` 等格式化规则保持开启即可：未激活分支不会产生格式告警，而
+激活代码中的真实问题照常报告。TSIfDef 唯一会拦下的，是会覆盖 `#if` 行的那类
+修复——其诊断仍然照报，只是没有自动修复项。
 
 TSIfDef 支持 ESLint 8.57 和 9，以及 `@typescript-eslint/parser` 5 至 8。两者均为
 optional peer dependency，具体版本由宿主项目管理。

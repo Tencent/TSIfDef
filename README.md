@@ -102,8 +102,10 @@ export default [
 ```
 
 ESLint then reports against the active source at the original line and column
-positions, with autofix and quick fixes intact. Legacy `.eslintrc` setup is
-documented in the [Integration Guide](./INTEGRATION.md).
+positions, with autofix and quick fixes intact. No rules need to be disabled —
+formatting rules such as `prettier/prettier` stay enabled and report only on
+active code. Legacy `.eslintrc` setup is documented in the
+[Integration Guide](./INTEGRATION.md).
 
 ## Build Behavior
 
