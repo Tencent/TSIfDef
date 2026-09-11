@@ -1,105 +1,100 @@
 <p align="center">
-  <img src="assets/icon.png" alt="TSIfDef 图标" width="50%">
+  <img src="assets/icon.png" alt="TSIfDef 图标" width="128">
 </p>
 
 # TSIfDef 1.1.5
 
 [English](./README.md) | **简体中文**
 
-[项目主页](https://github.com/Tencent/TSIfDef) ·
-[`更新日志`](./CHANGELOG.zh-CN.md) ·
-[`接入指南`](./INTEGRATION.zh-CN.md) ·
-[`参与贡献`](./CONTRIBUTING.md) ·
-[`安全策略`](./SECURITY.md)
+[![许可证](https://img.shields.io/badge/license-Apache--2.0-brightgreen.svg?style=flat)](./LICENSE)
+[![最新版本](https://img.shields.io/github/v/release/Tencent/TSIfDef?style=flat&label=release)](https://github.com/Tencent/TSIfDef/releases/latest)
+[![更新日志](https://img.shields.io/badge/changelog-1.1.5-orange.svg?style=flat)](./CHANGELOG.zh-CN.md)
+[![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
+[![测试](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml)
+[![构建](https://github.com/Tencent/TSIfDef/actions/workflows/build.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/build.yml)
 
-TSIfDef 用于 TypeScript 的源码级条件编译。核心宏分析由 CLI、tsserver 插件、
-VSCode 扩展和 ESLint processor 共享实现——任何环境都不自行解释宏规则。
+> **TSIfDef 为 TypeScript 提供可靠的 `#if` 条件编译。**
+> 一套源码构建多个产品，并让编译器、编辑器和 ESLint 始终使用同一份激活代码。
 
-可移植的语法规范和与实现无关的一致性用例放在
-[`spec/`](./spec/README.zh-CN.md) 目录，可以独立用于验证兼容实现。
+[![下载](https://img.shields.io/badge/下载-最新版本-blue.svg?style=for-the-badge)](https://github.com/Tencent/TSIfDef/releases/latest)
 
-## 安装
+## 快速开始
 
-在 TypeScript 工程中安装 TSIfDef：
-
-```bash
-npm install --save-dev tsifdef
-```
-
-如果是从源码构建本仓库：
+从 [GitHub Releases](https://github.com/Tencent/TSIfDef/releases/latest) 下载
+`tsifdef-1.1.5.tgz`，然后安装到 TypeScript 项目：
 
 ```bash
-npm install
-npm run build
+npm install --save-dev ./tsifdef-1.1.5.tgz
 ```
 
-运行要求：Node.js 18.17 或更高版本、TypeScript 5.5；使用编辑器扩展时需要
-VSCode 1.85 或更高版本。
+创建 Profile，列出本次构建启用的宏：
 
-## 在项目里使用
+```json
+["BROWSER"]
+```
 
-在 `package.json` 中添加 `tsifdef` 指针和 `tsifdef build` 编译脚本，例如：
+在 `package.json` 中指向该 Profile，并使用 TSIfDef 作为编译入口：
 
 ```json
 {
-  "tsifdef": "./Profiles/TEST_A.json",
+  "tsifdef": "./Profiles/browser.json",
   "scripts": {
-    "compile": "tsifdef build",
+    "build": "tsifdef build",
     "watch": "tsifdef build --watch"
   }
 }
 ```
 
-把对应 Profile 写成启用宏名数组的 JSON 文件。用投影编译进行编译：
+直接在原始 TypeScript 文件中编写条件代码：
 
-```bash
-npm run compile
+```ts
+#if BROWSER
+export const runtime = "browser";
+#elif NODE
+export const runtime = "node";
+#else
+#error Select a supported runtime
+#endif
 ```
 
-`tsifdef build` 劫持 TypeScript CompilerHost，以**原始文件名**把等长遮盖文本喂给
-编译器，并自行驱动 `program.emit()`。因为编译器看到的是原始路径，emit 出的
-`.js.map` sources、`.d.ts` 和报错信息都指向原始源——无需后处理，也没有需要忽略的
-影子源码树。支持增量与 `--watch`；切换 Profile 会触发全量重编。
-
-当前项目的 `files`、`include`、`exclude` 都会被遵循。独立的子项目保留各自的
-`tsifdef` 配置，不会被隐式改写。不支持 `outFile` 和 project references（`tsc -b`）。
-
-用于审计时，`tsifdef build --emit-projection <dir>` 会把遮盖后的投影按各文件的
-原始相对路径写到 `<dir>`；该参数同样支持 `--watch` 模式。该 dump 只是调试产物，
-不会喂给编译器。
-
-## 在 VSCode 里使用
-
-1. 安装 VSIX 发布产物。
-2. 打开带有 `package.json` `tsifdef` 指针的工作区。
-3. 状态栏会显示当前 Profile 文件名。
-4. 灰显、折叠、诊断和 tsserver 投影都会跟随该 Profile。
-
-VSIX 内只包含 VSCode 内置 TypeScript 语言服务加载插件所需的极小模块转发入口，
-不会额外打包一份 TypeScript，也不会给宿主工程增加运行依赖。如果内置 TypeScript
-语言服务不存在或被禁用，TSIfDef 会静默跳过语言服务接入，不弹扩展错误；灰显和折叠
-等独立的编辑器功能仍可使用。
-
-## 在 ESLint 里使用
-
-ESLint 用自己的 parser 直接解析原始源码，因此不接入时，`#if` 那一行会让它报
-`Parsing error: ';' expected`。TSIfDef 自带一个 ESLint processor，在 ESLint 看到
-代码之前先做等长遮盖投影——与 tsserver 劫持 `getScriptSnapshot` 是对称的做法。
-
-将同一个 TSIfDef 包按 ESLint 的标准插件名安装。包内仍然提供 `tsifdef` CLI：
+运行项目构建：
 
 ```bash
-npm install --save-dev eslint-plugin-tsifdef@npm:tsifdef
+npm run build
 ```
 
-使用本地文件或离线接入时，只需让这一个依赖指向发布 tgz：
+TypeScript 只会看到激活分支；源码路径、诊断、声明文件和 sourcemap 仍然指向原文件。
+
+## 产品能力
+
+- **一套源码**：不生成影子工程，不复制平台代码。
+- **一份 Profile**：构建、编辑器智能提示和 ESLint 使用同一组宏。
+- **原生 TypeScript 产物**：保留原始路径和 sourcemap 位置。
+- **完整编辑器体验**：未激活代码自动置灰和折叠，不产生错误诊断。
+- **工程化支持**：支持增量编译、watch、ESLint 和 CI。
+
+## 编辑器支持
+
+从 [GitHub Releases](https://github.com/Tencent/TSIfDef/releases/latest) 下载
+`.vsix`，安装到 VS Code、CodeBuddy 或 CodeBuddy CN。项目的 `package.json`
+需要包含 `tsifdef` Profile 指针。
+
+扩展会在状态栏显示当前 Profile，置灰和折叠未激活代码，提供宏诊断，并让
+TypeScript 语言服务与构建过程使用同一份投影源码。
+
+VSIX 只包含编辑器加载 tsserver 插件所需的轻量转发入口，不会向宿主项目额外安装
+一份 TypeScript。
+
+## ESLint
+
+将同一个发布包按 ESLint 的标准插件名安装：
 
 ```bash
-npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
+npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-1.1.5.tgz
 ```
 
-统一包的根入口提供 ESLint processor，`eslint-plugin-tsifdef/parser` 提供 parser。
-然后在工程 `.eslintrc` 里加一段 override：
+在 `.eslintrc` 中配置 processor 和 parser wrapper：
 
 ```json
 {
@@ -116,34 +111,47 @@ npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 }
 ```
 
-顶层 parser 应保持为 `@typescript-eslint/parser`，这样 VSCode ESLint 默认的
-TypeScript probe 才会校验该文件。TSIfDef parser wrapper 只注册到
-`settings.import/parsers`，用于处理 `import/no-cycle` 等直接读取依赖文件、绕过
-processor 的规则。processor 仍需保留，用于投影主文件并过滤合成遮盖产生的诊断。
+未激活分支会在解析前被遮盖，因此 ESLint 只检查激活代码，同时保留原始行列位置。
 
-未激活分支会被遮盖，ESLint 只检查激活视图；因为等长遮盖保留长度，诊断的行列与
-原始文件一致。`postprocess` 会删除完全由合成遮盖区间引起的诊断，同时保留触及真实
-源码的诊断。包括 `prettier/prettier` 在内的文本规则因此可以保持开启。
+## 构建行为
 
-## 发布
+`tsifdef build` 通过 TypeScript CompilerHost 将未激活区间投影为等长空白，并使用
+原始文件名驱动 `program.emit()`。当前项目的 `files`、`include` 和 `exclude`
+配置都会生效。
 
-生成同版本产物：
+支持增量构建和 `--watch`。切换 Profile 会触发全量重编。不支持 `outFile` 和
+project references（`tsc -b`）。
+
+需要检查 TypeScript 实际接收的源码时，可使用
+`tsifdef build --emit-projection <dir>`。
+
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [接入指南](./INTEGRATION.zh-CN.md) | 构建、编辑器和 ESLint 的完整接入方式 |
+| [可移植规范](./spec/README.zh-CN.md) | 语法、行为、Schema 和一致性用例 |
+| [更新日志](./CHANGELOG.zh-CN.md) | 版本变更记录 |
+| [参与贡献](./CONTRIBUTING.md) | 开发与 Pull Request 流程 |
+| [安全策略](./SECURITY.md) | 私密漏洞报告方式 |
+
+## 环境要求
+
+- Node.js 18.17 或更高版本
+- TypeScript 5.5
+- VS Code 1.85 或兼容编辑器
+
+## 开发
 
 ```bash
-# 只设置一次新版本；npm 同时刷新 package-lock.json。
-npm version <patch|minor|major|x.y.z> --no-git-tag-version
-npm run release
+npm ci
+npm test
+npm run build
 ```
 
-会生成并完成冒烟验证：
+维护者可以使用 `npm run release` 构建并验证 npm 和 VSIX 产物。仓库协作流程见
+[CONTRIBUTING.md](./CONTRIBUTING.md)。
 
-- `release/tsifdef-<version>.vsix`
-- `release/tsifdef-<version>.tgz`
-- `release/manifest.json`
+## 许可证
 
-发布检查会把该 tgz 以 ESLint 插件名安装到全新的临时工程，加载 ESLint processor
-和 parser、运行 CLI，并把 VSIX 安装到隔离的 VSCode 扩展目录。
-
-唯一需要人工配置的版本是 `package.json` 的 `version`。构建和发布会在编译前从该
-字段同步生成的源码与辅助包元数据；不要通过修改 `src/version.ts`、
-`package-lock.json` 或辅助 manifest 来变更产品版本。
+TSIfDef 使用 [Apache License 2.0](./LICENSE) 开源。

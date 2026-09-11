@@ -362,10 +362,12 @@ function verifyInstalledTgz(tgzPath, packageJson) {
 
 async function main() {
   const releaseArguments = process.argv.slice(2);
-  const unsupportedArgument = releaseArguments.find((argument) => argument !== "--vsix-only");
+  const supportedArguments = new Set(["--skip-vsix-install", "--vsix-only"]);
+  const unsupportedArgument = releaseArguments.find((argument) => !supportedArguments.has(argument));
   if (unsupportedArgument !== undefined) {
     throw new Error(`Unsupported release argument '${unsupportedArgument}'.`);
   }
+  const skipVsixInstall = releaseArguments.includes("--skip-vsix-install");
   const vsixOnly = releaseArguments.includes("--vsix-only");
 
   // Explorer, antivirus, and extension installers can briefly retain handles
@@ -406,7 +408,7 @@ async function main() {
 
   await appendTsserverShim(vsixPath, packageJson);
   if (vsixOnly) {
-    await verifyInstalledVsix(vsixPath, packageJson);
+    if (!skipVsixInstall) await verifyInstalledVsix(vsixPath, packageJson);
     process.stdout.write(`VSIX artifact written to ${vsixPath}\n`);
     return;
   }
@@ -443,7 +445,7 @@ async function main() {
   if (!tgzName.includes(packageJson.version)) {
     throw new Error(`Tarball name '${tgzName}' does not include version '${packageJson.version}'.`);
   }
-  await verifyInstalledVsix(vsixPath, packageJson);
+  if (!skipVsixInstall) await verifyInstalledVsix(vsixPath, packageJson);
   verifyInstalledTgz(join(releaseDir, tgzName), packageJson);
 
   process.stdout.write(

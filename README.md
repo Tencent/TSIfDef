@@ -1,120 +1,104 @@
 <p align="center">
-  <img src="assets/icon.png" alt="TSIfDef icon" width="50%">
+  <img src="assets/icon.png" alt="TSIfDef icon" width="128">
 </p>
 
 # TSIfDef 1.1.5
 
 **English** | [简体中文](./README.zh-CN.md)
 
-[Homepage](https://github.com/Tencent/TSIfDef) ·
-[`Changelog`](./CHANGELOG.md) ·
-[`Integration guide`](./INTEGRATION.md) ·
-[`Contributing`](./CONTRIBUTING.md) ·
-[`Security`](./SECURITY.md)
+[![License](https://img.shields.io/badge/license-Apache--2.0-brightgreen.svg?style=flat)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/Tencent/TSIfDef?style=flat&label=release)](https://github.com/Tencent/TSIfDef/releases/latest)
+[![Changelog](https://img.shields.io/badge/changelog-1.1.5-orange.svg?style=flat)](./CHANGELOG.md)
+[![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
+[![Test](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml)
+[![Build](https://github.com/Tencent/TSIfDef/actions/workflows/build.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/build.yml)
 
-TSIfDef is source-level conditional compilation for TypeScript. The core macro
-analysis is shared across the CLI, tsserver plugin, VSCode extension, and ESLint
-processor — no environment reimplements the macro rules.
+> **TSIfDef adds reliable `#if` conditional compilation to TypeScript.**
+> Build multiple products from one source tree while the compiler, editor, and
+> ESLint always see the same active code.
 
-The portable syntax specification and implementation-neutral conformance
-fixtures live in [`spec/`](./spec/README.md). They can be used independently to
-verify compatible implementations.
+[![Download](https://img.shields.io/badge/Download-Latest_Release-blue.svg?style=for-the-badge)](https://github.com/Tencent/TSIfDef/releases/latest)
 
-## Install
+## Quick Start
 
-Add TSIfDef to a TypeScript project:
-
-```bash
-npm install --save-dev tsifdef
-```
-
-To build this repository from source instead:
+Download `tsifdef-1.1.5.tgz` from
+[GitHub Releases](https://github.com/Tencent/TSIfDef/releases/latest), then
+install it in your TypeScript project:
 
 ```bash
-npm install
-npm run build
+npm install --save-dev ./tsifdef-1.1.5.tgz
 ```
 
-Requirements: Node.js 18.17 or newer, TypeScript 5.5, and VSCode 1.85 or
-newer when using the editor extension.
+Create a Profile containing the macros enabled for this build:
 
-## Use in a project
+```json
+["BROWSER"]
+```
 
-Add a `tsifdef` pointer and a `tsifdef build` compile script to `package.json`,
-for example:
+Point `package.json` at that Profile and use TSIfDef as the compiler entry:
 
 ```json
 {
-  "tsifdef": "./Profiles/TEST_A.json",
+  "tsifdef": "./Profiles/browser.json",
   "scripts": {
-    "compile": "tsifdef build",
+    "build": "tsifdef build",
     "watch": "tsifdef build --watch"
   }
 }
 ```
 
-Create the selected Profile as a JSON array of enabled macro names.
+Write conditional TypeScript directly in the original source file:
 
-Compile with projected compilation:
-
-```bash
-npm run compile
+```ts
+#if BROWSER
+export const runtime = "browser";
+#elif NODE
+export const runtime = "node";
+#else
+#error Select a supported runtime
+#endif
 ```
 
-`tsifdef build` hijacks the TypeScript CompilerHost to feed equal-length masked
-text under the original file names and drives `program.emit()` itself. Because
-the compiler sees the original paths, emitted `.js.map` sources, `.d.ts`, and
-error messages point at the original sources — no post-processing and no shadow
-source tree to ignore. Incremental builds and `--watch` are supported; switching
-the Profile forces a full rebuild.
-
-Current-project `files`, `include`, and `exclude` are honored. Separate
-subprojects keep their own `tsifdef` configuration and are not rewritten
-implicitly. `outFile` and project references (`tsc -b`) are not supported.
-
-For auditing, `tsifdef build --emit-projection <dir>` also writes the masked
-projection under `<dir>` at each file's original relative path; the same flag is
-available in `--watch` mode. The dump is a debug artifact and is never fed to
-the compiler.
-
-## Use in VSCode
-
-1. Install the VSIX release artifact.
-2. Open a workspace with a `package.json` `tsifdef` pointer.
-3. The status bar shows the active Profile file.
-4. Gray ranges, folding, diagnostics, and tsserver projection all follow that
-   Profile.
-
-The VSIX contains the small module shim required by VSCode's built-in
-TypeScript language service; it does not bundle another copy of TypeScript or
-add runtime dependencies to the host project. If the built-in TypeScript
-language service is unavailable or disabled, TSIfDef skips language-service
-integration without reporting an extension error. Its independent editor
-features, such as inactive-code decorations and folding, remain available.
-
-## Use with ESLint
-
-ESLint parses the raw source with its own parser, so without integration a
-`#if` line makes it fail with `Parsing error: ';' expected`. TSIfDef ships an
-ESLint processor that projects the source (equal-length masking) before ESLint
-sees it — the mirror of the tsserver `getScriptSnapshot` hook.
-
-Install the single TSIfDef package under ESLint's conventional plugin name.
-The package still exposes the `tsifdef` CLI:
+Run the normal project build:
 
 ```bash
-npm install --save-dev eslint-plugin-tsifdef@npm:tsifdef
+npm run build
 ```
 
-For file-based or offline integration, point that one dependency at the release
-tarball:
+Only the active branch reaches TypeScript. Source paths, diagnostics,
+declarations, and source maps still point to the original files.
+
+## Product Highlights
+
+- **One source tree** — no generated shadow project and no duplicated platform code.
+- **One Profile** — builds, editor intelligence, and ESLint use the same macro set.
+- **Native TypeScript output** — original paths and source-map locations are preserved.
+- **Complete editor feedback** — inactive code is dimmed and folded without false errors.
+- **Production workflows** — incremental compilation, watch mode, ESLint, and CI are supported.
+
+## Editor Support
+
+Download the `.vsix` from [GitHub Releases](https://github.com/Tencent/TSIfDef/releases/latest)
+and install it in VS Code, CodeBuddy, or CodeBuddy CN. Open a project whose
+`package.json` contains the `tsifdef` Profile pointer.
+
+The extension shows the active Profile in the status bar, dims inactive code,
+provides folding and diagnostics, and keeps the TypeScript language service on
+the same projected source used by the build.
+
+The VSIX contains only the small tsserver shim required by the editor. It does
+not install another TypeScript runtime into the host project.
+
+## ESLint
+
+Install the same release tarball under ESLint's conventional plugin name:
 
 ```bash
-npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
+npm install --save-dev eslint-plugin-tsifdef@file:./tsifdef-1.1.5.tgz
 ```
 
-The unified package exposes its processor at the package root and its parser at
-`eslint-plugin-tsifdef/parser`. Add one override in the project's `.eslintrc`:
+Add the processor and parser wrapper to `.eslintrc`:
 
 ```json
 {
@@ -131,41 +115,50 @@ The unified package exposes its processor at the package root and its parser at
 }
 ```
 
-Keep `@typescript-eslint/parser` as the top-level parser. VSCode ESLint's default
-TypeScript probe recognizes that parser and will therefore validate the file.
-The TSIfDef parser wrapper is registered only in `settings.import/parsers`; it
-projects dependency files for rules such as `import/no-cycle` that read them
-directly and bypass processors. Keep the processor as well: it projects the
-primary file and filters diagnostics caused by synthetic masking.
+Inactive branches are masked before parsing, so ESLint reports against the
+active source while preserving the original line and column positions.
 
-Inactive branches are masked, so ESLint lints only the active view; diagnostics
-keep their original line/column because masking preserves length. Diagnostics
-caused solely by the synthetic masked ranges are removed in `postprocess`, while
-diagnostics touching real source text are preserved. This includes text-based
-rules such as `prettier/prettier`, so projects can keep their formatting rules
-enabled.
+## Build Behavior
 
-## Release
+`tsifdef build` projects inactive ranges to equal-length whitespace through the
+TypeScript CompilerHost and drives `program.emit()` with the original file
+names. Current-project `files`, `include`, and `exclude` settings are honored.
 
-To produce the version-matched artifacts:
+Incremental builds and `--watch` are supported. Changing the selected Profile
+forces a full rebuild. `outFile` and project references (`tsc -b`) are not
+supported.
+
+Use `tsifdef build --emit-projection <dir>` when you need to inspect the exact
+source view passed to TypeScript.
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [Integration Guide](./INTEGRATION.md) | Build, editor, and ESLint integration details |
+| [Portable Specification](./spec/README.md) | Syntax, behavior, schemas, and conformance fixtures |
+| [Changelog](./CHANGELOG.md) | Release history |
+| [Contributing](./CONTRIBUTING.md) | Development and pull-request workflow |
+| [Security Policy](./SECURITY.md) | Private vulnerability reporting |
+
+## Requirements
+
+- Node.js 18.17 or newer
+- TypeScript 5.5
+- VS Code 1.85 or a compatible editor for the VSIX
+
+## Development
 
 ```bash
-# Set the next version once; npm also refreshes package-lock.json.
-npm version <patch|minor|major|x.y.z> --no-git-tag-version
-npm run release
+npm ci
+npm test
+npm run build
 ```
 
-That emits and smoke-tests:
+Maintainers can build and verify the npm and VSIX artifacts with
+`npm run release`. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the repository
+workflow.
 
-- `release/tsifdef-<version>.vsix`
-- `release/tsifdef-<version>.tgz`
-- `release/manifest.json`
+## License
 
-The release check installs the tarball under the ESLint plugin alias in a clean
-temporary project, loads the ESLint processor and parser, runs the CLI, and
-installs the VSIX into an isolated VSCode extensions directory.
-
-The only manually configured version is `package.json` `version`. Build and
-release synchronize generated source and helper-package metadata from it before
-compilation; do not edit `src/version.ts`, `package-lock.json`, or helper
-manifests to change the product version.
+TSIfDef is released under the [Apache License 2.0](./LICENSE).

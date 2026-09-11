@@ -2,6 +2,10 @@
 
 ## v1.1.5 - 2026-09-09
 
+- Add GitHub Actions workflows for tests, builds, and verified GitHub Releases.
+- Publish the installable npm tarball and VSIX together on the Releases page.
+- Add the public product documentation, contribution guide, security policy,
+  and neutral macro examples.
 - Add a TSIfDef-aware ESLint parser wrapper for rules such as
   `import/no-cycle` that read dependency files directly and bypass processors.
 - Keep processor-based synthetic-diagnostic filtering while sharing Profile

@@ -31,6 +31,9 @@ Run the full test suite before opening a pull request:
 npm test
 ```
 
+Pull requests must pass the `Test` and `Build` workflows. Maintainers publish
+versioned artifacts through the manually triggered `Release` workflow.
+
 Maintainers can verify release artifacts with:
 
 ```bash
