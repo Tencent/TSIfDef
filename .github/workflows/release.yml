@@ -173,7 +173,9 @@ jobs:
 
           # No token: the `id-token: write` permission above lets npm verify over
           # OIDC that this build really came from this repository and workflow.
-          npm publish "release/${name}-${version}.tgz" --access public
+          # The `./` prefix is load-bearing: npm reads a bare `a/b` argument as a
+          # GitHub owner/repo shorthand and tries to clone it over SSH.
+          npm publish "./release/${name}-${version}.tgz" --access public
 
       - name: Publish to VS Code Marketplace
         if: ${{ inputs.vscode_marketplace && env.VSCE_PAT != '' }}
