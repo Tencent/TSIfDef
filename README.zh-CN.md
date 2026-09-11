@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" alt="BqLog Banner" width="50%">
+  <img src="assets/icon.png" alt="TSIfDef 图标" width="50%">
 </p>
 
 # TSIfDef 1.1.5

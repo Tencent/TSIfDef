@@ -92,8 +92,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "npm run build && tsc -p tsconfig.test.json && node scripts/run-tests.cjs",
     "vscode:prepublish": "npm run build && npm run prepare-tsserver-plugin",
-    "package:tgz": "npm pack --pack-destination release",
-    "package:vsix": "npm run prepare-tsserver-plugin && vsce package --out release",
+    "package:tgz": "npm run build && npm pack --pack-destination release",
+    "package:vsix": "node scripts/release.cjs --vsix-only",
     "release": "npm run sync-version && node scripts/release.cjs"
   },
   "devDependencies": {

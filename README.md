@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.png" alt="BqLog Banner" width="50%">
+  <img src="assets/icon.png" alt="TSIfDef icon" width="50%">
 </p>
 
-# TSIfDef  1.1.5
+# TSIfDef 1.1.5
 
 **English** | [简体中文](./README.zh-CN.md)
 

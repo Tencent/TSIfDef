@@ -361,6 +361,13 @@ function verifyInstalledTgz(tgzPath, packageJson) {
 }
 
 async function main() {
+  const releaseArguments = process.argv.slice(2);
+  const unsupportedArgument = releaseArguments.find((argument) => argument !== "--vsix-only");
+  if (unsupportedArgument !== undefined) {
+    throw new Error(`Unsupported release argument '${unsupportedArgument}'.`);
+  }
+  const vsixOnly = releaseArguments.includes("--vsix-only");
+
   // Explorer, antivirus, and extension installers can briefly retain handles
   // after inspecting a VSIX. Let Node retry transient Windows EPERM/EBUSY
   // failures instead of making an otherwise valid release flaky.
@@ -376,9 +383,8 @@ async function main() {
   const vsixName = `${packageJson.name}-${packageJson.version}.vsix`;
   const vsixPath = join(releaseDir, vsixName);
 
-  // `vsce package` runs vscode:prepublish, which performs the one clean build
-  // needed by every artifact. Pack the npm tarballs afterwards so they contain
-  // exactly that verified output instead of cleaning and rebuilding twice.
+  // `vsce package` runs vscode:prepublish, which performs the clean build used
+  // by the VSIX and, during a full release, the npm tarball.
   run(npm[0], [
     npm[1],
     "exec",
@@ -394,8 +400,18 @@ async function main() {
   if (packageJson.version !== VERSION) {
     throw new Error(`package.json version '${packageJson.version}' does not match VERSION '${VERSION}'.`);
   }
-  const revision = runCapture("git", ["rev-parse", "HEAD"]);
+  if (!vsixName.includes(VERSION)) {
+    throw new Error(`VSIX name '${vsixName}' does not include version '${VERSION}'.`);
+  }
 
+  await appendTsserverShim(vsixPath, packageJson);
+  if (vsixOnly) {
+    await verifyInstalledVsix(vsixPath, packageJson);
+    process.stdout.write(`VSIX artifact written to ${vsixPath}\n`);
+    return;
+  }
+
+  const revision = runCapture("git", ["rev-parse", "HEAD"]);
   const packOutput = runCapture(npm[0], [
     npm[1],
     "pack",
@@ -408,7 +424,6 @@ async function main() {
     throw new Error("npm pack did not return a single tarball filename.");
   }
   const tgzName = packed[0].filename;
-  await appendTsserverShim(vsixPath, packageJson);
   const manifest = {
     package: packageJson.name,
     version: VERSION,
@@ -428,10 +443,6 @@ async function main() {
   if (!tgzName.includes(packageJson.version)) {
     throw new Error(`Tarball name '${tgzName}' does not include version '${packageJson.version}'.`);
   }
-  if (!vsixName.includes(VERSION)) {
-    throw new Error(`VSIX name '${vsixName}' does not include version '${VERSION}'.`);
-  }
-
   await verifyInstalledVsix(vsixPath, packageJson);
   verifyInstalledTgz(join(releaseDir, tgzName), packageJson);
 
