@@ -11,8 +11,6 @@
 [![更新日志](https://img.shields.io/badge/changelog-1.1.8-orange.svg?style=flat)](./CHANGELOG.zh-CN.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
-[![测试](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml)
-[![构建](https://github.com/Tencent/TSIfDef/actions/workflows/build.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/build.yml)
 
 > **TSIfDef 为 TypeScript 提供可靠的 `#if` 条件编译。**
 > 一套源码构建多个产品，并让编译器、编辑器和 ESLint 始终使用同一份激活代码。

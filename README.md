@@ -11,8 +11,6 @@
 [![Changelog](https://img.shields.io/badge/changelog-1.1.8-orange.svg?style=flat)](./CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
-[![Test](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml)
-[![Build](https://github.com/Tencent/TSIfDef/actions/workflows/build.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/build.yml)
 
 > **TSIfDef adds reliable `#if` conditional compilation to TypeScript.**
 > Build multiple products from one source tree while the compiler, editor, and
