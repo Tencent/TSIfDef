@@ -18,6 +18,9 @@ on:
 
 permissions:
   contents: write
+  # npm trusted publishing authenticates the workflow itself over OIDC, so no
+  # long-lived npm token is stored anywhere.
+  id-token: write
 
 concurrency:
   group: release
@@ -35,11 +38,11 @@ jobs:
     name: Publish release
     needs: build
     runs-on: ubuntu-latest
-    # The `secrets` context is not available in a step-level `if`, so the tokens
-    # are lifted into `env` here. That is what lets a channel skip itself when
-    # its credential has not been configured yet.
+    # The `secrets` context is not available in a step-level `if`, so the two
+    # Marketplace tokens are lifted into `env` here. That is what lets a channel
+    # skip itself when its credential has not been configured yet. npm needs no
+    # entry: it authenticates over OIDC instead of a stored token.
     env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
@@ -51,7 +54,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          # Trusted publishing needs npm >= 11.5.1. Node 22 still bundles npm 10,
+          # so the major version here is load-bearing, not incidental.
+          node-version: 24
           cache: npm
           # Point npm at the public registry explicitly. A developer machine may
           # default to an internal mirror, and publishing there instead of to
@@ -158,9 +163,7 @@ jobs:
       # channels without forcing a version bump.
 
       - name: Publish to npm
-        if: ${{ inputs.npm && env.NPM_TOKEN != '' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        if: ${{ inputs.npm }}
         shell: bash
         run: |
           set -euo pipefail
@@ -172,6 +175,8 @@ jobs:
             exit 0
           fi
 
+          # No token: the `id-token: write` permission above lets npm verify over
+          # OIDC that this build really came from this repository and workflow.
           npm publish "release/${name}-${version}.tgz" --access public
 
       - name: Publish to VS Code Marketplace
