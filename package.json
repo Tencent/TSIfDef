@@ -34,7 +34,7 @@
   ],
   "main": "dist/vscode/extension.js",
   "types": "dist/eslint/package.d.ts",
-  "publisher": "tencent",
+  "publisher": "timi-studio",
   "displayName": "TSIfDef",
   "icon": "assets/icon.png",
   "bin": {
