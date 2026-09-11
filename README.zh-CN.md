@@ -2,13 +2,13 @@
   <img src="assets/icon.png" alt="TSIfDef 图标" width="128">
 </p>
 
-# TSIfDef 1.1.5
+# TSIfDef 1.1.7
 
 [English](./README.md) | **简体中文**
 
 [![许可证](https://img.shields.io/badge/license-Apache--2.0-brightgreen.svg?style=flat)](./LICENSE)
 [![最新版本](https://img.shields.io/github/v/release/Tencent/TSIfDef?style=flat&label=release)](https://github.com/Tencent/TSIfDef/releases/latest)
-[![更新日志](https://img.shields.io/badge/changelog-1.1.5-orange.svg?style=flat)](./CHANGELOG.zh-CN.md)
+[![更新日志](https://img.shields.io/badge/changelog-1.1.7-orange.svg?style=flat)](./CHANGELOG.zh-CN.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
 [![测试](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml)
@@ -80,10 +80,7 @@ TypeScript 只会看到激活分支；源码路径、诊断、声明文件和 so
 需要包含 `tsifdef` Profile 指针。
 
 扩展会在状态栏显示当前 Profile，置灰和折叠未激活代码，提供宏诊断，并让
-TypeScript 语言服务与构建过程使用同一份投影源码。
-
-VSIX 只包含编辑器加载 tsserver 插件所需的轻量转发入口，不会向宿主项目额外安装
-一份 TypeScript。
+TypeScript 语言服务与构建过程使用同一份激活代码。
 
 ## ESLint
 
@@ -99,17 +96,14 @@ export default [
 ];
 ```
 
-未激活分支会在解析前被遮盖，因此 ESLint 只检查激活代码，同时保留原始行列位置。旧版
+ESLint 只检查激活代码，诊断保留原始行列位置，自动修复和快速修复均正常工作。旧版
 `.eslintrc` 接入方式见[接入指南](./INTEGRATION.zh-CN.md)。
 
 ## 构建行为
 
-`tsifdef build` 通过 TypeScript CompilerHost 将未激活区间投影为等长空白，并使用
-原始文件名驱动 `program.emit()`。当前项目的 `files`、`include` 和 `exclude`
-配置都会生效。
-
-支持增量构建和 `--watch`。切换 Profile 会触发全量重编。不支持 `outFile` 和
-project references（`tsc -b`）。
+支持增量构建和 `--watch`，当前项目的 `files`、`include` 和 `exclude` 配置都会
+生效。切换 Profile 会触发全量重编。不支持 `outFile` 和 project
+references（`tsc -b`）。
 
 需要检查 TypeScript 实际接收的源码时，可使用
 `tsifdef build --emit-projection <dir>`。

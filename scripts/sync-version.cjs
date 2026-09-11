@@ -20,6 +20,7 @@ const versionPath = join(root, "src", "version.ts");
 const packagePath = join(root, "package.json");
 const lockPath = join(root, "package-lock.json");
 const tsserverPackagePath = join(root, "scripts", "packaging", "tsserver", "package.json");
+const readmePaths = [join(root, "README.md"), join(root, "README.zh-CN.md")];
 
 function parseJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -27,6 +28,23 @@ function parseJson(path) {
 
 function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+/**
+ * Update the version in each README's title and changelog badge. These were
+ * maintained by hand and silently fell behind package.json.
+ */
+function syncReadme(path, version) {
+  if (!require("node:fs").existsSync(path)) {
+    return;
+  }
+  const before = readFileSync(path, "utf8");
+  const after = before
+    .replace(/^# TSIfDef \d+\.\d+\.\d+$/m, `# TSIfDef ${version}`)
+    .replace(/(badge\/changelog-)\d+\.\d+\.\d+(-orange)/g, `$1${version}$2`);
+  if (after !== before) {
+    writeFileSync(path, after, "utf8");
+  }
 }
 
 function main() {
@@ -88,6 +106,10 @@ export const VERSION_TAG = \`v\${VERSION}\`;
   if (tsserverPackage.version !== version) {
     tsserverPackage.version = version;
     writeJson(tsserverPackagePath, tsserverPackage);
+  }
+
+  for (const readmePath of readmePaths) {
+    syncReadme(readmePath, version);
   }
 }
 

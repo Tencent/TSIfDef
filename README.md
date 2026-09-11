@@ -2,13 +2,13 @@
   <img src="assets/icon.png" alt="TSIfDef icon" width="128">
 </p>
 
-# TSIfDef 1.1.5
+# TSIfDef 1.1.7
 
 **English** | [简体中文](./README.zh-CN.md)
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-brightgreen.svg?style=flat)](./LICENSE)
 [![Release](https://img.shields.io/github/v/release/Tencent/TSIfDef?style=flat&label=release)](https://github.com/Tencent/TSIfDef/releases/latest)
-[![Changelog](https://img.shields.io/badge/changelog-1.1.5-orange.svg?style=flat)](./CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/changelog-1.1.7-orange.svg?style=flat)](./CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
 [![Test](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml/badge.svg)](https://github.com/Tencent/TSIfDef/actions/workflows/test.yml)
@@ -84,10 +84,7 @@ and install it in VS Code, CodeBuddy, or CodeBuddy CN. Open a project whose
 
 The extension shows the active Profile in the status bar, dims inactive code,
 provides folding and diagnostics, and keeps the TypeScript language service on
-the same projected source used by the build.
-
-The VSIX contains only the small tsserver shim required by the editor. It does
-not install another TypeScript runtime into the host project.
+the same active source used by the build.
 
 ## ESLint
 
@@ -104,17 +101,14 @@ export default [
 ];
 ```
 
-Inactive branches are masked before parsing, so ESLint reports against the
-active source while preserving the original line and column positions. Legacy
-`.eslintrc` setup is documented in the [Integration Guide](./INTEGRATION.md).
+ESLint then reports against the active source at the original line and column
+positions, with autofix and quick fixes intact. Legacy `.eslintrc` setup is
+documented in the [Integration Guide](./INTEGRATION.md).
 
 ## Build Behavior
 
-`tsifdef build` projects inactive ranges to equal-length whitespace through the
-TypeScript CompilerHost and drives `program.emit()` with the original file
-names. Current-project `files`, `include`, and `exclude` settings are honored.
-
-Incremental builds and `--watch` are supported. Changing the selected Profile
+Incremental builds and `--watch` are supported, and current-project `files`,
+`include`, and `exclude` settings are honored. Changing the selected Profile
 forces a full rebuild. `outFile` and project references (`tsc -b`) are not
 supported.
 
@@ -125,7 +119,7 @@ source view passed to TypeScript.
 
 | Document | Purpose |
 |---|---|
-| [Integration Guide](./INTEGRATION.md) | Build, editor, and ESLint integration details |
+| [Integration Guide](./INTEGRATION.md) | Build, editor, and ESLint setup |
 | [Portable Specification](./spec/README.md) | Syntax, behavior, schemas, and conformance fixtures |
 | [Changelog](./CHANGELOG.md) | Release history |
 | [Contributing](./CONTRIBUTING.md) | Development and pull-request workflow |
