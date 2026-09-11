@@ -3,7 +3,7 @@
 ## v1.1.5 - 2026-09-09
 
 - 增加测试、构建和 GitHub Release 发布工作流。
-- 生成中英文双语 Release Notes，并允许维护者覆盖当前版本已有的 Release 和 Tag。
+- 为 GitHub Releases 生成中英文双语 Release Notes。
 - 在 Releases 页面同时发布可安装的 npm tgz 和 VSIX。
 - 补充公开产品文档、贡献指南、安全策略和中性宏示例。
 - 在 Windows 和 POSIX 环境中一致显示 Profile 文件名。
