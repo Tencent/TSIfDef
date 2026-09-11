@@ -2,13 +2,13 @@
   <img src="https://raw.githubusercontent.com/Tencent/TSIfDef/main/assets/icon.png" alt="TSIfDef 图标" width="128">
 </p>
 
-# TSIfDef 1.1.8
+# TSIfDef 1.1.9
 
 [English](./README.md) | **简体中文**
 
 [![许可证](https://img.shields.io/badge/license-Apache--2.0-brightgreen.svg?style=flat)](./LICENSE)
 [![最新版本](https://img.shields.io/github/v/release/Tencent/TSIfDef?style=flat&label=release)](https://github.com/Tencent/TSIfDef/releases/latest)
-[![更新日志](https://img.shields.io/badge/changelog-1.1.8-orange.svg?style=flat)](./CHANGELOG.zh-CN.md)
+[![更新日志](https://img.shields.io/badge/changelog-1.1.9-orange.svg?style=flat)](./CHANGELOG.zh-CN.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
 
@@ -26,6 +26,17 @@ export const runtime = "node";
 ```
 
 [![下载](https://img.shields.io/badge/下载-最新版本-blue.svg?style=for-the-badge)](https://github.com/Tencent/TSIfDef/releases/latest)
+
+## 两个组成部分
+
+TSIfDef 由两部分组成，按使用方式决定需要哪些：
+
+| 组成 | 是否必须 | 安装方式 |
+|---|---|---|
+| **npm 包** `tsifdef` | **必须。**它就是编译器、命令行工具和 ESLint 接入。 | `npm install -D tsifdef` |
+| **VSCode 扩展** `TSIfDef` | **在 IDE 里写代码就必须。**不装的话编辑器不认识 Profile，会把 `#if` 报成错误。 | 在扩展面板搜索 **TSIfDef**，或[安装 VSIX](#编辑器支持) |
+
+扩展不能替代 npm 包：构建始终由 npm 包完成，扩展的作用是让编辑器与构建保持一致。
 
 ## 快速开始
 

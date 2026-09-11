@@ -2,13 +2,13 @@
   <img src="https://raw.githubusercontent.com/Tencent/TSIfDef/main/assets/icon.png" alt="TSIfDef icon" width="128">
 </p>
 
-# TSIfDef 1.1.8
+# TSIfDef 1.1.9
 
 **English** | [简体中文](./README.zh-CN.md)
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-brightgreen.svg?style=flat)](./LICENSE)
 [![Release](https://img.shields.io/github/v/release/Tencent/TSIfDef?style=flat&label=release)](https://github.com/Tencent/TSIfDef/releases/latest)
-[![Changelog](https://img.shields.io/badge/changelog-1.1.8-orange.svg?style=flat)](./CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/changelog-1.1.9-orange.svg?style=flat)](./CHANGELOG.md)
 [![GitHub Stars](https://img.shields.io/github/stars/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/Tencent/TSIfDef?style=flat&logo=github)](https://github.com/Tencent/TSIfDef/issues)
 
@@ -27,6 +27,18 @@ export const runtime = "node";
 ```
 
 [![Download](https://img.shields.io/badge/Download-Latest_Release-blue.svg?style=for-the-badge)](https://github.com/Tencent/TSIfDef/releases/latest)
+
+## Two Parts
+
+TSIfDef ships as two pieces, and which ones you need depends on how you work:
+
+| Part | Required | Install |
+|---|---|---|
+| **npm package** `tsifdef` | **Always.** It is the compiler, the CLI, and the ESLint integration. | `npm install -D tsifdef` |
+| **VSCode extension** `TSIfDef` | **Whenever you edit in an IDE.** Without it the editor reports `#if` as errors, since it knows nothing about Profiles. | Search **TSIfDef** in the Extensions view, or [install the VSIX](#editor-support) |
+
+The extension does not replace the package: the build always comes from the npm
+package, and the extension makes the editor agree with it.
 
 ## Quick Start
 
