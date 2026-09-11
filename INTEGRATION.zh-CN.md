@@ -132,7 +132,12 @@ npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 }
 ```
 
-这一行同时配好 plugin、processor 和 `import/parsers`。若要手动展开：
+这一行同时配好 plugin、processor 和 `import/parsers`。如果项目同时 extends 了
+`plugin:import/typescript`，请把它放在 `extends` 的**最后**：那份配置会为相同
+扩展名注册 `@typescript-eslint/parser`，而 `eslint-plugin-import` 取先出现的
+那个 parser。
+
+若要手动展开：
 
 ```jsonc
 // .eslintrc.json

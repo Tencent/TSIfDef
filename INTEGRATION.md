@@ -139,8 +139,12 @@ npm install -D eslint-plugin-tsifdef@file:./tsifdef-<version>.tgz
 }
 ```
 
-That sets the plugin, the processor, and the `import/parsers` setting. To wire
-them up by hand instead:
+That sets the plugin, the processor, and the `import/parsers` setting. Put it
+**last** in `extends` if the project also extends `plugin:import/typescript`:
+that config registers `@typescript-eslint/parser` for the same extensions, and
+`eslint-plugin-import` uses whichever parser is listed first.
+
+To wire the pieces up by hand instead:
 
 ```jsonc
 // .eslintrc.json
