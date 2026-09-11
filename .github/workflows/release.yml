@@ -186,18 +186,13 @@ jobs:
           set -euo pipefail
           version="${{ steps.release.outputs.version }}"
           name="$(node -p "require('./package.json').name")"
-          publisher="$(node -p "require('./package.json').publisher")"
 
-          if npx vsce show "$publisher.$name" --json 2>/dev/null \
-            | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.exit(JSON.parse(d).versions.some(v=>v.version===process.argv[1])?0:1)}catch{process.exit(1)}})' "$version"; then
-            echo "$publisher.$name $version is already on the Marketplace; skipping."
-            exit 0
-          fi
-
-          npx vsce publish --packagePath "release/${name}-${version}.vsix"
+          # `--skip-duplicate` makes a re-run that already published this version
+          # a no-op, so a later channel can be finished without a version bump.
+          npx vsce publish --packagePath "release/${name}-${version}.vsix" --skip-duplicate
 
       - name: Publish to Open VSX
-        if: ${{ inputs.open_vsx && env.OVSX_PAT != '' }}
+        if: ${{ inputs.open_vsx }}
         shell: bash
         run: |
           set -euo pipefail
@@ -205,13 +200,13 @@ jobs:
           name="$(node -p "require('./package.json').name")"
           publisher="$(node -p "require('./package.json').publisher")"
 
-          status="$(curl -s -o /dev/null -w '%{http_code}' \
-            "https://open-vsx.org/api/$publisher/$name/$version")"
-          if [[ "$status" == "200" ]]; then
-            echo "$publisher.$name $version is already on Open VSX; skipping."
-            exit 0
+          # ovsx switches itself to trusted publishing when a CI system offers an
+          # OIDC token and no access token is given, so passing OVSX_PAT only when
+          # one exists is what selects between the two. `--skip-duplicate` makes a
+          # re-run that already published this version a no-op.
+          if [[ -n "${OVSX_PAT:-}" ]]; then
+            npx ovsx create-namespace "$publisher" -p "$OVSX_PAT" || true
+            npx ovsx publish "release/${name}-${version}.vsix" -p "$OVSX_PAT" --skip-duplicate
+          else
+            npx ovsx publish "release/${name}-${version}.vsix" --skip-duplicate
           fi
-
-          # Creating a namespace that already exists is not an error worth failing on.
-          npx ovsx create-namespace "$publisher" -p "$OVSX_PAT" || true
-          npx ovsx publish "release/${name}-${version}.vsix" -p "$OVSX_PAT"
