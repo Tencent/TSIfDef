@@ -5,6 +5,7 @@
 - 增加测试、构建和 GitHub Release 发布工作流。
 - 在 Releases 页面同时发布可安装的 npm tgz 和 VSIX。
 - 补充公开产品文档、贡献指南、安全策略和中性宏示例。
+- 在 Windows 和 POSIX 环境中一致显示 Profile 文件名。
 - 增加 TSIfDef-aware ESLint parser wrapper，覆盖 `import/no-cycle` 等直接读取
   依赖文件、绕过 processor 的规则。
 - 保留 processor 的合成诊断过滤，并让 parser wrapper 与 processor 共用 Profile

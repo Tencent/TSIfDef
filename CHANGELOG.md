@@ -6,6 +6,7 @@
 - Publish the installable npm tarball and VSIX together on the Releases page.
 - Add the public product documentation, contribution guide, security policy,
   and neutral macro examples.
+- Render Profile file names consistently across Windows and POSIX hosts.
 - Add a TSIfDef-aware ESLint parser wrapper for rules such as
   `import/no-cycle` that read dependency files directly and bypass processors.
 - Keep processor-based synthetic-diagnostic filtering while sharing Profile

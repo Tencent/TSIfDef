@@ -18,6 +18,10 @@ import type { Disposable, ExtensionHost, StatusBarItem } from "./host.js";
 
 export const activeProfileCommand = "tsifdef.activeProfile" as const;
 
+function profileFileName(profile: string): string {
+  return basename(profile.replaceAll("\\", "/"));
+}
+
 export interface EffectiveProfile {
   readonly profile: string | undefined;
   readonly source: "package.json" | undefined;
@@ -73,11 +77,11 @@ export class ProfileStateController {
     }
     this.statusItem.show();
     if (this.loadError !== undefined) {
-      this.statusItem.text = `$(error) TSIfDef: ${basename(this.profile)} (unavailable)`;
+      this.statusItem.text = `$(error) TSIfDef: ${profileFileName(this.profile)} (unavailable)`;
       this.statusItem.tooltip = this.loadError;
       return;
     }
-    this.statusItem.text = `$(versions) TSIfDef: ${basename(this.profile)}`;
+    this.statusItem.text = `$(versions) TSIfDef: ${profileFileName(this.profile)}`;
     this.statusItem.tooltip = `TSIfDef Profile '${this.profile}' from package.json.`;
   }
 }
