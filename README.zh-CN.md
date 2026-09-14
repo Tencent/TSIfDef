@@ -86,6 +86,11 @@ TypeScript 只会看到激活分支；源码路径、诊断、声明文件和 so
 
 扩展会置灰并折叠未激活代码，在状态栏显示当前 Profile，并让 TypeScript 语言服务
 与构建过程使用同一份激活代码。需要 VS Code 1.85 或更高版本。
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Tencent/TSIfDef/main/assets/vscode_snapshot.png" alt="vscode_snapshot" width="512">
+</p>
+
+
 
 **从市场安装**——打开扩展面板（`Ctrl+Shift+X`，macOS 为 `Cmd+Shift+X`），搜索
 **TSIfDef**，在发布者为 **Tencent TiMi Studio Group** 的条目上点击 **安装**。也可以在终端执行：
