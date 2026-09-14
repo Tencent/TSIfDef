@@ -91,6 +91,9 @@ declarations, and source maps still point to the original files.
 The extension dims and folds inactive code, shows the active Profile in the
 status bar, and keeps the TypeScript language service on the same active source
 the build uses. Requires VS Code 1.85 or newer.
+<p>
+  <img src="https://raw.githubusercontent.com/Tencent/TSIfDef/main/assets/vscode_snapshot.png" alt="vscode_snapshot" width="384">
+</p>
 
 **From the Marketplace** — open the Extensions view (`Ctrl+Shift+X`, or
 `Cmd+Shift+X` on macOS), search for **TSIfDef**, and click **Install** on the
