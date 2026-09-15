@@ -107,12 +107,20 @@ export class PackageProfileController implements Disposable {
     this.appliedIdentity = nextIdentity;
     this.initialized = true;
     await this.host.configureTypeScriptPlugin("tsifdef-tsserver", pluginConfiguration);
-    if (!firstValidProfile && !changed) {
+    if (firstValidProfile) {
+      // The plugin configuration override is already registered. Reloading
+      // projects is enough to apply it to projects restored during startup;
+      // restarting the freshly launched tsserver only produces a needless
+      // SIGTERM and races large-workspace initialization.
+      await this.host.reloadTypeScriptProjects();
+      return;
+    }
+    if (!changed) {
       return;
     }
 
-    // VSCode 启动时可能先恢复并诊断已打开文档，再完成插件配置。首次加载有效
-    // Profile 和后续 Profile 变化都走完整刷新，保证已有诊断经过 TSIfDef。
+    // A live Profile change needs a full restart so snapshots and diagnostics
+    // produced under the previous Profile cannot survive.
     await this.host.restartTypeScriptServer();
     await this.host.configureTypeScriptPlugin("tsifdef-tsserver", pluginConfiguration);
     await this.host.reloadTypeScriptProjects();

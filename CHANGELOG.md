@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.10 - 2026-09-15
+
+- Fix the tsserver plugin accumulating nested host wrappers, Profile watchers,
+  and projection caches when `tsconfig.json` is regenerated and the configured
+  project enables plugins again.
+- Release cached projected source when the owning language service is disposed.
+- Apply the initial Profile by reloading projects without restarting the newly
+  launched tsserver.
+
 ## v1.1.9 - 2026-09-11
 
 First public release.

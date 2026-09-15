@@ -118,6 +118,18 @@ interface ProjectionCacheEntry {
   readonly snapshot: ProjectedSnapshot | undefined;
 }
 
+interface HostProjectionState {
+  options: HostProjectionOptions;
+  readonly projectionCache: Map<string, ProjectionCacheEntry>;
+}
+
+/**
+ * TypeScript can enable plugins again on the same configured-project host when
+ * tsconfig.json is reloaded. Keep exactly one projection layer per host so
+ * reloads do not nest wrappers or retain duplicate full-file caches.
+ */
+const wrappedHosts = new WeakMap<object, HostProjectionState>();
+
 /**
  * Wrap a `LanguageServiceHost` so the language service sees macro-projected
  * source.
@@ -148,14 +160,26 @@ export function wrapHostWithProjection<THost extends ts.LanguageServiceHost>(
   host: THost,
   options: HostProjectionOptions,
 ): THost {
-  const isMacroFile = options.isMacroFile ?? ((fileName) => macroExtensionPattern.test(fileName));
+  const existing = wrappedHosts.get(host);
+  if (existing !== undefined) {
+    existing.options = options;
+    existing.projectionCache.clear();
+    return host;
+  }
+
   const originalGetScriptSnapshot = host.getScriptSnapshot.bind(host);
   const originalGetScriptVersion = host.getScriptVersion.bind(host);
-  const projectionCache = new Map<string, ProjectionCacheEntry>();
+  const state: HostProjectionState = {
+    options,
+    projectionCache: new Map<string, ProjectionCacheEntry>(),
+  };
+  wrappedHosts.set(host, state);
 
   host.getScriptSnapshot = (fileName: string): ts.IScriptSnapshot | undefined => {
     const snapshot = originalGetScriptSnapshot(fileName);
-    const profile = options.getProfile();
+    const profile = state.options.getProfile();
+    const isMacroFile =
+      state.options.isMacroFile ?? ((candidate: string) => macroExtensionPattern.test(candidate));
     if (snapshot === undefined || profile === undefined || !isMacroFile(fileName)) {
       return snapshot;
     }
@@ -165,7 +189,7 @@ export function wrapHostWithProjection<THost extends ts.LanguageServiceHost>(
     // serving one request, and re-scanning a multi-megabyte file each time is
     // pure overhead. The snapshot identity check is the cheap path; hosts that
     // rebuild snapshot objects per call still hit the cache via content.
-    const cached = projectionCache.get(fileName);
+    const cached = state.projectionCache.get(fileName);
     if (cached !== undefined && cached.profileVersion === profile.version) {
       if (cached.sourceSnapshot === snapshot) {
         return cached.snapshot ?? snapshot;
@@ -187,7 +211,7 @@ export function wrapHostWithProjection<THost extends ts.LanguageServiceHost>(
       // snapshot preserves its change range and avoids copying the text.
       ? undefined
       : new ProjectedSnapshot(projection.projectedText, projection.maskedRanges, snapshot);
-    projectionCache.set(fileName, {
+    state.projectionCache.set(fileName, {
       sourceSnapshot: snapshot,
       sourceText: source,
       profileVersion: profile.version,
@@ -198,7 +222,9 @@ export function wrapHostWithProjection<THost extends ts.LanguageServiceHost>(
 
   host.getScriptVersion = (fileName: string): string => {
     const version = originalGetScriptVersion(fileName);
-    const profile = options.getProfile();
+    const profile = state.options.getProfile();
+    const isMacroFile =
+      state.options.isMacroFile ?? ((candidate: string) => macroExtensionPattern.test(candidate));
     if (profile === undefined || !isMacroFile(fileName)) {
       return version;
     }
@@ -206,4 +232,12 @@ export function wrapHostWithProjection<THost extends ts.LanguageServiceHost>(
   };
 
   return host;
+}
+
+/** Release cached source text when the owning language service is disposed. */
+export function releaseHostProjection(host: ts.LanguageServiceHost): void {
+  const state = wrappedHosts.get(host);
+  if (state === undefined) return;
+  state.projectionCache.clear();
+  state.options = { getProfile: () => undefined };
 }

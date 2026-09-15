@@ -200,6 +200,25 @@ test("a changed Profile invalidates the cached projection", () => {
   assert.equal(node.getText(0, node.getLength()).includes("const b = 2;"), true);
 });
 
+test("wrapping the same host again replaces the projection instead of stacking wrappers", () => {
+  const source = "#if BROWSER\nconst selected = 'browser';\n#else\nconst selected = 'node';\n#endif\n";
+  const files = new Map([["/a.ts", { text: source, version: "1" }]]);
+  const host = createMemoryHost(files);
+
+  wrapHostWithProjection(ts, host, {
+    getProfile: () => ({ definitions: { BROWSER: true }, version: "BROWSER:1" }),
+  });
+  wrapHostWithProjection(ts, host, {
+    getProfile: () => ({ definitions: {}, version: "NODE:1" }),
+  });
+
+  const snapshot = host.getScriptSnapshot("/a.ts")!;
+  const projected = snapshot.getText(0, snapshot.getLength());
+  assert.equal(projected.includes("selected = 'browser'"), false);
+  assert.equal(projected.includes("selected = 'node'"), true);
+  assert.equal(host.getScriptVersion("/a.ts"), "1|tsifdef:NODE:1");
+});
+
 test("files without directives pass through untouched", () => {
   // Large generated .d.ts files contain no macros. Projecting them wastes time
   // and discards the host's change range, so they must be passed through.

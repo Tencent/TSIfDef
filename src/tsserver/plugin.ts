@@ -17,13 +17,26 @@ import { dirname, isAbsolute, join } from "node:path";
 import type * as ts from "typescript";
 
 import { parseProfileFile } from "../cli/config.js";
-import { wrapHostWithProjection } from "./host-projection.js";
+import { releaseHostProjection, wrapHostWithProjection } from "./host-projection.js";
 import { ProfileProjectionController, type ProfileResolution } from "./project-controller.js";
 
 /** Plugin configuration accepted from the `tsconfig.json` plugins entry. */
 interface PluginConfig {
   readonly profileFile?: string;
 }
+
+interface ActiveBinding {
+  readonly languageService: ts.LanguageService;
+  dispose(): void;
+}
+
+/**
+ * A tsconfig reload can enable this plugin again on the same project host.
+ * These maps must outlive an individual init() result because tsserver invokes
+ * the exported factory again for each enablement.
+ */
+const activeBindings = new WeakMap<object, ActiveBinding>();
+const wrappedLanguageServices = new WeakSet<object>();
 
 /**
  * tsserver plugin entry. tsserver calls this with the live `typescript` module
@@ -40,6 +53,9 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
   const reloaders = new Set<() => void>();
   return {
     create(info: ts.server.PluginCreateInfo): ts.LanguageService {
+      const host = info.languageServiceHost;
+      activeBindings.get(host)?.dispose();
+
       const projectConfig = (info.config ?? {}) as PluginConfig;
       const config = (): PluginConfig => ({ ...projectConfig, ...externalConfig });
       const profilePath = (): string | undefined => resolveProfilePath(config(), info);
@@ -54,7 +70,7 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
       };
       reloaders.add(reloader);
 
-      wrapHostWithProjection(typescript, info.languageServiceHost, {
+      wrapHostWithProjection(typescript, host, {
         getProfile: () => controller.getProfile(),
       });
 
@@ -66,15 +82,34 @@ function init(modules: { typescript: typeof ts }): ts.server.PluginModule {
           ? undefined
           : watchConfigDirectory(info, selectedPath, reloader);
 
-      // Drop this project's reloader when its language service is disposed so
-      // stale controllers/watchers do not accumulate and reload on every change.
-      const languageService = info.languageService;
-      const originalDispose = languageService.dispose.bind(languageService);
-      languageService.dispose = (): void => {
-        reloaders.delete(reloader);
-        configWatcher?.close();
-        originalDispose();
+      let disposed = false;
+      const binding: ActiveBinding = {
+        languageService: info.languageService,
+        dispose: () => {
+          if (disposed) return;
+          disposed = true;
+          reloaders.delete(reloader);
+          configWatcher?.close();
+        },
       };
+      activeBindings.set(host, binding);
+
+      // A configured-project reload can run create() repeatedly with the same
+      // language service. Wrap dispose only once and clean up the latest binding.
+      const languageService = info.languageService;
+      if (!wrappedLanguageServices.has(languageService)) {
+        wrappedLanguageServices.add(languageService);
+        const originalDispose = languageService.dispose.bind(languageService);
+        languageService.dispose = (): void => {
+          const activeBinding = activeBindings.get(host);
+          if (activeBinding?.languageService === languageService) {
+            activeBinding.dispose();
+            activeBindings.delete(host);
+            releaseHostProjection(host);
+          }
+          originalDispose();
+        };
+      }
 
       return languageService;
     },

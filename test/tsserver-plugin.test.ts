@@ -157,3 +157,54 @@ test("plugin closes the Profile directory watcher on dispose", async () => {
     assert.equal(closed, 1);
   });
 });
+
+test("re-enabling the plugin replaces its watcher without stacking host wrappers", async () => {
+  await withProject(async (root) => {
+    const browserPath = join(root, "BROWSER.json");
+    const nodePath = join(root, "NODE.json");
+    await writeFile(browserPath, "[\"BROWSER\"]", "utf8");
+    await writeFile(nodePath, "[]", "utf8");
+    const file = join(root, "main.ts");
+    const source = "#if BROWSER\nconst selected = 'browser';\n#else\nconst selected = 'node';\n#endif\n";
+    const host = createMemoryHost(new Map([[file, { text: source, version: "1" }]]));
+    const languageService = ts.createLanguageService(host, ts.createDocumentRegistry());
+    let closed = 0;
+    const makeInfo = (profileFile: string) => {
+      const info = pluginInfo(root, host, languageService, { profileFile }) as {
+        serverHost: {
+          watchDirectory?: (
+            path: string,
+            callback: () => void,
+            recursive?: boolean,
+          ) => { close(): void };
+        };
+      };
+      info.serverHost = {
+        watchDirectory: () => ({
+          close: () => {
+            closed += 1;
+          },
+        }),
+      };
+      return info;
+    };
+
+    const reloads = 20;
+    for (let index = 0; index < reloads; index += 1) {
+      const profilePath = index === reloads - 1 || index % 2 === 1
+        ? nodePath
+        : browserPath;
+      init({ typescript: ts }).create(makeInfo(profilePath));
+    }
+
+    assert.equal(closed, reloads - 1, "every obsolete project watcher must be closed");
+    const snapshot = host.getScriptSnapshot(file)!;
+    const projected = snapshot.getText(0, snapshot.getLength());
+    assert.equal(projected.includes("selected = 'browser'"), false);
+    assert.equal(projected.includes("selected = 'node'"), true);
+    assert.equal(host.getScriptVersion(file).split("|tsifdef:").length - 1, 1);
+
+    languageService.dispose();
+    assert.equal(closed, reloads, "disposing the service must close the active watcher");
+  });
+});

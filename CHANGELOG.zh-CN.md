@@ -1,5 +1,12 @@
 # 更新日志
 
+## v1.1.10 - 2026-09-15
+
+- 修复重新生成 `tsconfig.json`、TypeScript 工程再次启用插件时，tsserver 插件重复叠加
+  host 代理、Profile 文件监视器和投影缓存的问题。
+- TypeScript language service 销毁时释放已缓存的源码投影。
+- 首次加载 Profile 时只重新加载工程，不再重启刚启动的 tsserver。
+
 ## v1.1.9 - 2026-09-11
 
 首个公开版本。
