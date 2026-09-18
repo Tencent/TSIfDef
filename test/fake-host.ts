@@ -27,6 +27,7 @@ import {
 export interface FakeHostOptions {
   readonly root?: string;
   readonly documents?: readonly DocumentSnapshot[];
+  readonly typeScriptGoEnabled?: boolean;
 }
 
 export interface RecordedDecoration {
@@ -53,12 +54,14 @@ export class FakeHost implements ExtensionHost {
   public documents: readonly DocumentSnapshot[];
   public projectConfigurationWatcher: (() => void) | undefined;
   private readonly root: string | undefined;
+  private typeScriptGoEnabled: boolean;
   private diagnosticCollection: (DiagnosticCollection & { disposed: boolean }) | undefined;
   private decorationType: (DecorationType & { disposed: boolean }) | undefined;
   private decorationSequence = 0;
 
   public constructor(options: FakeHostOptions = {}) {
     this.root = options.root;
+    this.typeScriptGoEnabled = options.typeScriptGoEnabled ?? false;
     this.documents = options.documents ?? [];
     this.statusItem = {
       text: "",
@@ -171,6 +174,14 @@ export class FakeHost implements ExtensionHost {
     this.typeScriptProjectReloads += 1;
     this.typeScriptOperations.push("reload");
     return Promise.resolve();
+  }
+
+  public isTypeScriptGoEnabled(): boolean {
+    return this.typeScriptGoEnabled;
+  }
+
+  public setTypeScriptGoEnabled(enabled: boolean): void {
+    this.typeScriptGoEnabled = enabled;
   }
 
   public get diagnosticCollectionDisposed(): boolean {

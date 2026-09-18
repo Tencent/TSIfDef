@@ -175,3 +175,34 @@ test("available TypeScript language service receives config and restart", async 
     "typescript.reloadProjects",
   ]);
 });
+
+test("TypeScript Go mode never activates or commands the legacy TypeScript service", async () => {
+  let activationCalls = 0;
+  let commandCalls = 0;
+  const integration = createTypeScriptIntegration(
+    {
+      extensions: {
+        getExtension: () => ({
+          exports: undefined,
+          activate: async () => {
+            activationCalls += 1;
+            return {};
+          },
+        }),
+      },
+      commands: {
+        executeCommand: async () => {
+          commandCalls += 1;
+        },
+      },
+    },
+    () => true,
+  );
+
+  await integration.configurePlugin("tsifdef-tsserver", { profileFile: "Profile.json" });
+  await integration.restartServer();
+  await integration.reloadProjects();
+
+  assert.equal(activationCalls, 0);
+  assert.equal(commandCalls, 0);
+});

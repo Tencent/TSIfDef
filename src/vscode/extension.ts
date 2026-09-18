@@ -88,6 +88,9 @@ interface VsCodeApi {
     readonly onDidChangeTextDocument: VsEvent<{ readonly document: VsTextDocument }>;
     readonly onDidOpenTextDocument: VsEvent<VsTextDocument>;
     readonly onDidCloseTextDocument: VsEvent<VsTextDocument>;
+    getConfiguration(section?: string): {
+      get<T>(key: string, defaultValue?: T): T | undefined;
+    };
     createFileSystemWatcher(glob: string): {
       onDidChange: VsEvent<unknown>;
       onDidCreate: VsEvent<unknown>;
@@ -146,6 +149,7 @@ export function createTypeScriptIntegration(
     };
     readonly extensions: VsCodeApi["extensions"];
   },
+  isTypeScriptGoEnabled: () => boolean = () => false,
 ): {
   configurePlugin(
     name: string,
@@ -156,6 +160,9 @@ export function createTypeScriptIntegration(
 } {
   return {
     configurePlugin: async (name, configuration) => {
+      if (isTypeScriptGoEnabled()) {
+        return;
+      }
       const extension = vscode.extensions.getExtension("vscode.typescript-language-features");
       if (extension === undefined) {
         return;
@@ -176,6 +183,9 @@ export function createTypeScriptIntegration(
       }
     },
     restartServer: async () => {
+      if (isTypeScriptGoEnabled()) {
+        return;
+      }
       if (vscode.extensions.getExtension("vscode.typescript-language-features") === undefined) {
         return;
       }
@@ -186,6 +196,9 @@ export function createTypeScriptIntegration(
       }
     },
     reloadProjects: async () => {
+      if (isTypeScriptGoEnabled()) {
+        return;
+      }
       if (vscode.extensions.getExtension("vscode.typescript-language-features") === undefined) {
         return;
       }
@@ -200,7 +213,10 @@ export function createTypeScriptIntegration(
 
 /** Adapt the real `vscode` API to the host interface the shell depends on. */
 export function createHost(vscode: VsCodeApi): ExtensionHost {
-  const typeScript = createTypeScriptIntegration(vscode);
+  const isTypeScriptGoEnabled = (): boolean =>
+    vscode.workspace.getConfiguration("js/ts").get<boolean>("experimental.useTsgo", false) === true
+    || vscode.workspace.getConfiguration("typescript").get<boolean>("experimental.useTsgo", false) === true;
+  const typeScript = createTypeScriptIntegration(vscode, isTypeScriptGoEnabled);
   const decorationTypes = new Map<string, { dispose(): void }>();
   let decorationSequence = 0;
   const toRange = (range: DocumentRange): unknown =>
@@ -277,6 +293,7 @@ export function createHost(vscode: VsCodeApi): ExtensionHost {
         },
       ),
     showErrorMessage: (message) => void vscode.window.showErrorMessage(message),
+    isTypeScriptGoEnabled,
     configureTypeScriptPlugin: typeScript.configurePlugin,
     restartTypeScriptServer: typeScript.restartServer,
     reloadTypeScriptProjects: typeScript.reloadProjects,
@@ -347,8 +364,10 @@ export function ensureTsserverPluginModule(): void {
 export function activate(context: ExtensionContext): void {
   // Resolve `vscode` lazily so the package builds and tests without it present.
   const vscode = createRequire(__filename)("vscode") as VsCodeApi;
-  ensureTsserverPluginModule();
   const host = createHost(vscode);
+  if (!host.isTypeScriptGoEnabled()) {
+    ensureTsserverPluginModule();
+  }
 
   let definitions: MacroDefinitions | undefined;
   const profileController = new ProfileStateController(host);
@@ -374,6 +393,17 @@ export function activate(context: ExtensionContext): void {
       presentation.closeDocument(document.uri.toString()),
     ),
     vscode.window.onDidChangeVisibleTextEditors(() => presentation.refresh()),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (
+        event.affectsConfiguration("js/ts.experimental.useTsgo")
+        || event.affectsConfiguration("typescript.experimental.useTsgo")
+      ) {
+        if (!host.isTypeScriptGoEnabled()) {
+          ensureTsserverPluginModule();
+        }
+        void packageProfile.reload();
+      }
+    }),
   ];
 
   active = {

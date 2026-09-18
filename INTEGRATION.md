@@ -94,6 +94,13 @@ Then run `TypeScript: Restart TS Server`. Inactive code no longer errors, and
 Run `TypeScript: Restart TS Server` after upgrading the extension too — the
 running server keeps the old plugin until it restarts.
 
+When a workspace uses the TypeScript 7 / TSGo Native Preview language server,
+the TSIfDef extension automatically stays in presentation-only mode. It keeps
+inactive-code dimming, folding, macro diagnostics, and Profile status, but does
+not activate, configure, reload, or restart the legacy tsserver. The workspace
+TSGo binary must include native TSIfDef support and read the same `tsifdef`
+Profile pointer from `package.json`.
+
 ## 4. ESLint
 
 Without TSIfDef, raw `#if` lines are reported as parse errors. The ESLint

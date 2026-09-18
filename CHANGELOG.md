@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.11 - 2026-09-17
+
+- Detect TypeScript 7 / TSGo workspace mode through both the current
+  `js/ts.experimental.useTsgo` setting and the legacy
+  `typescript.experimental.useTsgo` setting.
+- Keep inactive-code decorations, folding, diagnostics, and Profile status
+  active under TSGo while avoiding activation, configuration, reloads, and
+  restarts of the legacy TypeScript server.
+- Restore the tsserver plugin with one project reload when a workspace switches
+  from TSGo back to the legacy TypeScript language service.
+
 ## v1.1.10 - 2026-09-15
 
 - Fix the tsserver plugin accumulating nested host wrappers, Profile watchers,

@@ -89,6 +89,8 @@ export interface ExtensionHost {
   registerFoldingRangeProvider(provider: FoldingRangeProvider): Disposable;
   /** Surface a non-blocking error message. */
   showErrorMessage(message: string): void;
+  /** Whether TypeScript 7 / TSGo owns semantic language features in this workspace. */
+  isTypeScriptGoEnabled(): boolean;
   /** Send live configuration to the contributed TypeScript server plugin. */
   configureTypeScriptPlugin(name: string, configuration: Readonly<Record<string, unknown>>): Promise<void>;
   /**

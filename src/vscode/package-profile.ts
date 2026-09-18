@@ -30,6 +30,7 @@ export class PackageProfileController implements Disposable {
   private watcher: Disposable | undefined;
   private debounceTimer: ReturnType<typeof setTimeout> | undefined;
   private appliedIdentity: string | undefined;
+  private appliedWithTypeScriptGo: boolean | undefined;
   private initialized = false;
 
   public constructor(
@@ -102,12 +103,23 @@ export class PackageProfileController implements Disposable {
     nextIdentity: string,
     pluginConfiguration: Readonly<Record<string, unknown>>,
   ): Promise<void> {
+    const typeScriptGoEnabled = this.host.isTypeScriptGoEnabled();
     const firstValidProfile = !this.initialized && nextIdentity !== "none";
     const changed = this.initialized && this.appliedIdentity !== nextIdentity;
+    const languageServiceChanged =
+      this.initialized && this.appliedWithTypeScriptGo !== typeScriptGoEnabled;
     this.appliedIdentity = nextIdentity;
+    this.appliedWithTypeScriptGo = typeScriptGoEnabled;
     this.initialized = true;
+    // TSGo implements TSIfDef inside its own parser/project system. In that
+    // mode this extension remains the presentation layer only; activating or
+    // restarting the legacy tsserver would duplicate the entire language
+    // service for large workspaces.
+    if (typeScriptGoEnabled) {
+      return;
+    }
     await this.host.configureTypeScriptPlugin("tsifdef-tsserver", pluginConfiguration);
-    if (firstValidProfile) {
+    if (firstValidProfile || languageServiceChanged) {
       // The plugin configuration override is already registered. Reloading
       // projects is enough to apply it to projects restored during startup;
       // restarting the freshly launched tsserver only produces a needless

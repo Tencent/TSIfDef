@@ -1,5 +1,14 @@
 # 更新日志
 
+## v1.1.11 - 2026-09-17
+
+- 同时识别新版 `js/ts.experimental.useTsgo` 和旧版
+  `typescript.experimental.useTsgo` 配置，以判断工作区是否由 TypeScript 7 / TSGo
+  提供语义服务。
+- TSGo 模式下继续提供未激活代码置灰、折叠、宏诊断和 Profile 状态，同时不再激活、
+  配置、重载或重启旧 TypeScript Server。
+- 工作区从 TSGo 切回旧 TypeScript 语言服务时，重新配置 tsserver 插件并只重载一次项目。
+
 ## v1.1.10 - 2026-09-15
 
 - 修复重新生成 `tsconfig.json`、TypeScript 工程再次启用插件时，tsserver 插件重复叠加

@@ -175,6 +175,64 @@ test("ordinary TypeScript project without tsifdef is silently disabled", async (
   }
 });
 
+test("TypeScript Go mode updates presentation state without touching tsserver", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-tsgo-"));
+  try {
+    const profilePath = join(root, "Profile.json");
+    await writeFile(profilePath, "[\"AAA\"]", "utf8");
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profile.json" }), "utf8");
+
+    const host = new FakeHost({ root, typeScriptGoEnabled: true });
+    const state = new ProfileStateController(host);
+    let definitions: MacroDefinitions | undefined;
+    const controller = new PackageProfileController(host, state, (next) => { definitions = next; });
+    state.activate();
+
+    await controller.reload();
+    assert.equal(host.statusItem.text, "$(versions) TSIfDef: Profile.json");
+    assert.equal(definitions?.AAA, true);
+    assert.deepEqual(host.typeScriptOperations, []);
+
+    await writeFile(profilePath, "[\"AAA\",\"BBB\"]", "utf8");
+    await controller.reload();
+    assert.equal(definitions?.BBB, true);
+    assert.deepEqual(host.typeScriptOperations, []);
+
+    controller.dispose();
+    state.dispose();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("switching back from TypeScript Go configures and reloads legacy tsserver once", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-tsgo-switch-"));
+  try {
+    const profilePath = join(root, "Profile.json");
+    await writeFile(profilePath, "[\"AAA\"]", "utf8");
+    await writeFile(join(root, "package.json"), JSON.stringify({ tsifdef: "./Profile.json" }), "utf8");
+
+    const host = new FakeHost({ root, typeScriptGoEnabled: true });
+    const state = new ProfileStateController(host);
+    const controller = new PackageProfileController(host, state, () => undefined);
+
+    await controller.reload();
+    assert.deepEqual(host.typeScriptOperations, []);
+
+    host.setTypeScriptGoEnabled(false);
+    await controller.reload();
+    assert.deepEqual(host.typeScriptOperations, ["configure", "reload"]);
+
+    await controller.reload();
+    assert.deepEqual(host.typeScriptOperations, ["configure", "reload", "configure"]);
+
+    controller.dispose();
+    state.dispose();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("explicit invalid tsifdef configuration still reports an error", async () => {
   const root = await mkdtemp(join(tmpdir(), "tsifdef-vscode-invalid-"));
   try {

@@ -90,6 +90,11 @@ Profile 会自动触发全量重编。不支持 `outFile` 和 composite referenc
 升级扩展后同样要执行 `TypeScript: Restart TS Server`——正在运行的 server 会一直
 使用旧插件，直到重启为止。
 
+当工作区使用 TypeScript 7 / TSGo Native Preview 语言服务时，TSIfDef 扩展会自动进入
+仅表现模式：继续提供未激活代码置灰、折叠、宏诊断和 Profile 状态，但不会激活、配置、
+重载或重启旧 tsserver。工作区使用的 TSGo 二进制必须原生支持 TSIfDef，并从
+`package.json` 读取同一个 `tsifdef` Profile 指针。
+
 ## 4. ESLint
 
 不接 TSIfDef 时，原始的 `#if` 行会被报成解析错误。ESLint processor 已包含在构建
