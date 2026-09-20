@@ -15,6 +15,10 @@ on:
         description: Publish to Open VSX
         type: boolean
         default: true
+      open_vsx_release_tag:
+        description: Re-publish an existing GitHub release tag to Open VSX only (for example v1.1.11)
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -28,23 +32,25 @@ concurrency:
 
 jobs:
   test:
+    if: ${{ inputs.open_vsx_release_tag == '' }}
     uses: ./.github/workflows/test.yml
 
   build:
+    if: ${{ inputs.open_vsx_release_tag == '' }}
     needs: test
     uses: ./.github/workflows/build.yml
 
   publish:
+    if: ${{ inputs.open_vsx_release_tag == '' }}
     name: Publish release
     needs: build
     runs-on: ubuntu-latest
-    # The `secrets` context is not available in a step-level `if`, so the
-    # Marketplace token is lifted into `env` here. That is what lets the channel
-    # skip itself when no token is configured: the VSIX is attached to the
-    # GitHub release either way and can be uploaded by hand. npm needs no entry:
-    # it authenticates over OIDC instead of a stored token.
+    # The `secrets` context is not available in a step-level `if`, so registry
+    # tokens are lifted into `env` here. npm needs no entry: it authenticates
+    # over OIDC instead of a stored token.
     env:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -194,16 +200,53 @@ jobs:
           npx vsce publish --packagePath "release/${name}-${version}.vsix" --skip-duplicate
 
       - name: Publish to Open VSX
-        if: ${{ inputs.open_vsx }}
+        if: ${{ inputs.open_vsx && env.OVSX_PAT != '' }}
         shell: bash
         run: |
           set -euo pipefail
           version="${{ steps.release.outputs.version }}"
           name="$(node -p "require('./package.json').name")"
 
-          # Open VSX exchanges the GitHub Actions OIDC identity for a short-lived,
-          # extension-scoped publishing token. No long-lived Open VSX token is
-          # stored in GitHub. The VSIX is the verified artifact built above.
+          # open-vsx.org has not deployed Trusted Publishing yet, so ovsx reads
+          # the namespace-scoped token from OVSX_PAT. The VSIX is the verified
+          # artifact built above.
           npx --yes ovsx@1.2.0 publish "release/${name}-${version}.vsix" \
-            --trusted-publishing \
+            --skip-duplicate
+
+  publish-open-vsx-existing:
+    if: ${{ inputs.open_vsx_release_tag != '' }}
+    name: Publish existing release to Open VSX
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Download and publish existing VSIX
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.open_vsx_release_tag }}"
+
+          if [[ -z "$OVSX_PAT" ]]; then
+            echo "::error::OVSX_PAT is not configured"
+            exit 1
+          fi
+          if [[ "$tag" != v* ]]; then
+            echo "::error::Expected a release tag beginning with v, got: $tag"
+            exit 1
+          fi
+
+          version="${tag#v}"
+          mkdir -p release
+          gh release download "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "tsifdef-${version}.vsix" \
+            --dir release
+
+          npx --yes ovsx@1.2.0 publish "release/tsifdef-${version}.vsix" \
             --skip-duplicate
